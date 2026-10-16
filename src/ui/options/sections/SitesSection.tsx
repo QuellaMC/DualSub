@@ -7,6 +7,7 @@ import {
 } from '@/config/schema';
 import { configService } from '@/config/service';
 import {
+    PLATFORM_HOSTS,
     PLATFORM_IDS,
     PLATFORM_NAMES,
     type PlatformId,
@@ -19,9 +20,9 @@ import { feedbackSave, followAllSites, useFeedback } from '../shell/feedback';
 
 type Rules = SettingsValues['subtitleBlacklist'];
 
-const SITE_DOMAINS: Record<PlatformId, string> = {
-    netflix: 'netflix.com',
-    disneyplus: 'disneyplus.com',
+const SITE_BADGES: Record<PlatformId, string> = {
+    netflix: 'N',
+    disneyplus: 'D+',
 };
 
 /** Each own value's name in the summary; a key shares a name with its
@@ -151,16 +152,18 @@ function SiteCard({
             <div className="row">
                 <div className="inline">
                     <span className="site-badge" aria-hidden="true">
-                        {name.slice(0, 1)}
+                        {SITE_BADGES[site]}
                     </span>
                     <div>
                         <h2 className="label">{name}</h2>
-                        <div className="help">{SITE_DOMAINS[site]}</div>
+                        <div className="help">{PLATFORM_HOSTS[site]}</div>
                     </div>
                     <span
                         className={`tag ${settings.subtitlesEnabled ? 'ok' : 'muted'}`}
                     >
-                        {t(settings.subtitlesEnabled ? 'sitesOn' : 'sitesOff')}
+                        {t(
+                            settings.subtitlesEnabled ? 'commonOn' : 'commonOff'
+                        )}
                     </span>
                 </div>
                 <div className="inline" id={`site-on-${site}`}>
@@ -187,7 +190,7 @@ function SiteCard({
                     />
                 </div>
             </div>
-            <div className="row divided">
+            <div className="row divided" id={`site-hide-${site}`}>
                 <div className="grow">
                     <div className="strong" id={`${site}-hide`}>
                         {t('sitesHideOwn', name)}
@@ -326,46 +329,6 @@ function SiteCard({
     );
 }
 
-/** The site's own subtitles, hidden or shown on every site that keeps no
- *  choice of its own. */
-function SharedHide({ t }: { t: Translate }) {
-    const feedback = useFeedback();
-    const handle = useSettings(['hideOfficialSubtitles', 'siteProfiles']);
-    if (handle.status === 'unavailable') {
-        return <UnreadableCard t={t} title={t('sitesHideTitle')} />;
-    }
-    if (!handle.settings) {
-        return null;
-    }
-    const save = feedbackSave(handle, feedback);
-    return (
-        <div className="card" id="hide-all">
-            <div className="row">
-                <div className="grow">
-                    <h2 className="label" id="hide-all-title">
-                        {t('sitesHideTitle')}
-                    </h2>
-                    <p className="help">{t('sitesHideAllHelp')}</p>
-                </div>
-                <Switch
-                    checked={handle.settings.hideOfficialSubtitles}
-                    labelledBy="hide-all-title"
-                    onChange={(hide) =>
-                        save(
-                            { hideOfficialSubtitles: hide },
-                            {
-                                message: t(
-                                    hide ? 'toastSitesHide' : 'toastSitesShow'
-                                ),
-                            }
-                        )
-                    }
-                />
-            </div>
-        </div>
-    );
-}
-
 export function SitesSection({
     t,
     advanced,
@@ -381,7 +344,6 @@ export function SitesSection({
                 {t('navSites')}
             </h1>
             <p className="lead">{t('sitesLead')}</p>
-            <SharedHide t={t} />
             {PLATFORM_IDS.map((site) => (
                 <SiteCard
                     key={site}

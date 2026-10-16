@@ -74,6 +74,11 @@ export function useSiteDraft<T>(
     return draft;
 }
 
+/** Which sites the page is editing; all of them outside a scope. */
+export function useScope(): Scope {
+    return useContext(ScopeContext)?.scope ?? 'all';
+}
+
 /** Under a site's scope, marks a setting that every site shares. */
 export function SharedTag() {
     const context = useContext(ScopeContext);

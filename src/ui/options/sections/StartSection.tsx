@@ -1,3 +1,4 @@
+import { siteProfileOf } from '@/config/schema';
 import {
     PLATFORM_IDS,
     PLATFORM_NAMES,
@@ -36,27 +37,56 @@ const PROVIDER_SUMMARIES = {
     vertex_gemini: 'startProviderVertex',
 } as const;
 
-/** Whether DualSub runs on one site, as that site sees its settings. */
-function SiteStatus({ t, site }: { t: Translate; site: PlatformId }) {
-    const { settings, status } = useSettings(['subtitlesEnabled'], { site });
-    if (status === 'unavailable') {
-        return (
-            <span className="tag danger" role="alert">
-                {t('startSiteUnreadable', PLATFORM_NAMES[site])}
-            </span>
-        );
-    }
+interface SitesOn {
+    readonly on: PlatformId[];
+    readonly off: PlatformId[];
+}
+
+/** The sites DualSub runs on and those it is off on, each as the site sees
+ *  its settings; null until they are read, or when they cannot be. */
+function useSitesOn(): {
+    readonly sites: SitesOn | null;
+    readonly unreadable: boolean;
+} {
+    const { settings, status } = useSettings([
+        'subtitlesEnabled',
+        'siteProfiles',
+    ]);
     if (!settings) {
-        return null;
+        return { sites: null, unreadable: status === 'unavailable' };
     }
-    return (
-        <span className={`tag ${settings.subtitlesEnabled ? 'ok' : 'muted'}`}>
-            {t(
-                settings.subtitlesEnabled ? 'startSiteOn' : 'startSiteOff',
-                PLATFORM_NAMES[site]
-            )}
-        </span>
+    const on = PLATFORM_IDS.filter(
+        (site) =>
+            siteProfileOf(settings.siteProfiles, site).subtitlesEnabled ??
+            settings.subtitlesEnabled
     );
+    return {
+        sites: { on, off: PLATFORM_IDS.filter((site) => !on.includes(site)) },
+        unreadable: false,
+    };
+}
+
+/** What the switch leaves running: where dual subtitles are on and off, or
+ *  the switch's own state while the sites are not read. */
+function statusTitle(
+    t: Translate,
+    language: string,
+    enabled: boolean,
+    sites: SitesOn | null
+): string {
+    const names = (ids: PlatformId[]): string =>
+        new Intl.ListFormat(language, { type: 'conjunction' }).format(
+            ids.map((id) => PLATFORM_NAMES[id])
+        );
+    if (!sites) {
+        return t(enabled ? 'startStatusOn' : 'startStatusOff');
+    }
+    if (sites.on.length === 0) {
+        return t('startStatusOff');
+    }
+    return sites.off.length === 0
+        ? t('startStatusWorking', names(sites.on))
+        : t('startStatusWorkingSome', names(sites.on), names(sites.off));
 }
 
 export function StartSection({
@@ -65,6 +95,8 @@ export function StartSection({
     save,
     go,
 }: SectionProps & { go: (section: SectionId) => void }) {
+    const { sites, unreadable } = useSitesOn();
+    const working = sites ? sites.on.length > 0 : settings.subtitlesEnabled;
     const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const provider = settings.selectedProvider;
     const providerName = t(PROVIDER_NAME_KEYS[provider]);
@@ -105,7 +137,7 @@ export function StartSection({
                 <div className="row">
                     <div className="status">
                         <span
-                            className={`status-icon ${settings.subtitlesEnabled && !stopped ? 'ok' : 'off'}`}
+                            className={`status-icon ${working && !stopped ? 'ok' : 'off'}`}
                             aria-hidden="true"
                         >
                             <Icon name={stopped ? 'alert' : 'check'} />
@@ -123,15 +155,16 @@ export function StartSection({
                         ) : (
                             <div>
                                 <div className="label">
-                                    {t(
-                                        settings.subtitlesEnabled
-                                            ? 'startStatusReady'
-                                            : 'startStatusOff'
+                                    {statusTitle(
+                                        t,
+                                        settings.uiLanguage,
+                                        settings.subtitlesEnabled,
+                                        sites
                                     )}
                                 </div>
                                 <div className="help">
                                     {t(
-                                        settings.subtitlesEnabled
+                                        working
                                             ? 'startStatusReadyHelp'
                                             : 'startStatusOffHelp'
                                     )}
@@ -162,11 +195,11 @@ export function StartSection({
                     </div>
                 </div>
                 <SiteTag keys={['subtitlesEnabled']} />
-                <div className="inline wrap">
-                    {PLATFORM_IDS.map((site) => (
-                        <SiteStatus key={site} t={t} site={site} />
-                    ))}
-                </div>
+                {unreadable && (
+                    <p className="notice danger" role="alert">
+                        {t('startSitesUnreadable')}
+                    </p>
+                )}
                 <div className="inline wrap">
                     {PLATFORM_IDS.map((site) => (
                         <a
@@ -177,7 +210,6 @@ export function StartSection({
                             rel="noopener noreferrer"
                         >
                             {t('startOpenSite', PLATFORM_NAMES[site])}
-                            <Icon name="external" />
                         </a>
                     ))}
                 </div>
@@ -239,7 +271,7 @@ export function StartSection({
                 </div>
                 <div className="list-row">
                     <div className="grow">
-                        <div className="label">{t('languagesTopTitle')}</div>
+                        <div className="label">{t('startTopTitle')}</div>
                         <div className="help">
                             {settings.originalLanguage === AUTO_LANGUAGE
                                 ? t('startTopAuto')

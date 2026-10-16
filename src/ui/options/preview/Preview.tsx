@@ -31,6 +31,24 @@ const SAMPLE_VIDEOS = [
     labelKey: string;
 }[];
 
+/** The preview draws its text as on a picture this many pixels tall: small
+ *  enough to sit in the frame as subtitles sit in a video, large enough to
+ *  read. */
+const PICTURE_HEIGHT = 700;
+
+const CAPTIONS = {
+    auto: {
+        official: 'previewCaptionAuto',
+        translated: 'previewCaptionAutoTranslated',
+        none: 'previewCaptionAutoOne',
+    },
+    fixed: {
+        official: 'previewCaptionFixed',
+        translated: 'previewCaptionFixedTranslated',
+        none: 'previewCaptionFixedOne',
+    },
+} as const;
+
 /** The language the sample shows for `language`: the closest one it has
  *  lines in, else English, standing in. */
 function offered(language: string): SubtitleLanguage {
@@ -112,6 +130,7 @@ export function Preview({
                             PLATFORM_PRESETS[site],
                             null
                         )}
+                        pictureHeight={PICTURE_HEIGHT}
                         originalText={SAMPLE_LINES[top]}
                         translatedText={oneLine ? '' : SAMPLE_LINES[target]}
                         label={t('previewLabel')}
@@ -126,7 +145,7 @@ export function Preview({
                         {t('previewSampleVideo')}
                     </span>
                     <div
-                        className="segmented"
+                        className="segmented small"
                         role="group"
                         aria-labelledby="preview-sample"
                     >
@@ -148,7 +167,7 @@ export function Preview({
                             {t('previewShownOn')}
                         </span>
                         <div
-                            className="segmented"
+                            className="segmented small"
                             role="group"
                             aria-labelledby="preview-site"
                         >
@@ -170,9 +189,13 @@ export function Preview({
                 )}
                 <p className="help">
                     {t(
-                        automatic
-                            ? 'previewCaptionAuto'
-                            : 'previewCaptionFixed',
+                        CAPTIONS[automatic ? 'auto' : 'fixed'][
+                            oneLine
+                                ? 'none'
+                                : settings.useOfficialTranslations
+                                  ? 'official'
+                                  : 'translated'
+                        ],
                         languageName(t, top),
                         languageName(t, target)
                     )}

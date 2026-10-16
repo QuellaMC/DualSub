@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { isUiLanguage, UI_LANGUAGES, type UiLanguage } from '@/config/schema';
 import { Icon } from '../../design/Icon';
+import { Logo } from '../../design/Logo';
 import type { Translate } from '../../hooks/useI18n';
 import { NATIVE_LANGUAGE_NAMES } from '../controls/nativeLanguageNames';
 import { searchSettings, type SearchEntry } from '../search';
@@ -25,7 +26,7 @@ export function TopBar({
     return (
         <header className="top-bar">
             <div className="brand">
-                <img src="/icons/icon48.png" alt="" width="32" height="32" />
+                <Logo size={34} />
                 <span>DualSub</span>
                 <span className="brand-page">{t('topSettings')}</span>
             </div>

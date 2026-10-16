@@ -113,9 +113,6 @@
     "apiPlanPro": {
         "message": "專業版"
     },
-    "aboutDevelopment": {
-        "message": "由 QuellaMC & 1jifang 開發。"
-    },
     "lang_en": {
         "message": "英語"
     },
@@ -165,7 +162,7 @@
         "message": "⚠️ DeepL API 金鑰需要測試。"
     },
     "testingButton": {
-        "message": "測試中..."
+        "message": "檢查中…"
     },
     "testingConnection": {
         "message": "正在測試 DeepL 連線..."
@@ -189,16 +186,16 @@
         "message": "❌ 測試失敗：%s"
     },
     "vertexAccessTokenLabel": {
-        "message": "存取權杖："
+        "message": "存取權杖"
     },
     "vertexProjectIdLabel": {
-        "message": "專案 ID："
+        "message": "專案 ID"
     },
     "vertexLocationLabel": {
-        "message": "位置："
+        "message": "區域"
     },
     "vertexModelLabel": {
-        "message": "模型："
+        "message": "模型"
     },
     "vertexMissingConfig": {
         "message": "請輸入存取權杖和專案 ID。"
@@ -207,13 +204,13 @@
         "message": "連線失敗：%s"
     },
     "vertexServiceAccountLabel": {
-        "message": "服務帳戶 JSON："
+        "message": "服務帳戶檔案"
     },
     "vertexImportButton": {
-        "message": "匯入 JSON 檔案"
+        "message": "選擇檔案…"
     },
     "vertexImporting": {
-        "message": "匯入中..."
+        "message": "匯入中…"
     },
     "vertexGeneratingToken": {
         "message": "正在產生存取權杖..."
@@ -225,7 +222,7 @@
         "message": "⚠️ Vertex AI 已設定。請測試連線。"
     },
     "testConnectionButton": {
-        "message": "測試連線"
+        "message": "檢查連線"
     },
     "openaiApiKeyError": {
         "message": "請先輸入您的 API 金鑰。"
@@ -312,7 +309,7 @@
         "message": "分析過程中發生錯誤。"
     },
     "aiContextTypesRequired": {
-        "message": "請至少選一項要解釋的內容。"
+        "message": "請至少選一項。"
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API 測試成功！"
@@ -402,10 +399,10 @@
         "message": "下載設定"
     },
     "advancedJsonHelp": {
-        "message": "DualSub 儲存的內容（不含你的金鑰）。每個網站只記錄跟所有網站不同的部分。"
+        "message": "DualSub 儲存的內容（不含你的金鑰）。每個網站只記錄不同的部分。"
     },
     "advancedJsonTitle": {
-        "message": "JSON 格式的設定"
+        "message": "全部設定（JSON 格式）"
     },
     "advancedLead": {
         "message": "備份、原始設定資料，以及疑難排解工具。"
@@ -459,13 +456,13 @@
         "message": "全部重設…"
     },
     "advancedResetConfirm": {
-        "message": "要把所有設定恢復成建議值嗎？之後可以馬上復原。"
+        "message": "要重設所有設定嗎？之後可以馬上復原。"
     },
     "advancedResetDo": {
         "message": "重設"
     },
     "advancedResetHelp": {
-        "message": "所有設定都會恢復成建議值，每個網站也會重新沿用所有網站的設定。你的金鑰及與每個金鑰搭配的設定（例如位址和模型），以及這些頁面的語言會保留下來。"
+        "message": "把所有設定恢復成建議值，並移除每個網站的專屬設定。你的金鑰和每個金鑰搭配的設定（例如位址和模型），以及這些頁面的語言會保留下來。"
     },
     "advancedResetTitle": {
         "message": "重新開始"
@@ -494,14 +491,17 @@
     "commonRecommended": {
         "message": "推薦"
     },
+    "commonOn": {
+        "message": "已開啟"
+    },
+    "commonOff": {
+        "message": "已關閉"
+    },
     "explainCache": {
         "message": "記住查過的結果"
     },
     "explainAllowHost": {
         "message": "DualSub 需要你允許它連線到這個位址，才能解釋單字。"
-    },
-    "explainKeyStays": {
-        "message": "你的金鑰只存在這台電腦上，也只會傳給你選的服務。"
     },
     "explainLead": {
         "message": "點一下字幕裡的任何單字，就能看到它的意思、大家怎麼用，還有背後的故事。"
@@ -513,7 +513,7 @@
         "message": "點單字時，打開解釋面板"
     },
     "explainPauseTitle": {
-        "message": "看解釋時暫停影片"
+        "message": "暫停影片"
     },
     "explainRateLimit": {
         "message": "每分鐘最多請求次數"
@@ -525,13 +525,10 @@
         "message": "最多嘗試次數"
     },
     "explainSampleMeaning": {
-        "message": "雨下得非常大。一句很老的英文口語說法。"
-    },
-    "explainSetupDone": {
-        "message": "你的 AI 服務"
+        "message": "雨下得非常大。一句很老的英文口語說法，沒人確定它從哪裡來。"
     },
     "explainSetupHelp": {
-        "message": "解釋內容來自 AI 服務，使用的是你自己的帳號。"
+        "message": "解釋內容來自 AI 服務，使用的是你自己的帳號。你的金鑰只存在這台電腦上。"
     },
     "explainSetupTitle": {
         "message": "三個步驟完成設定"
@@ -539,8 +536,26 @@
     "explainStatusOff": {
         "message": "已關閉。你的金鑰仍然保存著。"
     },
+    "explainNeedsSetup": {
+        "message": "需要設定"
+    },
+    "explainSetUpWith": {
+        "message": "已用 %s 設定好"
+    },
+    "explainKeySaved": {
+        "message": "你的金鑰只存在這台電腦上。"
+    },
+    "explainChangeKey": {
+        "message": "更換金鑰"
+    },
+    "explainChooseService": {
+        "message": "選擇一個 AI 服務"
+    },
+    "explainAddress": {
+        "message": "位址（用於相容伺服器）"
+    },
     "explainStatusOn": {
-        "message": "已開啟。點一下字幕裡的單字試試看。"
+        "message": "點一下字幕裡的單字試試看。"
     },
     "explainStatusSetup": {
         "message": "完成下面三個步驟就能開啟。"
@@ -618,7 +633,7 @@
         "message": "重新整理頁面。"
     },
     "helpNoSubtitlesSite": {
-        "message": "確認 DualSub 在這個網站上是開啟的。"
+        "message": "到「%s」確認 DualSub 在這個網站上是開啟的。"
     },
     "helpNoSubtitlesTitle": {
         "message": "沒有出現字幕"
@@ -626,17 +641,20 @@
     "helpNoSubtitlesTracks": {
         "message": "確認影片有字幕：打開網站本身的字幕選單看看。"
     },
-    "helpOpenSites": {
-        "message": "打開網站設定"
-    },
     "helpPrivacy": {
-        "message": "字幕文字只會傳給你選的翻譯服務。不會追蹤你，也不會傳送任何資料給 DualSub 的開發者。"
+        "message": "字幕文字只會傳給你選的翻譯服務。不會追蹤你，也不會傳送任何資料給我們。"
+    },
+    "helpPrivacyFallback": {
+        "message": "字幕文字只會傳給你選的翻譯服務，以及它出問題時暫時代勞的免費服務。不會追蹤你，也不會傳送任何資料給我們。"
     },
     "helpSource": {
         "message": "原始碼"
     },
+    "helpMadeBy": {
+        "message": "由 QuellaMC 和 1jifang 製作"
+    },
     "helpTimingHelp": {
-        "message": "讓字幕早一點或晚一點出現。"
+        "message": "把字幕往前或往後挪一點。"
     },
     "helpTimingTitle": {
         "message": "字幕跟我聽到的對不上"
@@ -675,7 +693,7 @@
         "message": "影片裡說的語言"
     },
     "languagesTopAutoHelp": {
-        "message": "DualSub 會依照每部影片和你選的音訊來決定。韓劇上面就顯示韓語，英語電影就顯示英語。"
+        "message": "DualSub 會依照每部影片來決定。韓劇上面就顯示韓語，英語電影就顯示英語。"
     },
     "languagesTopFixed": {
         "message": "固定同一種語言"
@@ -747,7 +765,7 @@
         "message": "柔和陰影"
     },
     "lookExactPosition": {
-        "message": "精確高度：%s（0.1 是最底部，9.9 是畫面中間）"
+        "message": "精確高度：%s（從最底部的 0.1 到畫面中間的 9.9）"
     },
     "lookExactSize": {
         "message": "精確文字大小：%s 倍"
@@ -830,6 +848,9 @@
     "lookPresetsLabel": {
         "message": "現成的外觀"
     },
+    "lookPresetSample": {
+        "message": "你好"
+    },
     "lookSizeTitle": {
         "message": "文字大小"
     },
@@ -840,7 +861,10 @@
         "message": "先挑一個現成的外觀，想要的話再改顏色和字型。"
     },
     "lookStylePlatform": {
-        "message": "跟網站一樣"
+        "message": "跟你正在看的網站一樣"
+    },
+    "lookStylePlatformSite": {
+        "message": "跟 %s 一樣"
     },
     "lookStylePlatformHelp": {
         "message": "依照你在 Netflix 或 Disney+ 個人檔案裡的字幕設定。"
@@ -888,10 +912,22 @@
         "message": "字幕時間"
     },
     "previewCaptionAuto": {
-        "message": "影片的那一行是%s，也就是影片裡說的語言。你的那一行是%s。"
+        "message": "影片的那一行是%s，也就是這部影片裡說的語言。你的那一行是%s，影片有官方翻譯時就用官方的。"
     },
     "previewCaptionFixed": {
-        "message": "影片的那一行是%s。你的那一行是%s。"
+        "message": "影片的那一行是%s。你的那一行是%s，影片有官方翻譯時就用官方的。"
+    },
+    "previewCaptionAutoTranslated": {
+        "message": "影片的那一行是%s，也就是這部影片裡說的語言。你的那一行是%s，由 DualSub 翻譯。"
+    },
+    "previewCaptionAutoOne": {
+        "message": "影片的那一行是%s，也就是這部影片裡說的語言。"
+    },
+    "previewCaptionFixedTranslated": {
+        "message": "影片的那一行是%s。你的那一行是%s，由 DualSub 翻譯。"
+    },
+    "previewCaptionFixedOne": {
+        "message": "影片的那一行是%s。"
     },
     "previewEnglishFilm": {
         "message": "英語電影"
@@ -948,31 +984,31 @@
         "message": "Google Vertex AI"
     },
     "providerVertexHelp": {
-        "message": "透過你自己的 Google Cloud 專案使用 Gemini。"
+        "message": "透過你的 Google Cloud 專案使用 Gemini。"
     },
     "scopeAll": {
         "message": "所有網站"
     },
     "scopeBackToAll": {
-        "message": "回到所有網站"
+        "message": "回到「所有網站」"
     },
     "scopeEditingSite": {
         "message": "你現在改的設定只會套用到 %s。"
     },
     "scopeEditingSiteHelp": {
-        "message": "在這裡改的設定會標上「%s 專屬」。其他設定照樣沿用所有網站的設定。"
+        "message": "在這裡改的設定會標上「%s 專屬」。其他設定沿用「所有網站」。"
     },
     "scopeHelp": {
-        "message": "沒有專屬設定的網站，會使用所有網站的設定。"
+        "message": "沒有專屬設定的網站，會使用「所有網站」的設定。"
     },
     "scopeLabel": {
         "message": "設定套用到"
     },
     "scopeOwnCount": {
-        "message": "專屬設定：%d 項"
+        "message": "%d 項專屬設定"
     },
     "scopeSameAsAll": {
-        "message": "跟所有網站一樣"
+        "message": "跟「所有網站」一樣"
     },
     "scopeSharedSetting": {
         "message": "每個網站都一樣"
@@ -981,13 +1017,19 @@
         "message": "%s 專屬"
     },
     "scopeUseShared": {
-        "message": "改用所有網站的設定"
+        "message": "改用「所有網站」的值"
     },
     "setupAddress": {
         "message": "服務網址"
     },
     "setupCheckKey": {
         "message": "檢查金鑰"
+    },
+    "setupOpenAIStudio": {
+        "message": "打開 Google AI Studio"
+    },
+    "setupOpenOpenAI": {
+        "message": "打開 OpenAI"
     },
     "setupChooseService": {
         "message": "選擇 AI 服務"
@@ -1003,9 +1045,6 @@
     },
     "setupOpenAIKeyHelp": {
         "message": "登入後打開「API keys」，建立一組新的金鑰並複製下來。"
-    },
-    "setupOpenKeyPage": {
-        "message": "打開 %s"
     },
     "setupOtherKeyHelp": {
         "message": "使用你的服務提供的金鑰和網址。"
@@ -1056,16 +1095,10 @@
         "message": "DualSub 會在這些網站上自動開啟。你可以在某個網站關掉它，或讓某個網站使用專屬設定。"
     },
     "sitesMoreHelp": {
-        "message": "DualSub 支援新網站後，它會出現在這裡並且已經開啟，沿用你所有網站的設定。"
+        "message": "DualSub 支援新網站後，它會出現在這裡並且已經開啟，沿用「所有網站」的設定。"
     },
     "sitesMoreTitle": {
         "message": "更多網站即將支援"
-    },
-    "sitesOff": {
-        "message": "已關閉"
-    },
-    "sitesOn": {
-        "message": "已開啟"
     },
     "sitesRemoveOwn": {
         "message": "移除專屬設定"
@@ -1074,10 +1107,10 @@
         "message": "在這個網站使用 DualSub"
     },
     "sitesUsesShared": {
-        "message": "沿用所有網站的設定"
+        "message": "沿用「所有網站」的設定"
     },
     "sitesUsesSharedHelp": {
-        "message": "可以為 %s 另外設定大小、顏色、上行字幕或時間。"
+        "message": "可以為 %s 另外設定大小、顏色、語言或時間。"
     },
     "sizeExtraLarge": {
         "message": "特大"
@@ -1107,7 +1140,7 @@
         "message": "字幕重複出現"
     },
     "startFromBrowser": {
-        "message": "沿用瀏覽器的語言"
+        "message": "依瀏覽器的語言選的"
     },
     "startLead": {
         "message": "打開 Netflix 或 Disney+，隨便播放一部影片。你會看到兩行字幕：上面是影片的語言，下面是你的語言。"
@@ -1125,34 +1158,37 @@
         "message": "DeepL，使用你的金鑰"
     },
     "startProviderGoogle": {
-        "message": "Google 翻譯：免費，不用設定"
+        "message": "Google 翻譯，免費，不用設定"
     },
     "startProviderMicrosoft": {
-        "message": "Microsoft 翻譯：免費，不用設定"
+        "message": "Microsoft 翻譯，免費，不用設定"
     },
     "startProviderVertex": {
-        "message": "Google Vertex AI，使用你的 Google Cloud 專案"
+        "message": "Google Vertex AI"
     },
     "startSetUpTitle": {
         "message": "這些都已經幫你設定好了"
     },
-    "startSiteOff": {
-        "message": "%s：已關閉"
-    },
-    "startSiteUnreadable": {
-        "message": "%s：無法讀取"
-    },
-    "startSiteOn": {
-        "message": "%s：已開啟"
+    "startTopTitle": {
+        "message": "上行字幕"
     },
     "startStatusOff": {
         "message": "雙語字幕已關閉"
     },
+    "startStatusOn": {
+        "message": "雙語字幕已開啟"
+    },
+    "startStatusWorking": {
+        "message": "正在 %s 上運作"
+    },
+    "startStatusWorkingSome": {
+        "message": "正在 %s 上運作，%s 上已關閉"
+    },
+    "startSitesUnreadable": {
+        "message": "無法讀取 DualSub 在哪些網站上開啟。"
+    },
     "startStatusOffHelp": {
         "message": "用開關就能重新開啟。"
-    },
-    "startStatusReady": {
-        "message": "DualSub 已經準備好了"
     },
     "startStatusReadyHelp": {
         "message": "不用做任何設定，直接播放影片就好。"
@@ -1188,7 +1224,7 @@
         "message": "每一行字幕都會早一點出現。"
     },
     "timingExactHelp": {
-        "message": "單位是秒。正數會讓字幕提早出現。"
+        "message": "單位是秒。正數會讓字幕提早出現（儲存為 %s）。"
     },
     "timingExactTitle": {
         "message": "精確調整"
@@ -1215,7 +1251,7 @@
         "message": "恢復準時"
     },
     "timingTipHelp": {
-        "message": "瀏覽器工具列上的 DualSub 按鈕裡也有一樣的按鈕，讓你不用離開影片，就能把字幕對準說話的聲音。"
+        "message": "瀏覽器工具列上的 DualSub 按鈕裡也有這兩個按鈕，讓你不用離開影片，就能把字幕對準你聽到的聲音。"
     },
     "timingTipTitle": {
         "message": "邊看邊調整"
@@ -1248,7 +1284,7 @@
         "message": "符合「%s」的字幕軌會重新使用"
     },
     "toastFollowsShared": {
-        "message": "已改回所有網站的設定"
+        "message": "已改回「所有網站」的值"
     },
     "toastHiddenEverywhere": {
         "message": "好了，各網站本身的字幕都已經隱藏。"
@@ -1296,7 +1332,7 @@
         "message": "已在 %s 開啟 DualSub"
     },
     "toastSiteShared": {
-        "message": "%s 已改回沿用所有網站的設定"
+        "message": "%s 已改回沿用「所有網站」的設定"
     },
     "toastSiteShow": {
         "message": "%s 本身的字幕會顯示出來"
@@ -1460,6 +1496,12 @@
     "translationDeepLOpen": {
         "message": "打開 DeepL"
     },
+    "translationDeepLGetKey": {
+        "message": "取得你的金鑰"
+    },
+    "translationDeepLKeyPlaceholder": {
+        "message": "你的 DeepL 金鑰"
+    },
     "translationDeepLPlan": {
         "message": "你用的是哪個方案？"
     },
@@ -1485,7 +1527,7 @@
         "message": "翻譯服務"
     },
     "translationVertexHelp": {
-        "message": "匯入一次服務帳戶檔案，就能產生短期有效的權杖；也可以直接貼上權杖。檔案本身不會被保存。"
+        "message": "DualSub 會用它產生短期有效的權杖，不會保存這個檔案。"
     },
     "translationVertexSetupTitle": {
         "message": "設定 Google Vertex AI"
@@ -1498,14 +1540,5 @@
     },
     "startNeedsSetupStopped": {
         "message": "設定好之前，字幕不會翻譯。"
-    },
-    "sitesHideAllHelp": {
-        "message": "套用到所有網站。下面的網站也可以保留自己的選擇。"
-    },
-    "toastSitesHide": {
-        "message": "各網站本身的字幕：隱藏"
-    },
-    "toastSitesShow": {
-        "message": "各網站本身的字幕：顯示"
     }
 }
