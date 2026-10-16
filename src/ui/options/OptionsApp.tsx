@@ -95,6 +95,8 @@ export function OptionsApp() {
         anchors: readonly string[];
     } | null>(null);
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    /** The last change asked for; each waits for the one before. */
+    const changes = useRef<Promise<unknown>>(Promise.resolve());
     /** The drafts of the settings shown, by key; following the value for
      *  all sites cancels them first. */
     const drafts = useRef(new Map<SiteSettingKey, Set<() => void>>());
@@ -181,7 +183,11 @@ export function OptionsApp() {
             setToast({ id: Date.now(), ...toast });
             holdToast(false);
         };
-        const apply: Feedback['apply'] = async (change, message, undo) => {
+        const makeChange = async (
+            change: () => Promise<unknown>,
+            message?: string,
+            undo?: () => Promise<unknown>
+        ): Promise<boolean> => {
             try {
                 await change();
             } catch (error) {
@@ -202,6 +208,13 @@ export function OptionsApp() {
                 );
             }
             return true;
+        };
+        const apply: Feedback['apply'] = (change, message, undo) => {
+            const made = changes.current.then(() =>
+                makeChange(change, message, undo)
+            );
+            changes.current = made.catch(() => undefined);
+            return made;
         };
         return {
             apply,

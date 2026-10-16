@@ -12,11 +12,11 @@ export type ToastTone = 'done' | 'problem';
 
 export interface Feedback {
     /**
-     * Make a change. A failure shows the page's banner and resolves false.
-     * A success clears the banner and, given a message, confirms it in a
-     * toast whose Undo makes `undo` the same way; a success without one
-     * takes back an Undo still offered, which would put back this change
-     * too.
+     * Make a change, once every change asked for before it is made. A
+     * failure shows the page's banner and resolves false. A success clears
+     * the banner and, given a message, confirms it in a toast whose Undo
+     * makes `undo` the same way; a success without one takes back an Undo
+     * still offered, which would put back this change too.
      */
     readonly apply: (
         change: () => Promise<unknown>,
@@ -33,41 +33,42 @@ export const FeedbackProvider = FeedbackContext.Provider;
 
 /**
  * A settings handle's save that confirms a named change in a toast whose
- * Undo puts back what the change replaced: the shared values, and for a
- * site, its own values for the changed keys exactly as they were, merged
- * into the profiles stored by then. Writing a site's previous values back
- * through the site would drop one equal to the shared value, turning a
- * site's own value into one it follows.
+ * Undo puts back what the change replaced, read as the change is written:
+ * the shared values, and for a site, its own values for the changed keys
+ * exactly as they were, merged into the profiles stored by then. Writing a
+ * site's previous values back through the site would drop one equal to the
+ * shared value, turning a site's own value into one it follows.
  */
-export function feedbackSave<
-    Values extends { readonly siteProfiles: SettingsValues['siteProfiles'] },
->(
-    handle: {
-        readonly settings: Values | null;
-        readonly save: (changes: Partial<Values>) => Promise<void>;
-    },
+export function feedbackSave<Values>(
+    handle: { readonly save: (changes: Partial<Values>) => Promise<void> },
     scope: Scope,
     feedback: Feedback
 ): (changes: Partial<Values>, notice?: SaveFeedback) => Promise<boolean> {
     return (changes, notice = 'quiet') => {
-        const siteKeys: SiteSettingKey[] = [];
-        const previous: Record<string, unknown> = {};
-        for (const key of Object.keys(changes)) {
-            if (scope !== 'all' && isSiteSettingKey(key)) {
-                siteKeys.push(key);
-            } else {
-                previous[key] = handle.settings?.[key as keyof Values];
-            }
+        if (notice === 'quiet') {
+            return feedback.apply(() => handle.save(changes));
         }
-        const profiles = handle.settings?.siteProfiles;
+        const keys = Object.keys(changes);
+        const siteKeys = scope === 'all' ? [] : keys.filter(isSiteSettingKey);
+        const sharedKeys = keys.filter(
+            (key) => scope === 'all' || !isSiteSettingKey(key)
+        );
+        let before: Partial<SettingsValues> = {};
         return feedback.apply(
-            () => handle.save(changes),
-            notice === 'quiet' ? undefined : notice.message,
+            async () => {
+                before = await configService.getMultiple(
+                    siteKeys.length === 0
+                        ? sharedKeys
+                        : [...sharedKeys, 'siteProfiles']
+                );
+                await handle.save(changes);
+            },
+            notice.message,
             () =>
-                scope === 'all' || siteKeys.length === 0
-                    ? configService.setMultiple(previous)
+                siteKeys.length === 0
+                    ? configService.setMultiple(before)
                     : configService.restoreSiteValues(
-                          { ...previous, siteProfiles: profiles },
+                          before,
                           siteKeys.map((key) => [scope, key] as const)
                       )
         );

@@ -5,10 +5,13 @@ import type { SaveFeedback } from '../types';
  *  keeps a drag within the sync storage write quota. */
 const SAVE_DELAY_MS = 400;
 
+const INTERACTION_ENDS = ['pointerup', 'keyup', 'blur', 'pagehide'] as const;
+
 export interface Draft<T> {
     /** What the control shows: the stored value, or an edit on its way. */
     readonly value: T;
-    /** Show `value` at once and write it quietly after a pause. */
+    /** Show `value` at once and write it quietly after a pause, or once
+     *  the interaction that made it ends. */
     readonly edit: (value: T) => void;
     /** Show `value` at once and write it now, confirmed with `notice`. */
     readonly set: (value: T, notice: SaveFeedback) => void;
@@ -74,6 +77,20 @@ export function useDraft<T>(
     }, [draft, flush]);
 
     useEffect(() => flush, [flush]);
+
+    // An edit goes out once the interaction that made it ends (a pointer or
+    // key going up, the window losing focus) and before the page goes away,
+    // where no timer would run.
+    useEffect(() => {
+        for (const type of INTERACTION_ENDS) {
+            window.addEventListener(type, flush);
+        }
+        return () => {
+            for (const type of INTERACTION_ENDS) {
+                window.removeEventListener(type, flush);
+            }
+        };
+    }, [flush]);
 
     const cancel = useCallback((): void => {
         pending.current = null;
