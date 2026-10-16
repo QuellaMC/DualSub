@@ -362,6 +362,19 @@ describe('PopupApp', () => {
         expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     });
 
+    it('edits nothing when it cannot tell which site the tab is on', async () => {
+        vi.spyOn(browser.tabs, 'query').mockRejectedValue(
+            new Error('tabs broken')
+        );
+        render(<PopupApp />);
+
+        const alert = await screen.findByRole('alert');
+        await waitFor(() =>
+            expect(alert).toHaveTextContent('Failed to load settings')
+        );
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
     it('opens the options page and the repository from the header', async () => {
         stubTabs();
         const openOptions = vi
