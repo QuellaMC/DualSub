@@ -1133,9 +1133,15 @@ class ConfigService {
      * Repair pass: persist canonical values for every key whose stored value
      * is missing, invalid, or non-canonical. Tolerates per-area read failures
      * (that area is skipped); throws only when every attempted repair write
-     * failed.
+     * failed. It takes its turn with the rewrites of the settings edited in
+     * part, so a part saved while it reads is not overwritten with what it
+     * read.
      */
-    async setDefaultsForMissingKeys(): Promise<void> {
+    setDefaultsForMissingKeys(): Promise<void> {
+        return this.afterParts(() => this.repairStoredValues());
+    }
+
+    private async repairStoredValues(): Promise<void> {
         const repairs: Record<StorageArea, Record<string, unknown>> = {
             sync: {},
             local: {},
