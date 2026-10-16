@@ -4,6 +4,7 @@ import { PLATFORM_NAMES } from '@/shared/platforms';
 import type { Translate } from '../../hooks/useI18n';
 import { useDraft, type Draft } from '../controls/useDraft';
 import type { SaveFeedback, Scope } from '../types';
+import { useFeedback } from './feedback';
 
 interface ScopeContextValue {
     readonly t: Translate;
@@ -59,17 +60,33 @@ export function SiteTag({ keys }: { keys: readonly SiteSettingKey[] }) {
 
 /** A site setting's draft. Following the value for all sites cancels it, so
  *  an edit still waiting to be written cannot bring the site's own value
- *  back. */
+ *  back. Each edit takes back the Undo still offered as it is made, since
+ *  the edit builds on the change that Undo would put back. */
 export function useSiteDraft<T>(
     key: SiteSettingKey,
     saved: T,
     write: (value: T, notice: SaveFeedback) => Promise<boolean>
 ): Draft<T> {
     const draft = useDraft(saved, write);
+    const { takeBackUndo } = useFeedback();
     const registerDraft = useContext(ScopeContext)?.registerDraft;
     const { cancel } = draft;
     useEffect(() => registerDraft?.(key, cancel), [registerDraft, key, cancel]);
-    return draft;
+    return {
+        ...draft,
+        edit: (value) => {
+            takeBackUndo();
+            draft.edit(value);
+        },
+        set: (value, notice) => {
+            takeBackUndo();
+            draft.set(value, notice);
+        },
+        update: (change, notice) => {
+            takeBackUndo();
+            draft.update(change, notice);
+        },
+    };
 }
 
 /** Under a site's scope, marks a setting that every site shares. */

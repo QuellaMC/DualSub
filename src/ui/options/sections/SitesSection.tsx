@@ -94,7 +94,7 @@ function SiteCard({
     if (!settings) {
         return null;
     }
-    const save = feedbackSave(handle, site, feedback);
+    const save = feedbackSave(handle, feedback);
     const own = siteProfileOf(settings.siteProfiles, site);
     const ownKeys = ownSettingKeys(own);
     const ownNames = [
@@ -339,7 +339,7 @@ function SharedHide({ t }: { t: Translate }) {
     if (!handle.settings) {
         return null;
     }
-    const save = feedbackSave(handle, 'all', feedback);
+    const save = feedbackSave(handle, feedback);
     return (
         <div className="card" id="hide-all">
             <div className="row">
