@@ -5,6 +5,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { sameSettingValue } from '@/config/schema';
 
 /** How a write is confirmed to the viewer: a named change, or nothing. */
 export type SaveFeedback = { readonly message: string } | 'quiet';
@@ -15,17 +16,22 @@ const SAVE_DELAY_MS = 400;
 
 const INTERACTION_ENDS = ['pointerup', 'keyup', 'blur', 'pagehide'] as const;
 
+/** Each edit returns whether the draft took it: a value the draft holds
+ *  already, as a second press of the same choice, changes nothing. */
 export interface Draft<T> {
     /** What the control shows: the stored value, or an edit on its way. */
     readonly value: T;
     /** Show `value` at once and write it quietly after a pause, or once
      *  the interaction that made it ends. */
-    readonly edit: (value: T) => void;
+    readonly edit: (value: T) => boolean;
     /** Show `value` at once and write it now, confirmed with `notice`. */
-    readonly set: (value: T, notice: SaveFeedback) => void;
+    readonly set: (value: T, notice: SaveFeedback) => boolean;
     /** `set` what `change` makes of the newest draft, which a render may
      *  not show yet. */
-    readonly update: (change: (current: T) => T, notice: SaveFeedback) => void;
+    readonly update: (
+        change: (current: T) => T,
+        notice: SaveFeedback
+    ) => boolean;
     /** Drop an edit still waiting to be written and show the stored value
      *  again; a write already on its way still lands. */
     readonly cancel: () => void;
@@ -115,7 +121,10 @@ export function useDraft<T>(
         setDraft(latest.current.saved);
     }, []);
 
-    const show = (value: T, notice: SaveFeedback): void => {
+    const show = (value: T, notice: SaveFeedback): boolean => {
+        if (sameSettingValue(value, latest.current.draft)) {
+            return false;
+        }
         // A pick's confirmation outlasts the quiet edits that follow it
         // before the write goes out.
         if (notice !== 'quiet' || pending.current === null) {
@@ -123,19 +132,22 @@ export function useDraft<T>(
         }
         latest.current = { ...latest.current, draft: value };
         setDraft(value);
+        return true;
+    };
+    const showNow = (value: T, notice: SaveFeedback): boolean => {
+        if (!show(value, notice)) {
+            return false;
+        }
+        flush();
+        return true;
     };
 
     return {
         value: draft,
         edit: (value) => show(value, 'quiet'),
-        set: (value, notice) => {
-            show(value, notice);
-            flush();
-        },
-        update: (change, notice) => {
-            show(change(latest.current.draft), notice);
-            flush();
-        },
+        set: showNow,
+        update: (change, notice) =>
+            showNow(change(latest.current.draft), notice),
         cancel,
     };
 }

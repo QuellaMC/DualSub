@@ -72,20 +72,17 @@ export function useSiteDraft<T>(
     const registerDraft = useContext(ScopeContext)?.registerDraft;
     const { cancel } = draft;
     useEffect(() => registerDraft?.(key, cancel), [registerDraft, key, cancel]);
+    const taken = (took: boolean): boolean => {
+        if (took) {
+            takeBackUndo();
+        }
+        return took;
+    };
     return {
         ...draft,
-        edit: (value) => {
-            takeBackUndo();
-            draft.edit(value);
-        },
-        set: (value, notice) => {
-            takeBackUndo();
-            draft.set(value, notice);
-        },
-        update: (change, notice) => {
-            takeBackUndo();
-            draft.update(change, notice);
-        },
+        edit: (value) => taken(draft.edit(value)),
+        set: (value, notice) => taken(draft.set(value, notice)),
+        update: (change, notice) => taken(draft.update(change, notice)),
     };
 }
 

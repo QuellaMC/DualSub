@@ -38,8 +38,12 @@ describe('useDraft', () => {
             { initialProps: { saved: 0 } }
         );
 
-        act(() => result.current.set(0.5, 'quiet'));
-        act(() => result.current.set(result.current.value + 0.5, 'quiet'));
+        act(() => {
+            result.current.set(0.5, 'quiet');
+        });
+        act(() => {
+            result.current.set(result.current.value + 0.5, 'quiet');
+        });
         await act(async () => {
             releases.shift()?.();
             await Promise.resolve();
@@ -47,7 +51,9 @@ describe('useDraft', () => {
         rerender({ saved: 0.5 });
         expect(result.current.value).toBe(1);
 
-        act(() => result.current.set(result.current.value + 0.5, 'quiet'));
+        act(() => {
+            result.current.set(result.current.value + 0.5, 'quiet');
+        });
         await act(async () => {
             releases.shift()?.();
             await Promise.resolve();
@@ -83,7 +89,9 @@ describe('useDraft', () => {
             ({ saved }) => useDraft(saved, write),
             { initialProps: { saved: 1 } }
         );
-        act(() => result.current.set(2, 'quiet'));
+        act(() => {
+            result.current.set(2, 'quiet');
+        });
         // Another window stores a newer value while this write is out.
         rerender({ saved: 3 });
         expect(result.current.value).toBe(2);

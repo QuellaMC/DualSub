@@ -22,6 +22,7 @@ import {
 } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { getDefaultValue } from '@/config/schema';
 import { configService } from '@/config/service';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
 import { installPermissionEvents } from '@/test-utils/permissionEvents';
@@ -194,6 +195,47 @@ describe('OptionsApp', () => {
         fireEvent.click(screen.getByRole('button', { name: /Show earlier/ }));
         await waitFor(async () =>
             expect(await sync('subtitleTimeOffset')).toBe(2.5)
+        );
+    });
+
+    it("keeps the scope bar when a site's settings cannot be read, so all sites can be picked again", async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#look';
+        await renderReady();
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                options?.site === 'netflix'
+                    ? Promise.reject(new Error('storage broken'))
+                    : read(keys, options)
+        );
+        const scopes = (): HTMLElement =>
+            screen.getByRole('group', { name: 'Settings for' });
+        fireEvent.click(
+            within(scopes()).getByRole('button', { name: /^Netflix/ })
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to load settings'
+        );
+
+        fireEvent.click(
+            within(scopes()).getByRole('button', { name: /^All sites/ })
+        );
+        expect(
+            await screen.findByRole('heading', {
+                level: 1,
+                name: 'How subtitles look',
+            })
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('shows a stored language the menu does not offer as the one picked', async () => {
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'nl' });
+        location.hash = '#languages';
+        await renderReady();
+        expect(document.getElementById('target-language-menu')).toHaveValue(
+            'nl'
         );
     });
 
@@ -795,6 +837,31 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('resets the setup of a key that is only spaces', async () => {
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: '   ',
+            showAdvancedSettings: true,
+        });
+        location.hash = '#advanced';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reset everything…' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+        expect(
+            await screen.findByText(
+                'Everything is back to the recommended settings'
+            )
+        ).toBeInTheDocument();
+        expect(await sync('openaiCompatibleBaseUrl')).toBe(
+            getDefaultValue('openaiCompatibleBaseUrl')
+        );
+    });
+
     it('keeps the setup of a key another page saves while a reset waits to write', async () => {
         await fakeBrowser.storage.sync.set({
             openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
@@ -1016,6 +1083,58 @@ describe('OptionsApp', () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'Advanced'
+        );
+    });
+
+    it('lands on a searched setting that shows once its section reads its settings', async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'hide' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: /^Hide the site's own subtitles/,
+            })
+        );
+        await waitFor(() =>
+            expect(
+                document
+                    .getElementById('hide-all')
+                    ?.contains(document.activeElement)
+            ).toBe(true)
+        );
+    });
+
+    it('takes an address search to the address, or to the service that has one', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        await fakeBrowser.storage.sync.set({ aiContextProvider: 'gemini' });
+        await renderReady();
+        const searchAddress = (): void => {
+            fireEvent.change(screen.getByRole('searchbox'), {
+                target: { value: 'address' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /^Service address/ })
+            );
+        };
+        searchAddress();
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute(
+                'id',
+                'explain-provider-openai'
+            )
+        );
+
+        fireEvent.click(document.activeElement as HTMLElement);
+        await waitFor(async () =>
+            expect(await sync('aiContextProvider')).toBe('openai')
+        );
+        searchAddress();
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute(
+                'id',
+                'openaiBaseUrl'
+            )
         );
     });
 
@@ -1341,6 +1460,42 @@ describe('OptionsApp', () => {
         expect(screen.queryByText('Text size: Large')).not.toBeInTheDocument();
     });
 
+    it('keeps the Undo of a choice made twice before it is saved', async () => {
+        location.hash = '#look';
+        await renderReady();
+        const mine = screen.getByRole('button', {
+            name: /^My language on top/,
+        });
+        fireEvent.click(mine);
+        fireEvent.click(mine);
+        const toasts = document.querySelector<HTMLElement>('.toast-region')!;
+        await waitFor(() =>
+            expect(toasts).toHaveTextContent('My language on top')
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        fireEvent.click(within(toasts).getByRole('button', { name: 'Undo' }));
+        await waitFor(async () =>
+            expect(await sync('subtitleLayoutOrder')).toBe('original_top')
+        );
+    });
+
+    it('keeps the Undo of a size picked twice in a row', async () => {
+        await renderReady();
+        const large = screen.getByRole('button', { name: /Large$/ });
+        fireEvent.click(large);
+        fireEvent.click(large);
+        const toast = await screen.findByText('Text size: Large');
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        fireEvent.click(
+            within(toast.parentElement!).getByRole('button', { name: 'Undo' })
+        );
+        await waitFor(async () =>
+            expect(await sync('subtitleFontScale')).toBe(1)
+        );
+    });
+
     it('undoes a quick second choice back to the first one', async () => {
         location.hash = '#look';
         await renderReady();
@@ -1367,18 +1522,18 @@ describe('OptionsApp', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Change colors and font' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Boxed$/ }));
-        const toast = await screen.findByText('Look: Boxed');
+        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        const toast = await screen.findByText('Look: Cinema');
         expect(
             within(toast.parentElement!).getByRole('button', { name: 'Undo' })
         ).toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText('Font'), {
-            target: { value: 'serif' },
+            target: { value: 'sans-serif' },
         });
         await waitFor(async () =>
             expect(await sync('subtitleCustomLook')).toMatchObject({
-                font: 'serif',
+                font: 'sans-serif',
             })
         );
         await waitFor(() =>
@@ -1388,7 +1543,7 @@ describe('OptionsApp', () => {
         );
         fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
         expect(await sync('subtitleCustomLook')).toMatchObject({
-            font: 'serif',
+            font: 'sans-serif',
         });
     });
 
@@ -1399,17 +1554,17 @@ describe('OptionsApp', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Change colors and font' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Boxed$/ }));
-        await screen.findByText('Look: Boxed');
+        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        await screen.findByText('Look: Cinema');
 
         fireEvent.change(screen.getByLabelText('Font'), {
-            target: { value: 'serif' },
+            target: { value: 'sans-serif' },
         });
         fireEvent.pointerUp(document.body);
         fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(await sync('subtitleCustomLook')).toMatchObject({
-            font: 'serif',
+            font: 'sans-serif',
         });
     });
 
