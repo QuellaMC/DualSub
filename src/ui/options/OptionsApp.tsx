@@ -53,14 +53,22 @@ const TOAST_MS = 6000;
 const FOCUSABLE =
     'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]';
 
-function initialSection(): SectionId {
-    const hash = location.hash.replace(/^#/, '');
-    return isSectionId(hash) ? hash : 'start';
+/** Where the page opens: the section an address like `#look` names, and
+ *  where focus then lands when anchors follow, as in `#look/look-customize`. */
+function initialPlace(): { section: SectionId; anchors: readonly string[] } {
+    const [section = '', ...anchors] = location.hash
+        .replace(/^#/, '')
+        .split('/');
+    return isSectionId(section)
+        ? { section, anchors }
+        : { section: 'start', anchors: [] };
 }
 
 export function OptionsApp() {
     const [scope, setScope] = useState<Scope>('all');
-    const [section, setSection] = useState<SectionId>(initialSection);
+    const [section, setSection] = useState<SectionId>(
+        () => initialPlace().section
+    );
     // The page reads what every scope shares, so it stays in place, focus
     // included, while a newly picked scope's settings load.
     const page = useSettings(PAGE_SETTINGS_KEYS);
@@ -98,10 +106,16 @@ export function OptionsApp() {
      *  just opened, or the first of a search result's elements on the page. */
     const [arrival, setArrival] = useState<{
         anchors: readonly string[];
-    } | null>(null);
+    } | null>(() => {
+        const { anchors } = initialPlace();
+        return anchors.length > 0 ? { anchors } : null;
+    });
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     /** The last change asked for; each waits for the one before. */
     const changes = useRef<Promise<unknown>>(Promise.resolve());
+    /** Counts the times an Undo was taken back, so a change asked for
+     *  before one confirms itself without an Undo. */
+    const undoTakeBacks = useRef(0);
     /** Counts the navigations the viewer asks for, so one that waits on a
      *  save gives way to any asked for after it. */
     const navigations = useRef(0);
@@ -205,7 +219,10 @@ export function OptionsApp() {
             setToast({ id: Date.now(), ...toast });
             holdToast(false);
         };
-        const makeChange: Feedback['apply'] = async (change) => {
+        const makeChange = async (
+            change: () => Promise<Confirmation | undefined>,
+            asked: number
+        ): Promise<boolean> => {
             let confirmation: Confirmation | undefined;
             try {
                 confirmation = await change();
@@ -220,23 +237,26 @@ export function OptionsApp() {
                 show({
                     message,
                     tone: 'done',
-                    undo: undo
-                        ? () =>
-                              queueChange(async () => {
-                                  await undo();
-                                  return undefined;
-                              })
-                        : null,
+                    undo:
+                        undo && undoTakeBacks.current === asked
+                            ? () =>
+                                  queueChange(async () => {
+                                      await undo();
+                                      return undefined;
+                                  })
+                            : null,
                 });
             }
             return true;
         };
         const queueChange: Feedback['apply'] = (change) => {
-            const made = changes.current.then(() => makeChange(change));
+            const asked = undoTakeBacks.current;
+            const made = changes.current.then(() => makeChange(change, asked));
             changes.current = made.catch(() => undefined);
             return made;
         };
         const takeBackUndo = (): void => {
+            undoTakeBacks.current += 1;
             setToast((current) =>
                 current?.undo ? { ...current, undo: null } : current
             );

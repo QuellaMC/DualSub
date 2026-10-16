@@ -15,6 +15,13 @@ export interface SearchEntry {
     readonly anchors?: readonly string[];
 }
 
+/** Where the custom look's editor is: its disclosure when the custom look
+ *  is chosen, else the choice of it. */
+export const LOOK_EDITOR_ANCHORS: readonly string[] = [
+    'look-customize',
+    'look-style-custom',
+];
+
 const ENTRIES: readonly SearchEntry[] = [
     {
         labelKey: 'languagesSpeakTitle',
@@ -56,7 +63,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'lookCustomizeButton',
         wordsKey: 'searchWordsCustomLook',
         section: 'look',
-        anchors: ['look-customize', 'look-style-custom'],
+        anchors: LOOK_EDITOR_ANCHORS,
     },
     {
         labelKey: 'lookTranslationColorTitle',

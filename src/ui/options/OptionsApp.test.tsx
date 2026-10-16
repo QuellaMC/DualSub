@@ -230,6 +230,16 @@ describe('OptionsApp', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    it('says when the preview shows English for a language it has no sample in', async () => {
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'th' });
+        await renderReady();
+        expect(
+            screen.getByText(
+                'There is no th sample here, so English stands in for it.'
+            )
+        ).toBeInTheDocument();
+    });
+
     it('shows a stored language the menu does not offer as the one picked', async () => {
         await fakeBrowser.storage.sync.set({ targetLanguage: 'nl' });
         location.hash = '#languages';
@@ -1119,6 +1129,18 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('opens where its address points, the custom look editor open', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
+        location.hash = '#look/look-customize/look-style-custom';
+        await renderReady();
+        const customize = screen.getByRole('button', {
+            name: 'Change colors and font',
+        });
+        await waitFor(() => expect(customize).toHaveFocus());
+        expect(customize).toHaveAttribute('aria-expanded', 'true');
+        expect(location.hash).toBe('#look');
+    });
+
     it('lands on the menu language picker from search', async () => {
         await renderReady();
         fireEvent.change(screen.getByRole('searchbox'), {
@@ -1389,6 +1411,44 @@ describe('OptionsApp', () => {
         ).not.toBeInTheDocument();
         fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
         fireEvent.keyUp(document.body, { key: 'z', ctrlKey: true });
+        await waitFor(async () =>
+            expect(await sync('subtitleCustomLook')).toMatchObject({
+                font: 'serif',
+                bold: true,
+            })
+        );
+    });
+
+    it('offers no Undo for a change that an edit made while it was saved builds on', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
+        location.hash = '#look';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Change colors and font' })
+        );
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const held = Promise.withResolvers<void>();
+        let holding = true;
+        vi.spyOn(fakeBrowser.storage.sync, 'set').mockImplementation(
+            (items: Record<string, unknown>) => {
+                if (!holding || !('subtitleCustomLook' in items)) {
+                    return realSet(items) as never;
+                }
+                holding = false;
+                return held.promise.then(() => realSet(items)) as never;
+            }
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        fireEvent.click(screen.getByRole('switch', { name: 'Bold letters' }));
+        held.resolve();
+
+        const toast = await screen.findByText('Look: Cinema');
+        expect(
+            within(toast.parentElement!).queryByRole('button', { name: 'Undo' })
+        ).not.toBeInTheDocument();
+        fireEvent.pointerUp(document.body);
         await waitFor(async () =>
             expect(await sync('subtitleCustomLook')).toMatchObject({
                 font: 'serif',

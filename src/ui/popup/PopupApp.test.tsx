@@ -318,7 +318,9 @@ describe('PopupApp', () => {
             })
         );
         expect(create).toHaveBeenCalledWith({
-            url: expect.stringMatching(/options\.html#look$/) as string,
+            url: expect.stringMatching(
+                /options\.html#look\/look-customize\/look-style-custom$/
+            ) as string,
         });
     });
 

@@ -119,6 +119,11 @@ export function WelcomeApp() {
                         languageName(t, sample.targetLanguage)
                     )}
                 </p>
+                {sample.standIns.map((language) => (
+                    <p key={language} className="help">
+                        {t('previewStandIn', languageName(t, language))}
+                    </p>
+                ))}
                 <div className="row">
                     <div className="grow">
                         <h2 className="label" id="welcome-language">
