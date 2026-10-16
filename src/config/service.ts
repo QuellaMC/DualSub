@@ -212,22 +212,6 @@ class ConfigService {
         }
     }
 
-    private async removeFromStorage(
-        area: StorageArea,
-        keys: readonly string[]
-    ): Promise<void> {
-        try {
-            await browser.storage[area].remove([...keys]);
-        } catch (cause) {
-            const error = new ConfigStorageError('remove', area, keys, cause);
-            this.logger.error('Storage remove operation failed', error, {
-                area,
-                keys,
-            });
-            throw error;
-        }
-    }
-
     // ---------------------------------------------------------------- resolve
 
     /**
@@ -616,38 +600,6 @@ class ConfigService {
     }
 
     // ---------------------------------------------------------------- writes
-
-    async set<K extends SettingsKey>(
-        key: K,
-        value: unknown
-    ): Promise<SettingsValues[K]> {
-        if (!isSettingsKey(key)) {
-            const error = new Error(
-                `Invalid key "${String(key)}" provided for set`
-            );
-            this.logger.error(error.message, error, { method: 'set' });
-            throw error;
-        }
-        const prepared = this.tryPrepare(key, value);
-        if (!prepared.ok) {
-            const error = new Error(`Invalid value for key "${key}"`);
-            this.logger.error(error.message, error, {
-                method: 'set',
-                requestedKey: key,
-                actualType: typeof value,
-            });
-            throw error;
-        }
-
-        await this.setToStorage(configSchema[key].scope, {
-            [key]: prepared.value,
-        });
-
-        if (key === 'loggingLevel') {
-            setLoggingLevel(prepared.value as number);
-        }
-        return detach(prepared.value) as SettingsValues[K];
-    }
 
     /**
      * Multi-key write. Validates everything first (nothing is written when any
@@ -1215,45 +1167,6 @@ class ConfigService {
             throw new ConfigWriteError(
                 `setDefaultsForMissingKeys() failed completely: ${failures.length} set operation(s) failed`,
                 { completeFailure: true, errors: failures }
-            );
-        }
-    }
-
-    /** Write every schema default to storage. */
-    async resetToDefaults(): Promise<void> {
-        const defaults: Record<StorageArea, Record<string, unknown>> = {
-            sync: {},
-            local: {},
-        };
-        for (const key of SETTINGS_KEYS) {
-            defaults[configSchema[key].scope][key] = getDefaultValue(key);
-        }
-        await Promise.all([
-            this.setToStorage('sync', defaults.sync),
-            this.setToStorage('local', defaults.local),
-        ]);
-        setLoggingLevel(defaults.sync.loggingLevel as number);
-    }
-
-    /** Remove every schema key from storage; aggregates area failures. */
-    async clearAll(): Promise<void> {
-        const failures: { area: StorageArea; error: unknown }[] = [];
-        let successes = 0;
-        for (const area of STORAGE_AREAS) {
-            try {
-                await this.removeFromStorage(area, getKeysByScope(area));
-                successes += 1;
-            } catch (error) {
-                failures.push({ area, error });
-            }
-        }
-        if (failures.length > 0) {
-            if (successes === 0) {
-                throw failures[0]!.error;
-            }
-            throw new ConfigWriteError(
-                `clearAll() completed with partial failures: ${successes} area(s) succeeded, ${failures.length} area(s) failed`,
-                { completeFailure: false, errors: failures }
             );
         }
     }
