@@ -153,7 +153,12 @@ interface ResolvedStoredValue {
     resolution: StoredResolution;
 }
 
-const SITE_PROFILES_LOCK = 'dualsub:siteProfiles';
+/** Settings that are maps edited a part at a time: the site profiles and
+ *  the subtitle filters. Every rewrite of one waits for the one before it,
+ *  so it builds on what that one left. */
+const EDITED_IN_PART = ['siteProfiles', 'subtitleBlacklist'] as const;
+type EditedInPart = (typeof EDITED_IN_PART)[number];
+const PARTS_LOCK = 'dualsub:settingParts';
 
 class ConfigService {
     private readonly logger = createLogger('ConfigService');
@@ -643,25 +648,44 @@ class ConfigService {
     /**
      * Multi-key write. Validates everything first (nothing is written when any
      * key/value is invalid), then writes each storage area independently and
-     * aggregates area failures. A write that rewrites `siteProfiles` waits for
-     * the one before it, made in any extension page, so it builds on the
-     * profiles that one left.
+     * aggregates area failures. A write of a setting edited in part, or of a
+     * site's values, waits for the rewrite before it, made in any extension
+     * page, so it builds on what that one left.
      */
     setMultiple(
         settings: Partial<SettingsValues>,
         siteWrite?: SiteWrite
     ): Promise<Partial<SettingsValues>> {
-        return siteWrite || Object.hasOwn(settings, 'siteProfiles')
-            ? this.afterProfiles(() => this.writeMultiple(settings, siteWrite))
+        return siteWrite ||
+            EDITED_IN_PART.some((key) => Object.hasOwn(settings, key))
+            ? this.afterParts(() => this.writeMultiple(settings, siteWrite))
             : this.writeMultiple(settings, siteWrite);
     }
 
-    /** Run `change` once every earlier rewrite of `siteProfiles` has
-     *  settled; each reads the profiles and writes them whole. The lock is
+    /**
+     * Change a setting edited in part from what is stored now: `edit` gets
+     * the stored value and returns the next, in turn with every other
+     * rewrite of such a setting. Reads strictly, so a failed read writes
+     * nothing. Resolves to the value it replaced.
+     */
+    updateSetting<K extends EditedInPart>(
+        key: K,
+        edit: (current: SettingsValues[K]) => SettingsValues[K]
+    ): Promise<SettingsValues[K]> {
+        return this.afterParts(async () => {
+            const { values } = await this.readResultStrict(key);
+            const current = values[key] as SettingsValues[K];
+            await this.writeMultiple({ [key]: edit(current) });
+            return current;
+        });
+    }
+
+    /** Run `change` once every earlier rewrite of a setting edited in part
+     *  has settled; each reads the value and writes it whole. The lock is
      *  shared by every extension page and the worker, which share the
      *  extension's origin, so a popup and a settings tab take turns too. */
-    private afterProfiles<T>(change: () => Promise<T>): Promise<T> {
-        return navigator.locks.request(SITE_PROFILES_LOCK, change);
+    private afterParts<T>(change: () => Promise<T>): Promise<T> {
+        return navigator.locks.request(PARTS_LOCK, change);
     }
 
     private async writeMultiple(
@@ -823,7 +847,7 @@ class ConfigService {
         source: SettingsValues['siteProfiles'],
         shared: Partial<SettingsValues>
     ): Promise<Partial<SettingsValues>> {
-        return this.afterProfiles(async () => {
+        return this.afterParts(async () => {
             const { values } = await this.readMultipleResultStrict([
                 ...Object.keys(shared),
                 'siteProfiles',
