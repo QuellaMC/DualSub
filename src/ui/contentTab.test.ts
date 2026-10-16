@@ -6,8 +6,12 @@ import {
     reloadActiveTab,
 } from './contentTab';
 
-function activeTab(id: number, url?: string): Browser.tabs.Tab[] {
-    return [{ id, url } as unknown as Browser.tabs.Tab];
+function activeTab(
+    id: number,
+    url?: string,
+    pendingUrl?: string
+): Browser.tabs.Tab[] {
+    return [{ id, url, pendingUrl } as unknown as Browser.tabs.Tab];
 }
 
 function stubTabs(tabs: Browser.tabs.Tab[]) {
@@ -31,6 +35,30 @@ describe('activeTabPlatform', () => {
 
         stubTabs([]);
         await expect(activeTabPlatform()).resolves.toBeNull();
+    });
+
+    it('names the site a tab navigating within it stays on', async () => {
+        stubTabs(
+            activeTab(
+                7,
+                'https://www.netflix.com/browse',
+                'https://www.netflix.com/watch/81'
+            )
+        );
+        await expect(activeTabPlatform()).resolves.toBe('netflix');
+    });
+
+    it('cannot tell the site while the tab is on its way to another', async () => {
+        stubTabs(
+            activeTab(
+                7,
+                'https://www.netflix.com/watch/81',
+                'https://www.disneyplus.com/'
+            )
+        );
+        await expect(activeTabPlatform()).rejects.toThrow();
+        stubTabs(activeTab(7, undefined, 'https://www.netflix.com/'));
+        await expect(activeTabPlatform()).rejects.toThrow();
     });
 });
 
