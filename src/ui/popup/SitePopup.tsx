@@ -209,7 +209,7 @@ function SiteControls({
                     <Switch
                         checked={enabled}
                         labelledBy="popup-enabled"
-                        onChange={(next) => void write(() => saveEnabled(next))}
+                        onChange={(next) => write(() => saveEnabled(next))}
                     />
                 </div>
             </section>

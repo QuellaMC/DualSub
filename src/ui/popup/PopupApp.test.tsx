@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -99,6 +100,37 @@ describe('PopupApp on a site DualSub works on', () => {
                 name: 'Dual subtitles are off on Netflix',
             })
         ).toBeInTheDocument();
+    });
+
+    it('turns DualSub back on here when the switch is pressed again while its first change is saved', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        const enabled = await screen.findByRole('switch', {
+            name: 'Use DualSub here',
+        });
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const firstWrite = Promise.withResolvers<void>();
+        vi.spyOn(fakeBrowser.storage.sync, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                firstWrite.promise.then(() => realSet(items)) as never
+        );
+        const writes = vi.spyOn(configService, 'setMultiple');
+        fireEvent.click(enabled);
+        // The second press comes in a later task, before the first is saved.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        fireEvent.click(enabled);
+        firstWrite.resolve();
+        await waitFor(() => expect(writes).toHaveBeenCalledTimes(2));
+        await Promise.all(
+            writes.mock.results.map((write) => write.value as Promise<unknown>)
+        );
+
+        expect(await sync('siteProfiles')).not.toEqual({
+            netflix: { subtitlesEnabled: false },
+        });
+        expect(enabled).toHaveAttribute('aria-checked', 'true');
     });
 
     it('asks for a reload where DualSub is not running in the page yet', async () => {
