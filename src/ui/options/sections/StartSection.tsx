@@ -107,9 +107,9 @@ export function StartSection({
     const unset =
         missingCredentials(provider, settings, now).length > 0 ||
         (provider === 'openai_compatible' && access.permitted === false);
-    // Without fallback, a service still to be set up translates nothing.
-    const stopped =
-        settings.subtitlesEnabled && unset && !settings.translationFallback;
+    // Without fallback, a service still to be set up translates nothing,
+    // on every site where DualSub runs.
+    const stopped = working && unset && !settings.translationFallback;
     const toTranslation = (
         <button
             type="button"
@@ -215,7 +215,7 @@ export function StartSection({
                 </div>
             </div>
 
-            {settings.subtitlesEnabled && unset && !stopped && (
+            {working && unset && !stopped && (
                 <div className="notice" role="status">
                     <Icon name="alert" />
                     <div className="stack">

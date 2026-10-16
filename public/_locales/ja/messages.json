@@ -1436,6 +1436,15 @@
     "searchWordsPause": {
         "message": "停止 止める とめる 止まる 自動停止 自動 ポーズ 待つ 再生"
     },
+    "searchWordsKinds": {
+        "message": "種類 意味 文化 歴史 由来 語源 説明する内容 選ぶ"
+    },
+    "searchWordsAutoOpen": {
+        "message": "自動で開く パネル サイドパネル クリック 単語 開く"
+    },
+    "searchWordsCache": {
+        "message": "記憶 覚える 回答 キャッシュ 保存 繰り返し"
+    },
     "searchWordsTheme": {
         "message": "テーマ ダーク ライト ダークモード ライトモード 暗い 明るい 黒 白 夜 まぶしい 目に優しい 配色 いろ"
     },

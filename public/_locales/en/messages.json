@@ -1436,6 +1436,15 @@
     "searchWordsPause": {
         "message": "pause video auto stop"
     },
+    "searchWordsKinds": {
+        "message": "kinds types meaning culture history origin what explain choose"
+    },
+    "searchWordsAutoOpen": {
+        "message": "open panel automatically click word side panel pops up"
+    },
+    "searchWordsCache": {
+        "message": "remember answers cache saved again repeat"
+    },
     "searchWordsTheme": {
         "message": "theme dark light panel colors"
     },
