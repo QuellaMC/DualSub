@@ -11,6 +11,7 @@ import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { GEMINI_MODELS, OPENAI_MODELS } from '../explanations/models';
 import { OpenAIHostPermission } from '../explanations/OpenAIHostPermission';
+import { addressChange } from '../providers/address';
 import { SharedTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
@@ -71,7 +72,11 @@ export function ExplanationsSection({
     const baseUrl = useCommittedTextField({
         value: settings.openaiBaseUrl,
         validate: (draft) => validateSetting('openaiBaseUrl', draft),
-        onCommit: (draft) => save({ openaiBaseUrl: draft }, 'quiet'),
+        onCommit: (draft) =>
+            save(
+                addressChange('openaiBaseUrl', settings.openaiBaseUrl, draft),
+                'quiet'
+            ),
     });
     const openaiModel = useCommittedTextField({
         value: settings.openaiModel,

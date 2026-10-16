@@ -20,7 +20,7 @@ export function DeepLProviderCard({
     const check = useDeepLCheck(t, apiKey, plan);
 
     return (
-        <div className="card" aria-labelledby="deepl-setup">
+        <div className="card" id="deepl-card" aria-labelledby="deepl-setup">
             <h2 className="label" id="deepl-setup">
                 {t('translationDeepLSetupTitle')}
             </h2>

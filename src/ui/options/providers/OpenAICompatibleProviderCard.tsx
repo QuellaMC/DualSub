@@ -7,6 +7,7 @@ import { CommittedField } from '../controls/CommittedField';
 import { useOpenAIModels } from '../hooks/useOpenAIModels';
 import { TestResultDisplay } from '../TestResultDisplay';
 import type { SaveSettings } from '../types';
+import { addressChange } from './address';
 
 /** Services most people mean by "AI translation", by their compatible
  *  endpoint; anything else is another service at its own address. */
@@ -48,7 +49,11 @@ export function OpenAICompatibleProviderCard({
     const baseUrlField = useCommittedTextField({
         value: baseUrl,
         validate: (draft) => validateSetting('openaiCompatibleBaseUrl', draft),
-        onCommit: (draft) => save({ openaiCompatibleBaseUrl: draft }, 'quiet'),
+        onCommit: (draft) =>
+            save(
+                addressChange('openaiCompatibleBaseUrl', baseUrl, draft),
+                'quiet'
+            ),
     });
     const preset = AI_SERVICES.find((entry) => entry.baseUrl === baseUrl);
     const [choseOther, setChoseOther] = useState(false);
@@ -59,7 +64,11 @@ export function OpenAICompatibleProviderCard({
         : [model, ...catalog.models];
 
     return (
-        <div className="card" aria-labelledby="ai-translation-setup">
+        <div
+            className="card"
+            id="ai-translation-card"
+            aria-labelledby="ai-translation-setup"
+        >
             <h2 className="label" id="ai-translation-setup">
                 {t('translationAiSetupTitle')}
             </h2>
@@ -83,8 +92,11 @@ export function OpenAICompatibleProviderCard({
                                         setChoseOther(false);
                                         void save(
                                             {
-                                                openaiCompatibleBaseUrl:
-                                                    entry.baseUrl,
+                                                ...addressChange(
+                                                    'openaiCompatibleBaseUrl',
+                                                    baseUrl,
+                                                    entry.baseUrl
+                                                ),
                                                 openaiCompatibleModel:
                                                     entry.model,
                                             },
