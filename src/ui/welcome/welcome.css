@@ -120,6 +120,11 @@
     color: var(--ok);
 }
 
+.check-dot.off {
+    background: var(--note-soft);
+    color: var(--note);
+}
+
 .welcome-steps {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));

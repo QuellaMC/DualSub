@@ -7,7 +7,7 @@ import { vertexTokenExpired } from '@/shared/providers';
 import { mintAccessToken, parseServiceAccountKey } from '@/shared/vertexAuth';
 import type { Translate } from '../../hooks/useI18n';
 import { errorMessage, type SaveSettings, type TestResult } from '../types';
-import { useNow } from './useNow';
+import { useNow } from '../../hooks/useNow';
 
 const EXPIRING_SOON_MS = 5 * 60 * 1000;
 
