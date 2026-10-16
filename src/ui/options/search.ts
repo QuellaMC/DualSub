@@ -128,6 +128,13 @@ const ENTRIES: readonly SearchEntry[] = [
         anchors: ['ai-translation-card', 'provider-openai_compatible'],
     },
     {
+        labelKey: 'translationVertexSetupTitle',
+        wordsKey: 'searchWordsVertex',
+        section: 'translation',
+        advanced: true,
+        anchors: ['vertex-card', 'provider-vertex_gemini'],
+    },
+    {
         labelKey: 'translationFallbackTitle',
         wordsKey: 'searchWordsFallback',
         section: 'translation',
