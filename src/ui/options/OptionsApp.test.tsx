@@ -89,6 +89,13 @@ describe('OptionsApp', () => {
         ).toBeInTheDocument();
     });
 
+    it("claims no browser language when the browser's are all ones DualSub lacks", async () => {
+        vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['nl-NL']);
+        vi.spyOn(navigator, 'language', 'get').mockReturnValue('nl-NL');
+        await renderReady();
+        expect(screen.queryByText('From your browser')).not.toBeInTheDocument();
+    });
+
     it('saves a choice, says so, and undoes it on request', async () => {
         await renderReady();
         fireEvent.click(screen.getByRole('button', { name: /Large$/ }));

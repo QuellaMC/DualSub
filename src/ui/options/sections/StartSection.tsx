@@ -1,4 +1,3 @@
-import { getDefaultValue } from '@/config/schema';
 import {
     PLATFORM_IDS,
     PLATFORM_NAMES,
@@ -6,7 +5,10 @@ import {
     type PlatformId,
 } from '@/shared/platforms';
 import { KEYLESS_PROVIDERS, missingCredentials } from '@/shared/providers';
-import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
+import {
+    AUTO_LANGUAGE,
+    browserTargetLanguage,
+} from '@/shared/subtitleLanguages';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { HealthNotice } from '../../HealthNotice';
@@ -50,8 +52,7 @@ export function StartSection({
     save,
     go,
 }: SectionProps & { go: (section: SectionId) => void }) {
-    const fromBrowser =
-        settings.targetLanguage === getDefaultValue('targetLanguage');
+    const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const provider = settings.selectedProvider;
     const providerName = t(PROVIDER_NAME_KEYS[provider]);
     const unset = missingCredentials(provider, settings).length > 0;
