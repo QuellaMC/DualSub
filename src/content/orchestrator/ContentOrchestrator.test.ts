@@ -132,20 +132,7 @@ describe('ContentOrchestrator', () => {
         expect(await onPlayer()).toBe(false);
     });
 
-    it('tells the popup a top line language with extensions', async () => {
-        await fakeBrowser.storage.sync.set({
-            originalLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
-        });
-        start();
-        addPlayer();
-        await settle(1000);
-        expect(await playerAnswer()).toEqual({
-            onPlayer: true,
-            topLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
-        });
-    });
-
-    it('tells the popup the language its top line shows, once known', async () => {
+    it('names no top line language before its subtitles arrive, whatever was asked for', async () => {
         await fakeBrowser.storage.sync.set({ originalLanguage: 'ko' });
         start();
         await settle();
@@ -158,7 +145,7 @@ describe('ContentOrchestrator', () => {
         await settle(1000);
         expect(await playerAnswer()).toEqual({
             onPlayer: true,
-            topLanguage: 'ko',
+            topLanguage: null,
         });
     });
 });

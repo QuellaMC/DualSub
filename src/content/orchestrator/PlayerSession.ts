@@ -272,7 +272,6 @@ export class PlayerSession {
             onOriginalPainted: (revision) =>
                 this.selection.onSubtitleChange(revision),
             onWordIntent: (intent) => this.onWordIntent(intent),
-            wordLanguage: () => this.languagesValue?.originalLanguage ?? 'en',
         });
         this.mediaBinding = new MediaBinding({
             adapter: this.adapter,
@@ -308,9 +307,11 @@ export class PlayerSession {
         return this.mediaBinding.current !== null;
     }
 
-    /** The language the top line shows; null until it is known. */
+    /** The language of the top line on screen, which is the platform's
+     *  fallback track when it lacks the one asked for; null until the
+     *  subtitles for the current languages arrive. */
     get topLanguage(): string | null {
-        return this.languagesValue?.originalLanguage ?? null;
+        return this.rendererState.loading ? null : this.rendererState.language;
     }
 
     start(): void {

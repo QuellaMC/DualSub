@@ -234,6 +234,35 @@ describe('PlayerSession', () => {
         expect(texts()).toEqual(['Hello', 'こんにちは']);
     });
 
+    it('names the language of the track it shows, not the one it asked for', async () => {
+        // The platform has no Japanese track and answers with English.
+        stubBackground({ 'zh-CN': '你好' });
+        active = startSession({ ...LANGUAGES, originalLanguage: 'ja' });
+        expect(active.session.topLanguage).toBeNull();
+
+        active.cache.publish('1', resolution(['ja', 'zh-CN']));
+        await settle();
+        expect(active.session.topLanguage).toBe('en');
+    });
+
+    it('names no top line language while subtitles for new languages load', async () => {
+        stubBackground({ 'zh-CN': '你好', ja: 'こんにちは' });
+        active = startSession();
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+        expect(active.session.topLanguage).toBe('en');
+
+        active.session.updateLanguageSettings({
+            ...LANGUAGES,
+            targetLanguage: 'ja',
+        });
+        expect(active.session.topLanguage).toBeNull();
+
+        active.cache.publish('1', resolution(['en', 'ja']));
+        await settle();
+        expect(active.session.topLanguage).toBe('en');
+    });
+
     it('ignores a languages update that changes nothing', async () => {
         stubBackground({ 'zh-CN': '你好' });
         active = startSession();

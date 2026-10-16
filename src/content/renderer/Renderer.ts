@@ -134,13 +134,12 @@ export class Renderer {
             /** The original line was repainted under a new render revision. */
             onOriginalPainted?: (renderRevision: number) => void;
             onWordIntent?: (intent: WordIntent) => void;
-            wordLanguage?: () => string;
         }
     ) {
         this.container = new SessionContainer(deps.uiRoot);
         this.platformLook = deps.platformLook;
         this.words = new WordLayer({
-            language: () => deps.wordLanguage?.() ?? 'und',
+            language: () => deps.state.language ?? 'und',
             onIntent: (intent) => deps.onWordIntent?.(intent),
         });
     }
