@@ -26,7 +26,7 @@ The settings page holds every setting, the popup's included. Each change saves a
 
 ## Per-Site Settings
 
-Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the top line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only what differs from the settings for all sites; everything else follows them. The translation language, the translation service, word explanations, and API keys are the same on every site.
+Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the top line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.
 
 In the settings page, with advanced options shown, pick a site in the bar at the top: what you change then gets a "Netflix only" tag, and "Use the value for all sites" drops the site's own value. The Sites section lists what each site keeps and removes it in one click.
 

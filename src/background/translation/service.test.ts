@@ -31,6 +31,7 @@ function fakeConfig(
         selectedProvider?: ProviderId;
         translationDelay?: number;
         translationFallback?: boolean;
+        fallbackUnreadable?: boolean;
     } = {}
 ) {
     let listener: ((changes: SettingsChanges) => unknown) | null = null;
@@ -42,11 +43,13 @@ function fakeConfig(
             if (key === 'translationDelay') {
                 return Promise.resolve(settings.translationDelay ?? 0);
             }
-            if (key === 'translationFallback') {
-                return Promise.resolve(settings.translationFallback ?? true);
-            }
             return Promise.resolve(undefined);
         }),
+        readStoredBooleanStrict: vi.fn((key: string) =>
+            key === 'translationFallback' && !settings.fallbackUnreadable
+                ? Promise.resolve(settings.translationFallback ?? true)
+                : Promise.reject(new Error('unavailable'))
+        ),
         onChanged: vi.fn((callback: (changes: SettingsChanges) => unknown) => {
             listener = callback;
             return () => {
@@ -353,7 +356,9 @@ describe('TranslationService fallback', () => {
         options: {
             selected?: ProviderId;
             fallback?: boolean;
+            fallbackUnreadable?: boolean;
             health?: TranslationHealth | null;
+            healthStore?: TranslationServiceDeps['health'];
         } = {}
     ) {
         const deepl = fakeProvider('deepl');
@@ -362,8 +367,13 @@ describe('TranslationService fallback', () => {
         const fake = fakeConfig({
             selectedProvider: options.selected ?? 'deepl',
             translationFallback: options.fallback ?? true,
+            fallbackUnreadable: options.fallbackUnreadable ?? false,
         });
-        const health = memoryHealth(options.health ?? null);
+        const memory = memoryHealth(options.health ?? null);
+        const health = {
+            store: options.healthStore ?? memory.store,
+            current: memory.current,
+        };
         const service = new TranslationService({
             providers: [deepl, microsoft, google],
             config: fake.config,
@@ -447,6 +457,81 @@ describe('TranslationService fallback', () => {
             provider: 'deepl',
             fallback: null,
         });
+    });
+
+    it('keeps text with the chosen provider when the fallback choice cannot be read', async () => {
+        const { service, deepl, microsoft } = await setup({
+            fallbackUnreadable: true,
+        });
+        const error = failing('deepl', 'AUTHENTICATION_ERROR');
+        deepl.translate.mockRejectedValue(error);
+        expect(await rejection(service.translate('Hello', 'auto', 'es'))).toBe(
+            error
+        );
+        expect(microsoft.translate).not.toHaveBeenCalled();
+    });
+
+    it('sends nothing to a fallback once the viewer turns fallback off mid-request', async () => {
+        const { service, deepl, microsoft, fake } = await setup();
+        const answer = Promise.withResolvers<string>();
+        deepl.translate.mockReturnValueOnce(answer.promise);
+        const pending = service.translate('Hello', 'auto', 'es');
+        await vi.waitFor(() => expect(deepl.translate).toHaveBeenCalled());
+
+        fake.emit({ translationFallback: false });
+        const error = failing('deepl', 'AUTHENTICATION_ERROR');
+        answer.reject(error);
+        expect(await rejection(pending)).toBe(error);
+        expect(microsoft.translate).not.toHaveBeenCalled();
+    });
+
+    it("gives each fallback one attempt and keeps the chosen provider's failure", async () => {
+        const { service, deepl, microsoft, google } = await setup();
+        const outage = failing('deepl', 'NETWORK_ERROR');
+        deepl.translate.mockRejectedValue(outage);
+        microsoft.translate.mockRejectedValue(
+            failing('microsoft_edge', 'NETWORK_ERROR')
+        );
+        google.translate.mockRejectedValue(
+            new TranslationProviderError('google', 'refused', {
+                code: 'REQUEST_FAILED',
+                status: 400,
+            })
+        );
+
+        const pending = rejection(service.translate('Hello', 'auto', 'es'));
+        await vi.advanceTimersByTimeAsync(3000);
+        expect(await pending).toBe(outage);
+        expect(deepl.translate).toHaveBeenCalledTimes(3);
+        expect(microsoft.translate).toHaveBeenCalledOnce();
+        expect(google.translate).toHaveBeenCalledOnce();
+    });
+
+    it('writes a cleared record again when clearing it could not be saved', async () => {
+        const writes: (TranslationHealth | null)[] = [];
+        let failNext = false;
+        const healthStore = {
+            read: () => Promise.resolve(null),
+            write: (health: TranslationHealth | null) => {
+                writes.push(health);
+                if (failNext) {
+                    failNext = false;
+                    return Promise.reject(new Error('session full'));
+                }
+                return Promise.resolve();
+            },
+        };
+        const { service, deepl } = await setup({ healthStore });
+        deepl.translate.mockRejectedValueOnce(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        await service.translate('Hello', 'auto', 'es');
+        vi.setSystemTime(1_000_000 + 10 * 60 * 1000);
+
+        failNext = true;
+        await service.translate('Later', 'auto', 'es');
+        await service.translate('Again', 'auto', 'es');
+        expect(writes.slice(1)).toEqual([null, null]);
     });
 
     it('records a used-up quota and a refused request, but not a blank answer', async () => {

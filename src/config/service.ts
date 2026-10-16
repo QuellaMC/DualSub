@@ -153,6 +153,8 @@ class ConfigService {
     private readonly logger = createLogger('ConfigService');
     private readonly changeListeners = new Set<ChangeListenerRecord>();
     private changeListenerInitialized = false;
+    /** The latest rewrite of `siteProfiles` in this context, settled or not. */
+    private profilesSettled: Promise<unknown> = Promise.resolve();
 
     // ------------------------------------------------------------------ storage
 
@@ -636,9 +638,27 @@ class ConfigService {
     /**
      * Multi-key write. Validates everything first (nothing is written when any
      * key/value is invalid), then writes each storage area independently and
-     * aggregates area failures.
+     * aggregates area failures. A write that rewrites `siteProfiles` waits for
+     * the one before it, so it builds on the profiles that one left.
      */
-    async setMultiple(
+    setMultiple(
+        settings: Partial<SettingsValues>,
+        siteWrite?: SiteWrite
+    ): Promise<Partial<SettingsValues>> {
+        return siteWrite || Object.hasOwn(settings, 'siteProfiles')
+            ? this.afterProfiles(() => this.writeMultiple(settings, siteWrite))
+            : this.writeMultiple(settings, siteWrite);
+    }
+
+    /** Run `change` once every earlier rewrite of `siteProfiles` in this
+     *  context has settled; each reads the profiles and writes them whole. */
+    private afterProfiles<T>(change: () => Promise<T>): Promise<T> {
+        const result = this.profilesSettled.then(change);
+        this.profilesSettled = result.catch(() => undefined);
+        return result;
+    }
+
+    private async writeMultiple(
         settings: Partial<SettingsValues>,
         siteWrite?: SiteWrite
     ): Promise<Partial<SettingsValues>> {
@@ -728,9 +748,9 @@ class ConfigService {
         );
         const profiles = this.resolveStoredValue('siteProfiles', items)
             .value as SettingsValues['siteProfiles'];
-        const own: Record<string, unknown> = {
-            ...siteProfileOf(profiles, site),
-        };
+        // The stored entry, with what a newer version wrote, not just what
+        // this one reads.
+        const own: Record<string, unknown> = { ...profiles[site] };
         let routed = false;
         for (const key of keys) {
             if (target === 'source' && !Object.hasOwn(own, key)) {
@@ -758,20 +778,20 @@ class ConfigService {
 
     /** `site` follows the shared values of `keys` again. Reads strictly:
      *  a profile read from a failed store would erase every site's. */
-    async removeSiteValues(
+    removeSiteValues(
         site: PlatformId,
         keys: readonly SiteSettingKey[]
     ): Promise<void> {
-        const { values } = await this.readResultStrict('siteProfiles');
-        const profiles = values.siteProfiles ?? {};
-        const own: Record<string, unknown> = {
-            ...siteProfileOf(profiles, site),
-        };
-        for (const key of keys) {
-            delete own[key];
-        }
-        await this.setMultiple({
-            siteProfiles: withSiteProfile(profiles, site, own),
+        return this.afterProfiles(async () => {
+            const { values } = await this.readResultStrict('siteProfiles');
+            const profiles = values.siteProfiles ?? {};
+            const own: Record<string, unknown> = { ...profiles[site] };
+            for (const key of keys) {
+                delete own[key];
+            }
+            await this.writeMultiple({
+                siteProfiles: withSiteProfile(profiles, site, own),
+            });
         });
     }
 
