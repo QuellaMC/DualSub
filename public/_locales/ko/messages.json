@@ -1136,6 +1136,9 @@
     "startSiteOff": {
         "message": "%s: 꺼짐"
     },
+    "startSiteUnreadable": {
+        "message": "%s: 읽지 못함"
+    },
     "startSiteOn": {
         "message": "%s: 켜짐"
     },

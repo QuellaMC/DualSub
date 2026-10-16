@@ -63,14 +63,16 @@ export function OptionsApp() {
     // The page reads what every scope shares, so it stays in place, focus
     // included, while a newly picked scope's settings load.
     const page = useSettings(PAGE_SETTINGS_KEYS);
-    // An advanced section shows only while advanced options are on, however
-    // they went off.
-    const shown: SectionId =
-        page.settings &&
+    // An advanced section closes for Start once advanced options go off,
+    // however they went off, so turning them on again stays on Start.
+    const hidden =
+        page.settings !== null &&
         !page.settings.showAdvancedSettings &&
-        SECTIONS[section].advanced
-            ? 'start'
-            : section;
+        SECTIONS[section].advanced === true;
+    if (hidden) {
+        setSection('start');
+    }
+    const shown: SectionId = hidden ? 'start' : section;
     // A site's scope applies where a site can keep settings of its own;
     // elsewhere, changes reach every site, so the page shows them that way.
     const editing: Scope = SECTIONS[shown].scoped ? scope : 'all';

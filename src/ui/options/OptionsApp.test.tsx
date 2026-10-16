@@ -291,6 +291,37 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('names each host access control by its own address', async () => {
+        await fakeBrowser.storage.sync.set({
+            aiContextProvider: 'openai',
+            openaiBaseUrl: 'https://explain.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({
+            showAdvancedSettings: true,
+            openaiApiKey: 'sk-key',
+        });
+        location.hash = '#explanations';
+        await renderReady();
+        const controls = await waitFor(() => {
+            const found = [
+                ...document.querySelectorAll<HTMLElement>(
+                    '.api-host-permission'
+                ),
+            ];
+            expect(found).toHaveLength(2);
+            return found;
+        });
+        const labels = controls.map((control) =>
+            control.getAttribute('aria-labelledby')
+        );
+        expect(new Set(labels).size).toBe(2);
+        controls.forEach((control, index) =>
+            expect(
+                control.querySelector(`[id="${labels[index]}"]`)
+            ).not.toBeNull()
+        );
+    });
+
     it('keeps explanations off while no kind of explanation is chosen', async () => {
         await fakeBrowser.storage.sync.set({
             aiContextProvider: 'gemini',
@@ -353,6 +384,44 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('undoes a filter removal without losing a rule added elsewhere since', async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleBlacklist: {
+                disneyplus: ['--forced--', 'forced=yes'],
+                netflix: [],
+                generic: [],
+            },
+        });
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#sites';
+        await renderReady();
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: 'Remove the rule --forced--',
+            })
+        );
+        const toast = await screen.findByText(
+            'Tracks matching “--forced--” are used again'
+        );
+        await fakeBrowser.storage.sync.set({
+            subtitleBlacklist: {
+                disneyplus: ['forced=yes', 'sdh'],
+                netflix: [],
+                generic: [],
+            },
+        });
+        fireEvent.click(
+            within(toast.parentElement!).getByRole('button', { name: 'Undo' })
+        );
+        await waitFor(async () =>
+            expect(await sync('subtitleBlacklist')).toEqual({
+                disneyplus: ['forced=yes', 'sdh', '--forced--'],
+                netflix: [],
+                generic: [],
+            })
+        );
+    });
+
     it("says so on a site's card when that site's settings cannot be read", async () => {
         const read = configService.readMultipleResultStrict.bind(configService);
         vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
@@ -372,6 +441,21 @@ describe('OptionsApp', () => {
         expect(
             screen.getByRole('heading', { name: 'Disney+' })
         ).toBeInTheDocument();
+    });
+
+    it("says so on Start when a site's on/off state cannot be read", async () => {
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                options?.site === 'netflix' && keys.length === 1
+                    ? Promise.reject(new Error('broken'))
+                    : read(keys, options)
+        );
+        await renderReady();
+        expect(
+            await screen.findByText("Netflix: couldn't read")
+        ).toBeInTheDocument();
+        expect(screen.getByText('Disney+: on')).toBeInTheDocument();
     });
 
     it('says so on the card for every site when its settings cannot be read', async () => {
@@ -509,6 +593,47 @@ describe('OptionsApp', () => {
                 netflix: { subtitleGap: 0.5 },
                 disneyplus: { subtitlesEnabled: false },
             })
+        );
+    });
+
+    it('keeps the setup of a key that lands while a reset waits its turn', async () => {
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        // A change still being written holds the reset back in the queue.
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const held = Promise.withResolvers<void>();
+        vi.spyOn(fakeBrowser.storage.sync, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                held.promise.then(() => realSet(items)) as never
+        );
+        fireEvent.change(
+            screen.getByLabelText('Detail in the browser console'),
+            {
+                target: { value: '1' },
+            }
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reset everything…' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-key',
+        });
+        held.resolve();
+
+        expect(
+            await screen.findByText(
+                'Everything is back to the recommended settings'
+            )
+        ).toBeInTheDocument();
+        expect(await sync('openaiCompatibleBaseUrl')).toBe(
+            'https://llm.example.com/v1'
         );
     });
 
@@ -722,6 +847,31 @@ describe('OptionsApp', () => {
             })
         ).toBeInTheDocument();
         await waitFor(() => expect(location.hash).toBe('#start'));
+    });
+
+    it('stays on Start when advanced options go off and come back on', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        const heading = (): HTMLElement =>
+            screen.getByRole('heading', { level: 1 });
+        expect(heading()).toHaveTextContent('Advanced');
+        const advanced = screen.getByRole('switch', {
+            name: 'Show advanced options',
+        });
+
+        fireEvent.click(advanced);
+        await waitFor(() =>
+            expect(heading()).toHaveTextContent('Hello! DualSub is ready.')
+        );
+        fireEvent.click(advanced);
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.local.get('showAdvancedSettings'))
+                    .showAdvancedSettings
+            ).toBe(true)
+        );
+        expect(heading()).toHaveTextContent('Hello! DualSub is ready.');
     });
 
     it('drops the key when the AI service moves to another host', async () => {
@@ -1313,6 +1463,22 @@ describe('OptionsApp', () => {
             screen.queryByRole('button', { name: 'Replace them' })
         ).not.toBeInTheDocument();
         expect(await sync('subtitleFontScale')).toBeUndefined();
+    });
+
+    it('offers no backup file to load until the settings are read', async () => {
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                keys.includes('aiContextBurstLimit')
+                    ? Promise.reject(new Error('broken'))
+                    : read(keys, options)
+        );
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        expect(
+            screen.getByRole('button', { name: 'Choose a file…' })
+        ).toBeDisabled();
     });
 
     it('refuses a backup holding a site value this version cannot use, and keeps what it does not know', async () => {
