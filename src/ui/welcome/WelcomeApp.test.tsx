@@ -177,16 +177,24 @@ describe('WelcomeApp', () => {
         expect(
             screen.queryByText('Translation: DeepL')
         ).not.toBeInTheDocument();
+        const heading = (): HTMLElement =>
+            screen.getByRole('heading', { level: 1 });
+        expect(heading()).toHaveTextContent("You're all set.");
 
         await fakeBrowser.storage.sync.set({ translationFallback: false });
         expect(
             await screen.findByText("Until it is, subtitles aren't translated.")
+        ).toBeInTheDocument();
+        expect(heading()).toHaveTextContent('Welcome to DualSub');
+        expect(
+            screen.getByText(/finish setting up the translation service below/)
         ).toBeInTheDocument();
 
         await fakeBrowser.storage.local.set({ deeplApiKey: 'key:fx' });
         expect(
             await screen.findByText('Translation: DeepL')
         ).toBeInTheDocument();
+        expect(heading()).toHaveTextContent("You're all set.");
     });
 
     it('saves another translation language and opens the settings', async () => {

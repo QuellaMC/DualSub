@@ -8,7 +8,10 @@ import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { HealthNotice } from '../../HealthNotice';
 import type { Translate } from '../../hooks/useI18n';
-import { useServiceUnset } from '../../hooks/useServiceUnset';
+import {
+    translationStopped,
+    useServiceUnset,
+} from '../../hooks/useServiceUnset';
 import { useSitesOn, type SitesOn } from '../../hooks/useSitesOn';
 import { languageName } from '../../languageLabels';
 import { SiteLinks } from '../../SiteLinks';
@@ -62,9 +65,11 @@ export function StartSection({
     const provider = settings.selectedProvider;
     const providerName = t(PROVIDER_NAME_KEYS[provider]);
     const unset = useServiceUnset(settings);
-    // Without fallback, a service still to be set up translates nothing,
-    // on every site where DualSub runs.
-    const stopped = working && unset && !settings.translationFallback;
+    const stopped = translationStopped(
+        working,
+        unset,
+        settings.translationFallback
+    );
     const toTranslation = (
         <button
             type="button"
