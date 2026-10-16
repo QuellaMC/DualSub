@@ -1011,6 +1011,41 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('enters a key for the last service chosen before it when two choices overlap', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        location.hash = '#translation';
+        await renderReady();
+        const first = Promise.withResolvers<void>();
+        const write = browser.storage.sync.set.bind(browser.storage.sync);
+        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                first.promise.then(() => write(items)) as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Google Gemini' }));
+        fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        first.resolve();
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiCompatibleApiKey',
+                    'openaiCompatibleApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiCompatibleApiKey: 'sk-openai',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            })
+        );
+        expect(await sync('openaiCompatibleBaseUrl')).toBe(
+            'https://api.openai.com/v1'
+        );
+    });
+
     it('keeps a key typed before an address change with the address it was typed for', async () => {
         await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
         location.hash = '#explanations';
