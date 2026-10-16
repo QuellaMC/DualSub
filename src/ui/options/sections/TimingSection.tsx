@@ -81,10 +81,7 @@ export function TimingSection({
                         className="button quiet"
                         disabled={offset === 0}
                         onClick={() =>
-                            void save(
-                                { subtitleTimeOffset: 0 },
-                                { message: t('toastOnTime') }
-                            )
+                            draft.set(0, { message: t('toastOnTime') })
                         }
                     >
                         {t('timingReset')}

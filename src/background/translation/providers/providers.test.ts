@@ -433,6 +433,19 @@ describe('vertex gemini provider', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it('sends no token past its recorded expiry', async () => {
+        await fakeBrowser.storage.sync.set(vertexSettings.sync);
+        await fakeBrowser.storage.local.set({
+            ...vertexSettings.local,
+            vertexTokenExpiresAt: Date.now() - 1000,
+        });
+        const error = await failure(
+            geminiVertexProvider.translate('Hello', 'auto', 'ja')
+        );
+        expect(error.code).toBe('AUTHENTICATION_ERROR');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('posts generateContent with the bearer token and returns trimmed text', async () => {
         await fakeBrowser.storage.sync.set(vertexSettings.sync);
         await fakeBrowser.storage.local.set(vertexSettings.local);

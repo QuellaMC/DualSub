@@ -12,7 +12,10 @@ import { missingCredentials, PROVIDER_CREDENTIALS } from '@/shared/providers';
 import { translationInstruction } from './prompt';
 
 const PROVIDER = 'vertex_gemini';
-const SETTINGS_KEYS = PROVIDER_CREDENTIALS[PROVIDER];
+const SETTINGS_KEYS = [
+    ...PROVIDER_CREDENTIALS[PROVIDER],
+    'vertexTokenExpiresAt',
+] as const;
 
 /** Accepts `gemini-x`, `models/gemini-x`, or a full publisher path. */
 function shortModelName(model: string): string {
