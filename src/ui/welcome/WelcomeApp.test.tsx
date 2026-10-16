@@ -21,6 +21,7 @@ import {
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { getDefaultValue } from '@/config/schema';
+import { configService } from '@/config/service';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
 import { installPermissionEvents } from '@/test-utils/permissionEvents';
 import { resetCatalogsForTests } from '../hooks/useI18n';
@@ -281,6 +282,46 @@ describe('WelcomeApp', () => {
                 /The video's line is set to it too, so one line shows\./
             )
         ).toBeInTheDocument();
+    });
+
+    it("reads each site's switch from its own settings, whatever else fails to read", async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { disneyplus: { subtitlesEnabled: false } },
+        });
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                keys.length === 2 &&
+                keys.includes('subtitlesEnabled') &&
+                keys.includes('siteProfiles')
+                    ? Promise.reject(new Error('broken'))
+                    : read(keys, options)
+        );
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText('Working on Netflix, off on Disney+')
+        ).toBeInTheDocument();
+    });
+
+    it('does not ask for a service that a one-line setup never calls', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            translationFallback: false,
+            originalLanguage: 'en',
+            targetLanguage: 'en',
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByRole('heading', {
+                level: 1,
+                name: "You're all set.",
+            })
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(
+                /finish setting up the translation service below/
+            )
+        ).not.toBeInTheDocument();
     });
 
     it('describes the lines as the saved layout sets them', async () => {

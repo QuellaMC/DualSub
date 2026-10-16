@@ -1,4 +1,4 @@
-import { siteProfileOf } from '@/config/schema';
+import { siteProfileOf, type SettingsValues } from '@/config/schema';
 import {
     PLATFORM_IDS,
     PLATFORM_NAMES,
@@ -13,7 +13,21 @@ export interface SitesOn {
 }
 
 /** The sites DualSub runs on and those it is off on, each as the site sees
- *  its settings; null until they are read, or when they cannot be. */
+ *  the shared switch and its own. */
+export function sitesOn(
+    settings: Pick<SettingsValues, 'subtitlesEnabled' | 'siteProfiles'>
+): SitesOn {
+    const on = PLATFORM_IDS.filter(
+        (site) =>
+            siteProfileOf(settings.siteProfiles, site).subtitlesEnabled ??
+            settings.subtitlesEnabled
+    );
+    return { on, off: PLATFORM_IDS.filter((site) => !on.includes(site)) };
+}
+
+/** `sitesOn`, read for a page whose own settings show one site's view or
+ *  none of the switches; null until they are read, or when they cannot
+ *  be. */
 export function useSitesOn(): {
     readonly sites: SitesOn | null;
     readonly unreadable: boolean;
@@ -22,18 +36,9 @@ export function useSitesOn(): {
         'subtitlesEnabled',
         'siteProfiles',
     ]);
-    if (!settings) {
-        return { sites: null, unreadable: status === 'unavailable' };
-    }
-    const on = PLATFORM_IDS.filter(
-        (site) =>
-            siteProfileOf(settings.siteProfiles, site).subtitlesEnabled ??
-            settings.subtitlesEnabled
-    );
-    return {
-        sites: { on, off: PLATFORM_IDS.filter((site) => !on.includes(site)) },
-        unreadable: false,
-    };
+    return settings
+        ? { sites: sitesOn(settings), unreadable: false }
+        : { sites: null, unreadable: status === 'unavailable' };
 }
 
 /** The sites named as a list in `language`: "Netflix and Disney+". */
