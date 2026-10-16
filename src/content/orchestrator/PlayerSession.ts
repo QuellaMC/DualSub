@@ -182,8 +182,9 @@ export interface PlayerSessionDeps {
 /**
  * Everything that lives exactly as long as one video is on the player
  * route. One AbortSignal is the lifetime: listeners, timers, the frame
- * loop, in-flight requests, and config subscriptions all die with it, so a
- * stale continuation cannot touch a successor session.
+ * loop, and in-flight requests all die with it, so a stale continuation
+ * cannot touch a successor session. Settings changes come in through
+ * `applySettings` from whoever read its settings.
  */
 export class PlayerSession {
     readonly id: number;
@@ -202,7 +203,7 @@ export class PlayerSession {
     /** Shows or hides the site's own subtitles in the bound media. */
     private hideNativeSubs: ((hidden: boolean) => void) | null = null;
     private settings: ContentSettings;
-    private languageSettingsValue: LanguageSettings;
+    private languageSettings: LanguageSettings;
     /** What the player reported as spoken: undefined until it reports,
      *  null when it could not tell. */
     private spokenLanguage: string | null | undefined;
@@ -226,7 +227,7 @@ export class PlayerSession {
         this.videoId = deps.videoId;
         this.signal = this.controller.signal;
         this.settings = deps.settings;
-        this.languageSettingsValue = deps.languageSettings;
+        this.languageSettings = deps.languageSettings;
         this.languagesValue = resolveSubtitleLanguages(
             deps.languageSettings,
             undefined
@@ -302,17 +303,14 @@ export class PlayerSession {
         });
     }
 
-    get languageSettings(): LanguageSettings {
-        return this.languageSettingsValue;
+    /** Its video is bound, so its subtitles can show there. */
+    get hasMedia(): boolean {
+        return this.mediaBinding.current !== null;
     }
 
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
         this.renderer.setInteractive(this.interaction.aiContextEnabled);
-        const unsubscribe = this.deps.config.onChanged((changes) =>
-            this.applySettings(changes)
-        );
-        this.signal.addEventListener('abort', unsubscribe, { once: true });
         this.setLoading(true);
 
         // Replays retained events synchronously — anything the page bridge
@@ -366,7 +364,7 @@ export class PlayerSession {
     }
 
     updateLanguageSettings(next: LanguageSettings): void {
-        this.languageSettingsValue = next;
+        this.languageSettings = next;
         this.applyLanguages();
     }
 
@@ -382,7 +380,7 @@ export class PlayerSession {
      *  stay on screen behind a placeholder until the new set arrives. */
     private applyLanguages(): void {
         const next = resolveSubtitleLanguages(
-            this.languageSettingsValue,
+            this.languageSettings,
             this.spokenLanguage
         );
         if (sameSubtitleLanguages(next, this.languagesValue)) {
@@ -436,7 +434,16 @@ export class PlayerSession {
         );
     }
 
-    private applySettings(changes: Partial<SettingsValues>): void {
+    /** Follow a change to the settings as the site sees them. */
+    applySettings(changes: Partial<SettingsValues>): void {
+        if (FETCH_SETTINGS_KEYS.some((key) => changes[key] !== undefined)) {
+            this.updateLanguageSettings(
+                toLanguageSettings({
+                    ...this.languageSettings,
+                    ...changes,
+                })
+            );
+        }
         for (const key of CONTENT_SETTINGS_KEYS) {
             if (changes[key] !== undefined) {
                 (this.settings as Record<string, unknown>)[key] = changes[key];

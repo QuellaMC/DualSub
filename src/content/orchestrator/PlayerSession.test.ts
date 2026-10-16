@@ -139,6 +139,11 @@ function startSession(
         onContextInvalidated: vi.fn(),
     });
     session.start();
+    // The orchestrator hands the session its site's changes.
+    const unsubscribe = configService
+        .forSite('netflix')
+        .onChanged((changes) => session.applySettings(changes));
+    controller.signal.addEventListener('abort', unsubscribe, { once: true });
     const tick = (time: number): void => {
         video.time = time;
         video.dispatchEvent(new Event('timeupdate'));
