@@ -3,8 +3,12 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { getDefaultValue, type SettingsValues } from '@/config/schema';
-import { configService } from '@/config/service';
+import { getDefaultValue } from '@/config/schema';
+import {
+    configService,
+    type SettingsChange,
+    type SettingsWrite,
+} from '@/config/service';
 import type { PlatformId } from '@/shared/platforms';
 import { useSettings } from './useSettings';
 
@@ -55,12 +59,12 @@ describe('useSettings', () => {
     it('sends a save to storage only once the one before it is written', async () => {
         const { result } = renderHook(() => useSettings(KEYS));
         await waitFor(() => expect(result.current.status).toBe('ready'));
-        const firstWrite = Promise.withResolvers<Partial<SettingsValues>>();
+        const firstWrite = Promise.withResolvers<SettingsWrite>();
         const writes = vi
             .spyOn(configService, 'setMultiple')
             .mockReturnValueOnce(firstWrite.promise);
 
-        let saves: Promise<Partial<SettingsValues>>[] = [];
+        let saves: Promise<SettingsChange>[] = [];
         act(() => {
             saves = [
                 result.current.save({ targetLanguage: 'ja' }),
@@ -70,7 +74,10 @@ describe('useSettings', () => {
         await act(() => Promise.resolve());
         expect(writes).toHaveBeenCalledTimes(1);
 
-        firstWrite.resolve({ targetLanguage: 'ja' });
+        firstWrite.resolve({
+            written: { targetLanguage: 'ja' },
+            change: { before: {}, after: { targetLanguage: 'ja' } },
+        });
         await act(() => Promise.all(saves));
         expect(writes).toHaveBeenLastCalledWith(
             { targetLanguage: 'ko' },

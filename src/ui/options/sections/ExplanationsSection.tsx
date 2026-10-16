@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import {
     SETTING_BOUNDS,
     validateSetting,
@@ -8,6 +8,7 @@ import { configService } from '@/config/service';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
+import { useChoice } from '../../design/useChoice';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { GEMINI_MODELS, OPENAI_MODELS } from '../explanations/models';
@@ -56,6 +57,26 @@ function isPanelTheme(
     value: string
 ): value is SettingsValues['sidePanelTheme'] {
     return PANEL_THEMES.some((theme) => theme.id === value);
+}
+
+/** One kind of explanation to ask for; it shows the choice just made, so a
+ *  second quick click takes back the first. */
+function KindCheck({
+    checked,
+    onChange,
+    children,
+}: {
+    checked: boolean;
+    onChange: (checked: boolean) => Promise<unknown>;
+    children: ReactNode;
+}) {
+    const [shown, toggle] = useChoice(checked, onChange);
+    return (
+        <label className="check">
+            <input type="checkbox" checked={shown} onChange={toggle} />
+            {children}
+        </label>
+    );
 }
 
 export function ExplanationsSection({
@@ -119,15 +140,17 @@ export function ExplanationsSection({
 
     /** Each box changes the stored list, so quick clicks each build on the
      *  last. */
-    const setContextType = (type: ContextType, checked: boolean): void => {
-        void feedback.apply(() =>
+    const setContextType = (
+        type: ContextType,
+        checked: boolean
+    ): Promise<boolean> =>
+        feedback.apply(() =>
             configService.updateSetting('aiContextTypes', (types) =>
                 CONTEXT_TYPES.filter((candidate) =>
                     candidate === type ? checked : types.includes(candidate)
                 )
             )
         );
-    };
 
     return (
         <section className="section" aria-labelledby="explain-title">
@@ -313,16 +336,15 @@ export function ExplanationsSection({
                     aria-labelledby="explain-types"
                 >
                     {CONTEXT_TYPES.map((type) => (
-                        <label key={type} className="check">
-                            <input
-                                type="checkbox"
-                                checked={settings.aiContextTypes.includes(type)}
-                                onChange={(event) =>
-                                    setContextType(type, event.target.checked)
-                                }
-                            />
+                        <KindCheck
+                            key={type}
+                            checked={settings.aiContextTypes.includes(type)}
+                            onChange={(checked) =>
+                                setContextType(type, checked)
+                            }
+                        >
                             {t(CONTEXT_TYPE_LABELS[type])}
-                        </label>
+                        </KindCheck>
                     ))}
                 </div>
                 {settings.aiContextTypes.length === 0 && (

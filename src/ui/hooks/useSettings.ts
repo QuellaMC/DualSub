@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     configService,
+    type SettingsChange,
     type SettingsChanges,
     type SiteWrite,
 } from '@/config/service';
@@ -15,12 +16,12 @@ export interface SettingsHandle<K extends SettingsKey> {
     readonly status: SettingsStatus;
     /** The complete projection once ready; null while loading or unavailable. */
     readonly settings: SettingsProjection<K> | null;
-    /** Persist one or more settings, resolving to what was written as
-     *  `setMultiple` reports it. Rejects when validation or storage fails;
-     *  nothing is written in that case. */
+    /** Persist one or more settings, resolving to the change made, for
+     *  `putBack`. Rejects when validation or storage fails; nothing is
+     *  written in that case. */
     readonly save: (
         changes: Partial<SettingsProjection<K>>
-    ) => Promise<Partial<SettingsValues>>;
+    ) => Promise<SettingsChange>;
 }
 
 interface SettingsState<K extends SettingsKey> {
@@ -155,11 +156,9 @@ export function useSettings<K extends SettingsKey>(
     const saving = useRef<Promise<unknown>>(Promise.resolve());
 
     const save = useCallback(
-        (
-            changes: Partial<SettingsProjection<K>>
-        ): Promise<Partial<SettingsValues>> => {
+        (changes: Partial<SettingsProjection<K>>): Promise<SettingsChange> => {
             const saved = saving.current.then(async () => {
-                const written = await configService.setMultiple(
+                const { written, change } = await configService.setMultiple(
                     changes,
                     site ? { site, target: siteTarget } : undefined
                 );
@@ -168,7 +167,7 @@ export function useSettings<K extends SettingsKey>(
                     keyList.split(' ') as K[]
                 );
                 setState((previous) => withChanges(previous, view, relevant));
-                return written;
+                return change;
             });
             saving.current = saved.catch(() => undefined);
             return saved;

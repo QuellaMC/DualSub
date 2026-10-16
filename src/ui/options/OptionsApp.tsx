@@ -221,14 +221,18 @@ export function OptionsApp() {
             changes.current = made.catch(() => undefined);
             return made;
         };
-        const apply: Feedback['apply'] = (change, message, undo) => {
+        const takeBackUndo = (): void => {
             setToast((current) =>
                 current?.undo ? { ...current, undo: null } : current
             );
+        };
+        const apply: Feedback['apply'] = (change, message, undo) => {
+            takeBackUndo();
             return inTurn(change, message, undo);
         };
         return {
             apply,
+            takeBackUndo,
             notify: (message, tone) => show({ message, tone, undo: null }),
         };
     }, [holdToast]);
@@ -252,8 +256,8 @@ export function OptionsApp() {
         );
     }
 
-    const save = feedbackSave(handle, editing, feedback);
-    const savePage = feedbackSave(page, 'all', feedback);
+    const save = feedbackSave(handle, feedback);
+    const savePage = feedbackSave(page, feedback);
     const {
         uiLanguage,
         showAdvancedSettings: advanced,

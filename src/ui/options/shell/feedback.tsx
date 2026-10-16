@@ -1,14 +1,8 @@
 import { createContext, useContext } from 'react';
-import {
-    isSettingsKey,
-    isSiteSettingKey,
-    type SettingsKey,
-    type SettingsValues,
-    type SiteSettingKey,
-} from '@/config/schema';
+import type { SettingsValues, SiteSettingKey } from '@/config/schema';
 import { configService, type SettingsChange } from '@/config/service';
 import type { PlatformId } from '@/shared/platforms';
-import type { SaveFeedback, Scope } from '../types';
+import type { SaveFeedback } from '../types';
 
 export type ToastTone = 'done' | 'problem';
 
@@ -25,6 +19,9 @@ export interface Feedback {
         message?: string,
         undo?: () => Promise<unknown>
     ) => Promise<boolean>;
+    /** Take back an Undo still offered for an edit on its way, though not
+     *  asked for yet, which the Undo would put back too. */
+    readonly takeBackUndo: () => void;
     /** Say something that changed nothing, such as a blocked copy. */
     readonly notify: (message: string, tone: ToastTone) => void;
 }
@@ -33,42 +30,23 @@ const FeedbackContext = createContext<Feedback | null>(null);
 
 export const FeedbackProvider = FeedbackContext.Provider;
 
-/**
- * A settings handle's save that confirms a named change in a toast whose
- * Undo puts back what the change replaced, read as the change is written.
- * Under a site's scope its settings land in the site's own values, so the
- * change is to the shared values and the site profiles.
- */
+/** A settings handle's save that confirms a named change in a toast whose
+ *  Undo puts back what the write replaced, as the write read it in its
+ *  turn. */
 export function feedbackSave<Values extends Partial<SettingsValues>>(
     handle: {
-        readonly save: (
-            changes: Partial<Values>
-        ) => Promise<Partial<SettingsValues>>;
+        readonly save: (changes: Partial<Values>) => Promise<SettingsChange>;
     },
-    scope: Scope,
     feedback: Feedback
 ): (changes: Partial<Values>, notice?: SaveFeedback) => Promise<boolean> {
     return (changes, notice = 'quiet') => {
         if (notice === 'quiet') {
             return feedback.apply(() => handle.save(changes));
         }
-        const keys = Object.keys(changes).filter(isSettingsKey);
-        const shared = keys.filter(
-            (key) => scope === 'all' || !isSiteSettingKey(key)
-        );
-        const touched: SettingsKey[] =
-            shared.length < keys.length ? [...shared, 'siteProfiles'] : shared;
         let change: SettingsChange = { before: {}, after: {} };
         return feedback.apply(
             async () => {
-                const before = await configService.getMultiple(touched);
-                const written = await handle.save(changes);
-                change = {
-                    before,
-                    after: Object.fromEntries(
-                        touched.map((key) => [key, written[key]])
-                    ),
-                };
+                change = await handle.save(changes);
             },
             notice.message,
             () => configService.putBack(change)
