@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { getDefaultValue } from '@/config/schema';
+import type { PlatformId } from '@/shared/platforms';
 import { useSettings } from './useSettings';
 
 const KEYS = [
@@ -75,6 +76,18 @@ describe('useSettings', () => {
         );
     });
 
+    it('keeps a change that lands while the first read is in flight', async () => {
+        const read = Promise.withResolvers<Record<string, unknown>>();
+        vi.spyOn(browser.storage.sync, 'get').mockReturnValueOnce(
+            read.promise as never
+        );
+        const { result } = renderHook(() => useSettings(KEYS));
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
+        read.resolve({});
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(2);
+    });
+
     it('reports an unreadable store, then recovers on the next change', async () => {
         vi.spyOn(browser.storage.sync, 'get').mockRejectedValueOnce(
             new Error('storage broken')
@@ -115,5 +128,24 @@ describe('useSettings', () => {
                 },
             },
         });
+    });
+
+    it('shows nothing of the previous site while the next one loads', async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+        });
+        const { result, rerender } = renderHook(
+            ({ site }: { site: PlatformId }) => useSettings(KEYS, { site }),
+            { initialProps: { site: 'netflix' } }
+        );
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(1.6);
+
+        rerender({ site: 'disneyplus' });
+        expect(result.current.status).toBe('loading');
+        expect(result.current.settings).toBeNull();
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(1.2);
     });
 });
