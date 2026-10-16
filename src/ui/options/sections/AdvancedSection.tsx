@@ -8,6 +8,7 @@ import {
     sameSettingValue,
     SENSITIVE_KEYS,
     SETTINGS_KEYS,
+    siteProfilesUsable,
     validateSetting,
     prepareSettingValue,
     type SettingsKey,
@@ -60,8 +61,8 @@ const LOGGING_LEVELS = [
 
 /** The settings a backup file holds, ready to write: every non-sensitive
  *  one it names. Null for a file that is not a settings object, or holds a
- *  value this version cannot use for a setting it knows: loading the rest
- *  would restore the backup only in part. */
+ *  value this version cannot use for a setting it knows, a site's included:
+ *  loading the rest would restore the backup only in part. */
 function backupValues(text: string): Partial<SettingsValues> | null {
     let parsed: unknown;
     try {
@@ -81,7 +82,11 @@ function backupValues(text: string): Partial<SettingsValues> | null {
         if (!isSettingsKey(key) || NOT_BACKED_UP.includes(key)) {
             continue;
         }
-        if (!validateSetting(key, value)) {
+        if (
+            !validateSetting(key, value) ||
+            (key === 'siteProfiles' &&
+                !siteProfilesUsable(prepareSettingValue(key, value)))
+        ) {
             return null;
         }
         values[key] = prepareSettingValue(key, value);
@@ -138,6 +143,8 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
     const [loadError, setLoadError] = useState(false);
     const [confirmReset, setConfirmReset] = useState(false);
     const fileInput = useRef<HTMLInputElement | null>(null);
+    /** Counts the files chosen, so only the newest one's read shows. */
+    const chosenFiles = useRef(0);
     const chooseFile = useRef<HTMLButtonElement | null>(null);
     const resetButton = useRef<HTMLButtonElement | null>(null);
     const cancelReset = useRef<HTMLButtonElement | null>(null);
@@ -253,11 +260,19 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                             if (!file || !stored) {
                                 return;
                             }
-                            void file.text().then((text) => {
-                                const values = backupValues(text);
-                                setLoadError(values === null);
-                                setBackup(values);
-                            });
+                            const chosen = ++chosenFiles.current;
+                            setBackup(null);
+                            setLoadError(false);
+                            const show = (values: typeof backup): void => {
+                                if (chosen === chosenFiles.current) {
+                                    setLoadError(values === null);
+                                    setBackup(values);
+                                }
+                            };
+                            file.text().then(
+                                (text) => show(backupValues(text)),
+                                () => show(null)
+                            );
                         }}
                     />
                 </div>

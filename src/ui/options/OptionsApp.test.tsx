@@ -822,6 +822,25 @@ describe('OptionsApp', () => {
         expect(screen.queryByText('Text size: Large')).not.toBeInTheDocument();
     });
 
+    it('undoes a quick second choice back to the first one', async () => {
+        location.hash = '#look';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: /^My language on top/ })
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: /^The video's language on top/ })
+        );
+        const toasts = document.querySelector<HTMLElement>('.toast-region')!;
+        await waitFor(() =>
+            expect(toasts).toHaveTextContent("The video's language on top")
+        );
+        fireEvent.click(within(toasts).getByRole('button', { name: 'Undo' }));
+        await waitFor(async () =>
+            expect(await sync('subtitleLayoutOrder')).toBe('translation_top')
+        );
+    });
+
     it('takes back an Undo once a later change lands', async () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
         location.hash = '#look';
@@ -1314,6 +1333,90 @@ describe('OptionsApp', () => {
             screen.queryByRole('button', { name: 'Replace them' })
         ).not.toBeInTheDocument();
         expect(await sync('subtitleFontScale')).toBeUndefined();
+    });
+
+    it('refuses a backup holding a site value this version cannot use, and keeps what it does not know', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        const load = (contents: unknown): void => {
+            fireEvent.change(
+                screen.getByLabelText('Load settings from a file'),
+                {
+                    target: {
+                        files: [
+                            new File(
+                                [JSON.stringify(contents)],
+                                'backup.json',
+                                {
+                                    type: 'application/json',
+                                }
+                            ),
+                        ],
+                    },
+                }
+            );
+        };
+        load({ siteProfiles: { netflix: { subtitleFontScale: 999 } } });
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            "That file can't be loaded"
+        );
+
+        const profiles = {
+            netflix: { subtitleFontScale: 1.4, futureSetting: true },
+            hulu: { subtitleGap: 0.1 },
+        };
+        load({ siteProfiles: profiles });
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'Replace them' })
+        );
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual(profiles)
+        );
+    });
+
+    it('loads only the backup chosen last, however its reads finish', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        const slowRead = Promise.withResolvers<string>();
+        const first = new File(['{}'], 'first.json', {
+            type: 'application/json',
+        });
+        first.text = () => slowRead.promise;
+        const second = new File(
+            [JSON.stringify({ subtitleFontScale: 1.6 })],
+            'second.json',
+            { type: 'application/json' }
+        );
+        const input = screen.getByLabelText('Load settings from a file');
+        fireEvent.change(input, { target: { files: [first] } });
+        fireEvent.change(input, { target: { files: [second] } });
+        expect(
+            await screen.findByText('Settings that will change: 1.')
+        ).toBeInTheDocument();
+
+        slowRead.resolve(
+            JSON.stringify({ subtitleFontScale: 1.2, subtitleGap: 0.5 })
+        );
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(
+            screen.getByText('Settings that will change: 1.')
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Replace them' }));
+        await waitFor(async () =>
+            expect(await sync('subtitleFontScale')).toBe(1.6)
+        );
     });
 
     it('blocks the page when settings cannot be read', async () => {

@@ -611,7 +611,7 @@ describe('TranslationService fallback', () => {
         expect(health.current()?.since).toBe(1_000_000);
     });
 
-    it('starts a waiting request over when its provider is paused after fallback came on', async () => {
+    it('lets the covers take a waiting request once its provider is paused after fallback came on', async () => {
         const { service, deepl, microsoft, fake } = await setup({
             fallback: false,
             delay: 1000,
@@ -620,7 +620,9 @@ describe('TranslationService fallback', () => {
             failing('deepl', 'AUTHENTICATION_ERROR')
         );
         const requests = ['One', 'Two', 'Three'].map((text) =>
-            rejection(service.translate(text, 'auto', 'es'))
+            service
+                .translate(text, 'auto', 'es')
+                .catch((error: unknown) => error)
         );
         // Fallback coming on drops the first failure's record; the second
         // request's failure pauses DeepL again before the third one's turn.
@@ -630,10 +632,51 @@ describe('TranslationService fallback', () => {
 
         const [first, second, third] = await Promise.all(requests);
         expect(first).toBeInstanceOf(TranslationProviderError);
-        expect(second).toBeInstanceOf(TranslationProviderError);
-        expect(third).toBeInstanceOf(TranslationConfigurationChangedError);
+        expect(second).toEqual({
+            translatedText: '[microsoft_edge:es] Two',
+            cached: false,
+        });
+        expect(third).toEqual({
+            translatedText: '[microsoft_edge:es] Three',
+            cached: false,
+        });
         expect(deepl.translate).toHaveBeenCalledTimes(2);
-        expect(microsoft.translate).not.toHaveBeenCalled();
+        expect(microsoft.translate).toHaveBeenCalledTimes(2);
+    });
+
+    it('covers a request already out when fallback came on', async () => {
+        const { service, deepl, fake } = await setup({ fallback: false });
+        const answer = Promise.withResolvers<string>();
+        deepl.translate.mockReturnValueOnce(answer.promise);
+        const pending = service.translate('Hello', 'auto', 'es');
+        await vi.waitFor(() => expect(deepl.translate).toHaveBeenCalled());
+
+        fake.emit({ translationFallback: true });
+        await vi.advanceTimersByTimeAsync(0);
+        answer.reject(failing('deepl', 'AUTHENTICATION_ERROR'));
+        await expect(pending).resolves.toEqual({
+            translatedText: '[microsoft_edge:es] Hello',
+            cached: false,
+        });
+    });
+
+    it('keeps a request retryable while a cover of the paused provider may work later', async () => {
+        const { service, microsoft, google } = await setup({
+            health: {
+                provider: 'deepl',
+                problem: 'credentials',
+                fallback: 'microsoft_edge',
+                since: 1_000_000,
+            },
+        });
+        const passing = failing('microsoft_edge', 'NETWORK_ERROR');
+        microsoft.translate.mockRejectedValueOnce(passing);
+        google.translate.mockRejectedValueOnce(
+            failing('google', 'AUTHENTICATION_ERROR')
+        );
+        expect(await rejection(service.translate('Hello', 'auto', 'es'))).toBe(
+            passing
+        );
     });
 
     it('drops a failure record that a change made before startup outdated', async () => {
