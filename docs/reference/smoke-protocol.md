@@ -76,10 +76,11 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
     and that Microsoft Translator translates until it is; turn
     fallback off and Start says nothing is translated.
 17. Install the build into a clean profile: the welcome page opens once,
-    with the browser's language picked (English, saying nothing about the
-    browser, when DualSub offers none of its languages) and a two-line
-    sample. Change the language there: the sample follows. Reload the
-    extension from chrome://extensions: no second welcome page.
+    with a two-line sample and, under "What we picked for you", the
+    browser's language (English, saying nothing about the browser, when
+    DualSub offers none of its languages). Change the language there: the
+    sample follows. Reload the extension from chrome://extensions: no
+    second welcome page.
 18. Seeded 2.5.0 profile: after the first boot, credentials are gone from
     sync storage, the provider is Microsoft, and every option shows the
     value the old profile had.

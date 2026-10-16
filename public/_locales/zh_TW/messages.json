@@ -485,6 +485,9 @@
     "commonChange": {
         "message": "更改"
     },
+    "commonDone": {
+        "message": "完成"
+    },
     "commonLoading": {
         "message": "載入中…"
     },
@@ -1535,47 +1538,86 @@
     "welcomePageTitle": {
         "message": "歡迎使用 DualSub"
     },
+    "welcomeInstalled": {
+        "message": "已安裝"
+    },
+    "welcomePickedTitle": {
+        "message": "我們幫你選好的"
+    },
+    "welcomeLanguage": {
+        "message": "你的語言：%s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "依瀏覽器的語言選的。下行字幕一律是這種語言。"
+    },
+    "welcomeLanguageLabel": {
+        "message": "你的語言"
+    },
+    "welcomeTopAuto": {
+        "message": "上行字幕：每部影片裡說的語言"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "韓劇就顯示韓語，英語電影就顯示英語。"
+    },
+    "welcomeTopFixed": {
+        "message": "上行字幕：固定為%s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "只要網站有這種語言的字幕，每部影片都會在上面顯示它。"
+    },
+    "welcomeTranslation": {
+        "message": "翻譯：%s"
+    },
+    "welcomeTranslationFree": {
+        "message": "免費，不需要帳號。"
+    },
+    "welcomeTranslationKeyed": {
+        "message": "使用你自己的帳號。"
+    },
+    "welcomeTranslationOfficial": {
+        "message": "影片有你的語言的官方翻譯時，DualSub 會改用官方翻譯。"
+    },
+    "welcomeOpenHelp": {
+        "message": "像平常一樣登入。"
+    },
+    "welcomeEarlier": {
+        "message": "提早"
+    },
+    "welcomeLater": {
+        "message": "延後"
+    },
     "welcomeTitle": {
-        "message": "歡迎！DualSub 已經準備好了。"
+        "message": "一切就緒。"
     },
     "welcomeLead": {
-        "message": "不用做任何設定，馬上就能用。你的字幕會像這樣："
-    },
-    "welcomeLanguageTitle": {
-        "message": "你的字幕會翻譯成"
+        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示兩行字幕：上面是影片本身的語言，下面是你的語言。什麼都不用設定。"
     },
     "welcomeLanguageHelp": {
-        "message": "我們先選了你瀏覽器的語言。想換的話，可以選其他語言。"
+        "message": "下行字幕一律是這種語言。"
     },
     "welcomeStepsTitle": {
-        "message": "三個步驟，開始看第一部影片"
+        "message": "三個步驟開始觀看"
     },
     "welcomePinTitle": {
         "message": "把 DualSub 固定在工具列上"
     },
     "welcomePinHelp": {
-        "message": "點一下 Chrome 視窗右上角拼圖形狀的「擴充功能」按鈕，再點 DualSub 旁邊的圖釘「固定」。之後 DualSub 的按鈕就會一直留在工具列上，看影片時隨時都能用。"
+        "message": "點一下瀏覽器右上角拼圖形狀的「擴充功能」，再點 DualSub 旁邊的圖釘「固定」。之後看影片時，它的按鈕就會一直在那裡。"
     },
     "welcomeOpenTitle": {
-        "message": "打開下面其中一個網站"
+        "message": "打開 Netflix 或 Disney+"
     },
     "welcomePlayTitle": {
         "message": "隨便播放一部影片"
     },
     "welcomePlayHelp": {
-        "message": "兩行字幕會自動出現：上面是影片的語言，下面是你的語言。影片本來就是你的語言時，只顯示一行。"
-    },
-    "welcomeSettingsTitle": {
-        "message": "想改一些設定嗎？"
-    },
-    "welcomeSettingsHelp": {
-        "message": "字幕外觀、字幕時間、翻譯服務等等，都可以在設定裡調整。"
+        "message": "兩行字幕會自動出現。字太小，或是跟說話聲對不上？點一下 DualSub 按鈕。"
     },
     "welcomeOpenSettings": {
-        "message": "打開設定"
+        "message": "查看所有設定"
     },
     "welcomeClose": {
-        "message": "你隨時可以關閉這個分頁。"
+        "message": "就這樣。你可以關閉這個分頁了。"
     },
     "startNeedsSetupTitle": {
         "message": "%s 還沒設定好"

@@ -485,6 +485,9 @@
     "commonChange": {
         "message": "Change"
     },
+    "commonDone": {
+        "message": "Done"
+    },
     "commonLoading": {
         "message": "Loading…"
     },
@@ -1535,47 +1538,86 @@
     "welcomePageTitle": {
         "message": "Welcome to DualSub"
     },
+    "welcomeInstalled": {
+        "message": "Installed"
+    },
+    "welcomePickedTitle": {
+        "message": "What we picked for you"
+    },
+    "welcomeLanguage": {
+        "message": "Your language: %s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "Taken from your browser. The bottom line is always in this language."
+    },
+    "welcomeLanguageLabel": {
+        "message": "Your language"
+    },
+    "welcomeTopAuto": {
+        "message": "Top line: the language spoken in each video"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "A Korean drama shows Korean, an English film shows English."
+    },
+    "welcomeTopFixed": {
+        "message": "Top line: always %s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "Every video shows it on top, when the site has subtitles in it."
+    },
+    "welcomeTranslation": {
+        "message": "Translation: %s"
+    },
+    "welcomeTranslationFree": {
+        "message": "Free, no account needed."
+    },
+    "welcomeTranslationKeyed": {
+        "message": "Through your own account."
+    },
+    "welcomeTranslationOfficial": {
+        "message": "When a show has its own translation in your language, DualSub uses that instead."
+    },
+    "welcomeOpenHelp": {
+        "message": "Sign in the way you always do."
+    },
+    "welcomeEarlier": {
+        "message": "Earlier"
+    },
+    "welcomeLater": {
+        "message": "Later"
+    },
     "welcomeTitle": {
-        "message": "Welcome! DualSub is ready."
+        "message": "You're all set."
     },
     "welcomeLead": {
-        "message": "It works right away, with nothing to set up. Your subtitles will look like this:"
-    },
-    "welcomeLanguageTitle": {
-        "message": "Your subtitles are translated into"
+        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: the video's own language on top, and yours underneath. There is nothing to set up."
     },
     "welcomeLanguageHelp": {
-        "message": "We picked your browser's language. Pick another if you like."
+        "message": "The bottom line is always in this language."
     },
     "welcomeStepsTitle": {
-        "message": "Three steps to your first video"
+        "message": "Start watching in three steps"
     },
     "welcomePinTitle": {
         "message": "Pin DualSub to your toolbar"
     },
     "welcomePinHelp": {
-        "message": "Click the puzzle piece at the top right of Chrome, then the pin next to DualSub. Its button then stays in the toolbar, ready while you watch."
+        "message": "Click the puzzle piece at the top right of your browser, then the pin next to DualSub. Its button then stays in view while you watch."
     },
     "welcomeOpenTitle": {
-        "message": "Open one of these sites"
+        "message": "Open Netflix or Disney+"
     },
     "welcomePlayTitle": {
-        "message": "Play anything"
+        "message": "Play any video"
     },
     "welcomePlayHelp": {
-        "message": "Two lines of subtitles appear on their own: the video's language on top, and yours underneath. A video already in your language shows one line."
-    },
-    "welcomeSettingsTitle": {
-        "message": "Want to change something?"
-    },
-    "welcomeSettingsHelp": {
-        "message": "How subtitles look, their timing, the translation service and more are in the settings."
+        "message": "The two lines appear by themselves. Too small, or out of step with the voices? Click the DualSub button."
     },
     "welcomeOpenSettings": {
-        "message": "Open settings"
+        "message": "See all settings"
     },
     "welcomeClose": {
-        "message": "You can close this tab whenever you like."
+        "message": "That's all. You can close this tab."
     },
     "startNeedsSetupTitle": {
         "message": "%s isn't set up yet"

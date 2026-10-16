@@ -31,6 +31,10 @@ const PATHS = {
     external: ['M14 5h5v5M19 5l-8 8M18 14v5H5V6h5'],
     alert: ['M12 4l9 16H3z', 'M12 10v4M12 17h.01'],
     close: ['M6 6l12 12M18 6L6 18'],
+    puzzle: [
+        'M9 4h3.5v2a1.5 1.5 0 0 0 3 0V4H19v5h-2a1.5 1.5 0 0 0 0 3h2v6h-6v-2a1.5 1.5 0 0 0-3 0v2H5v-6h2a1.5 1.5 0 0 0 0-3H5V4z',
+    ],
+    pin: ['M9 4h6l-1 5 3 3H7l3-3z', 'M12 12v8'],
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -53,22 +53,40 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
+/** Opens the language menu, as "Change" does, and returns it. */
+async function changeLanguage(): Promise<HTMLElement> {
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    return screen.getByRole('combobox', { name: 'Your language' });
+}
+
 describe('WelcomeApp', () => {
-    it('says DualSub is ready, shows the subtitles to expect, and the three steps', async () => {
+    it('says DualSub is ready, what it picked, and the three steps', async () => {
         render(<WelcomeApp />);
         expect(
             await screen.findByRole('heading', {
                 level: 1,
-                name: 'Welcome! DualSub is ready.',
+                name: "You're all set.",
             })
         ).toBeInTheDocument();
         await waitFor(() => expect(document.title).toBe('Welcome to DualSub'));
         expect(
             screen.getByRole('img', { name: 'Subtitle preview' })
         ).toBeInTheDocument();
+        expect(screen.getByText('Your language: English')).toBeInTheDocument();
         expect(
             screen.getByText(
-                "We picked your browser's language. Pick another if you like."
+                'Taken from your browser. The bottom line is always in this language.'
+            )
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Top line: the language spoken in each video')
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Translation: Microsoft Translator')
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                'Free, no account needed. When a show has its own translation in your language, DualSub uses that instead.'
             )
         ).toBeInTheDocument();
         expect(
@@ -119,9 +137,7 @@ describe('WelcomeApp', () => {
             .spyOn(browser.runtime, 'openOptionsPage')
             .mockResolvedValue(undefined);
         render(<WelcomeApp />);
-        const language = await screen.findByRole('combobox', {
-            name: 'Your subtitles are translated into',
-        });
+        const language = await changeLanguage();
         expect(language).toHaveValue(getDefaultValue('targetLanguage'));
         fireEvent.change(language, { target: { value: 'ja' } });
         await waitFor(async () =>
@@ -132,11 +148,17 @@ describe('WelcomeApp', () => {
         );
         expect(
             screen.queryByText(
-                "We picked your browser's language. Pick another if you like."
+                'Taken from your browser. The bottom line is always in this language.'
             )
         ).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+        expect(
+            await screen.findByText('Your language: Japanese')
+        ).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Open settings' }));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'See all settings' })
+        );
         expect(openOptions).toHaveBeenCalledOnce();
     });
 
@@ -144,16 +166,10 @@ describe('WelcomeApp', () => {
         vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['nl-NL']);
         vi.spyOn(navigator, 'language', 'get').mockReturnValue('nl-NL');
         render(<WelcomeApp />);
+        expect(await changeLanguage()).toHaveValue('en');
         expect(
-            await screen.findByRole('combobox', {
-                name: 'Your subtitles are translated into',
-            })
-        ).toHaveValue('en');
-        expect(
-            screen.queryByText(
-                "We picked your browser's language. Pick another if you like."
-            )
-        ).not.toBeInTheDocument();
+            screen.getByText('The bottom line is always in this language.')
+        ).toBeInTheDocument();
     });
 
     it('shows no untranslated text while its catalog loads', async () => {
@@ -172,9 +188,7 @@ describe('WelcomeApp', () => {
 
     it('reports only how the latest pick was saved', async () => {
         render(<WelcomeApp />);
-        const language = await screen.findByRole('combobox', {
-            name: 'Your subtitles are translated into',
-        });
+        const language = await changeLanguage();
         const realSet = fakeBrowser.storage.sync.set.bind(
             fakeBrowser.storage.sync
         );
@@ -204,9 +218,7 @@ describe('WelcomeApp', () => {
 
     it('says so when the language cannot be saved', async () => {
         render(<WelcomeApp />);
-        const language = await screen.findByRole('combobox', {
-            name: 'Your subtitles are translated into',
-        });
+        const language = await changeLanguage();
         vi.spyOn(browser.storage.sync, 'set').mockRejectedValueOnce(
             new Error('quota')
         );
