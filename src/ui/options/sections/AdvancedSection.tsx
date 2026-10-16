@@ -26,15 +26,25 @@ const NOT_BACKED_UP: readonly SettingsKey[] = [
     'openaiApiKeyOrigin',
 ];
 
-/** What is not backed up, what each kept credential is sent with, and how
- *  the page itself reads stay when everything else goes back to the
- *  recommended values. */
-const KEPT_ON_RESET: readonly SettingsKey[] = [
-    ...NOT_BACKED_UP,
-    ...Object.values(CREDENTIAL_SETUP).flat(),
-    'uiLanguage',
-    'showAdvancedSettings',
-];
+/** What a reset leaves while everything else goes back to the recommended
+ *  values: what is not backed up, how the page itself reads, and the
+ *  setup of every key that stays, so a kept key never goes to a host it was
+ *  not set up for. A setup without a key is reset with the rest. */
+function keptOnReset(settings: SectionProps['settings']): Set<SettingsKey> {
+    const kept = new Set<SettingsKey>([
+        ...NOT_BACKED_UP,
+        'uiLanguage',
+        'showAdvancedSettings',
+    ]);
+    for (const [credential, setup] of Object.entries(CREDENTIAL_SETUP)) {
+        if (settings[credential as keyof typeof CREDENTIAL_SETUP] !== '') {
+            for (const key of setup) {
+                kept.add(key);
+            }
+        }
+    }
+    return kept;
+}
 
 const LOGGING_LEVELS = [
     { level: 0, labelKey: 'advancedLoggingOff' },
@@ -371,8 +381,9 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                                     setConfirmReset(false);
                                     const defaults: Record<string, unknown> =
                                         {};
+                                    const kept = keptOnReset(settings);
                                     for (const key of SETTINGS_KEYS) {
-                                        if (!KEPT_ON_RESET.includes(key)) {
+                                        if (!kept.has(key)) {
                                             defaults[key] =
                                                 getDefaultValue(key);
                                         }
