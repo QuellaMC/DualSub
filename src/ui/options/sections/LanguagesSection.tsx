@@ -143,7 +143,7 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
                         checked={settings.useOfficialTranslations}
                         labelledBy="languages-official"
                         onChange={(useOfficial) =>
-                            void save(
+                            save(
                                 { useOfficialTranslations: useOfficial },
                                 {
                                     message: t(

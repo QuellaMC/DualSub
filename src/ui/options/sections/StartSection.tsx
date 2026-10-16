@@ -140,7 +140,7 @@ export function StartSection({
                             checked={settings.subtitlesEnabled}
                             labelledBy="start-enabled"
                             onChange={(enabled) =>
-                                void save(
+                                save(
                                     { subtitlesEnabled: enabled },
                                     {
                                         message: t(
