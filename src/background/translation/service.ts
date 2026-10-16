@@ -57,6 +57,12 @@ class FallbackWithdrawnError extends Error {
     override readonly name = 'FallbackWithdrawnError';
 }
 
+/** Another request's failure paused the selected provider before this
+ *  request's turn to send to it came. */
+class SelectedPausedError extends Error {
+    override readonly name = 'SelectedPausedError';
+}
+
 export interface TranslationOutcome {
     readonly translatedText: string;
     readonly cached: boolean;
@@ -281,7 +287,8 @@ export class TranslationService {
         let selectedFailed = false;
         let selectedFailure: unknown;
         let failure: unknown;
-        for (const providerId of this.providerChain(selected)) {
+        const chain = this.providerChain(selected);
+        for (const providerId of chain) {
             const covering = providerId !== selected;
             try {
                 const outcome = await this.translateWith(
@@ -306,6 +313,14 @@ export class TranslationService {
                     throw selectedFailed
                         ? selectedFailure
                         : new TranslationConfigurationChangedError();
+                }
+                if (error instanceof SelectedPausedError) {
+                    // The covers after it take the request. A chain with none
+                    // began while fallback was off, so the request starts over.
+                    if (chain.length === 1) {
+                        throw new TranslationConfigurationChangedError();
+                    }
+                    continue;
                 }
                 if (!covering) {
                     this.recordFailure(selected, error);
@@ -432,6 +447,12 @@ export class TranslationService {
                     this.configuredDelayMs
                 );
                 this.assertCurrent(generation, covering);
+                if (
+                    !covering &&
+                    !this.providerChain(providerId).includes(providerId)
+                ) {
+                    throw new SelectedPausedError();
+                }
                 const translatedText = await provider.translate(
                     text,
                     sourceLang,

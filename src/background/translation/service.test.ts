@@ -590,6 +590,52 @@ describe('TranslationService fallback', () => {
         expect(microsoft.translate).toHaveBeenCalledOnce();
     });
 
+    it('sends nothing to a provider that a failure paused while the request waited its turn', async () => {
+        const { service, deepl, health } = await setup({ delay: 1000 });
+        deepl.translate.mockRejectedValue(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        const first = service.translate('Hello', 'auto', 'es');
+        const waiting = service.translate('Next', 'auto', 'es');
+        await vi.advanceTimersByTimeAsync(2000);
+
+        await expect(first).resolves.toEqual({
+            translatedText: '[microsoft_edge:es] Hello',
+            cached: false,
+        });
+        await expect(waiting).resolves.toEqual({
+            translatedText: '[microsoft_edge:es] Next',
+            cached: false,
+        });
+        expect(deepl.translate).toHaveBeenCalledOnce();
+        expect(health.current()?.since).toBe(1_000_000);
+    });
+
+    it('starts a waiting request over when its provider is paused after fallback came on', async () => {
+        const { service, deepl, microsoft, fake } = await setup({
+            fallback: false,
+            delay: 1000,
+        });
+        deepl.translate.mockRejectedValue(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        const requests = ['One', 'Two', 'Three'].map((text) =>
+            rejection(service.translate(text, 'auto', 'es'))
+        );
+        // Fallback coming on drops the first failure's record; the second
+        // request's failure pauses DeepL again before the third one's turn.
+        await vi.advanceTimersByTimeAsync(500);
+        fake.emit({ translationFallback: true });
+        await vi.advanceTimersByTimeAsync(2000);
+
+        const [first, second, third] = await Promise.all(requests);
+        expect(first).toBeInstanceOf(TranslationProviderError);
+        expect(second).toBeInstanceOf(TranslationProviderError);
+        expect(third).toBeInstanceOf(TranslationConfigurationChangedError);
+        expect(deepl.translate).toHaveBeenCalledTimes(2);
+        expect(microsoft.translate).not.toHaveBeenCalled();
+    });
+
     it('drops a failure record that a change made before startup outdated', async () => {
         const memory = memoryHealth({
             provider: 'deepl',

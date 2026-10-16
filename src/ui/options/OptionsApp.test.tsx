@@ -1103,6 +1103,22 @@ describe('OptionsApp', () => {
         expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
     });
 
+    it('says AI translation still needs setting up until Chrome lets DualSub reach its address', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+            translationFallback: false,
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-key',
+        });
+        await renderReady();
+        expect(
+            await screen.findByText("AI translation isn't set up yet")
+        ).toBeInTheDocument();
+        expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
+    });
+
     it('says who translates while the chosen service still needs setting up', async () => {
         await fakeBrowser.storage.sync.set({ selectedProvider: 'deepl' });
         await renderReady();
