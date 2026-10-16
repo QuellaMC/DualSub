@@ -49,15 +49,19 @@ export default defineBackground(() => {
     configService.initializeDefaults(async () => {
         await migrateLegacyConfiguration();
     });
-    registerWelcomePage();
 
-    void (async () => {
+    const settingsReady = (async () => {
         try {
             await migrateLegacyConfiguration();
             await configService.setDefaultsForMissingKeys();
         } catch (error) {
             logger.error('Configuration migration or repair failed', error);
         }
+    })();
+    registerWelcomePage(settingsReady);
+
+    void (async () => {
+        await settingsReady;
         await configService.syncLoggingLevel();
         // Migration precedes initialization so a relocated provider setting
         // is what the service reads; readiness parks requests until then.

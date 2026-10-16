@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { detectBrowserLanguage, getDefaultValue } from '@/config/schema';
 import { resolveLook } from '@/content/renderer/looks';
@@ -37,6 +37,8 @@ export function WelcomeApp() {
             (status === 'unavailable' ? detectBrowserLanguage() : null)
     );
     const [saveFailed, setSaveFailed] = useState(false);
+    /** Only the latest pick's save may report how it went. */
+    const latestPick = useRef(0);
 
     useEffect(() => {
         if (loadedLocale !== null) {
@@ -55,8 +57,10 @@ export function WelcomeApp() {
     }
     if (!settings || loadedLocale === null) {
         return (
-            <main className="welcome">
-                <p role="status">{t('commonLoading')}</p>
+            <main className="welcome" aria-busy="true">
+                {loadedLocale !== null && (
+                    <p role="status">{t('commonLoading')}</p>
+                )}
             </main>
         );
     }
@@ -69,10 +73,13 @@ export function WelcomeApp() {
     );
     const display = toDisplaySettings(settings);
     const pickLanguage = (targetLanguage: string): void => {
-        save({ targetLanguage }).then(
-            () => setSaveFailed(false),
-            () => setSaveFailed(true)
-        );
+        const pick = ++latestPick.current;
+        const report = (failed: boolean) => (): void => {
+            if (pick === latestPick.current) {
+                setSaveFailed(failed);
+            }
+        };
+        save({ targetLanguage }).then(report(false), report(true));
     };
 
     return (
