@@ -15,7 +15,9 @@ export interface Feedback {
     /**
      * Make a change. A failure shows the page's banner and resolves false.
      * A success clears the banner and, given a message, confirms it in a
-     * toast whose Undo makes `undo` the same way.
+     * toast whose Undo makes `undo` the same way; a success without one
+     * takes back an Undo still offered, which would put back this change
+     * too.
      */
     readonly apply: (
         change: () => Promise<unknown>,
