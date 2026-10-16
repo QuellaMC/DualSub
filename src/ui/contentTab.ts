@@ -23,16 +23,25 @@ async function activeTabId(): Promise<number | null> {
     return (await activeTab())?.id ?? null;
 }
 
-/** The site of the active tab, or null when DualSub does not work there.
- *  Rejects when that is unknown, not none: the tab cannot be read, or it is
- *  on its way to another site than the one it shows. */
-export async function activeTabPlatform(): Promise<PlatformId | null> {
+/** The active tab and the site it shows, read together, so what is asked
+ *  of the tab next is asked of the same page. */
+export interface TabSite {
+    /** null with no active tab. */
+    readonly tabId: number | null;
+    /** null where DualSub does not work. */
+    readonly site: PlatformId | null;
+}
+
+/** The active tab and its site. Rejects when the site is unknown, not none:
+ *  the tab cannot be read, or it is on its way to another site than the
+ *  one it shows. */
+export async function activeTabSite(): Promise<TabSite> {
     const tab = await activeTab();
     const site = platformFromUrl(tab?.url);
     if (tab?.pendingUrl && platformFromUrl(tab.pendingUrl) !== site) {
         throw new Error('The active tab is on its way to another site');
     }
-    return site;
+    return { tabId: tab?.id ?? null, site };
 }
 
 /**
@@ -42,12 +51,11 @@ export async function activeTabPlatform(): Promise<PlatformId | null> {
  */
 export type TabStatus = 'player' | 'waiting' | 'notRunning';
 
-export async function readTabStatus(): Promise<TabStatus> {
+export async function readTabStatus(tabId: number | null): Promise<TabStatus> {
+    if (tabId === null) {
+        return 'waiting';
+    }
     try {
-        const tabId = await activeTabId();
-        if (tabId === null) {
-            return 'waiting';
-        }
         const status = await sendToTab(playerStatus, tabId, {
             action: playerStatus.action,
         });

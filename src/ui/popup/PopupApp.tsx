@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { detectBrowserLanguage } from '@/config/schema';
 import type { PlatformId } from '@/shared/platforms';
 import {
-    activeTabPlatform,
+    activeTabSite,
     readTabStatus,
+    type TabSite,
     type TabStatus,
 } from '../contentTab';
 import { useI18n } from '../hooks/useI18n';
@@ -26,9 +27,9 @@ export function PopupApp() {
         let active = true;
         let recheck: ReturnType<typeof setTimeout> | undefined;
         const read = async (): Promise<void> => {
-            let site: PlatformId | null;
+            let tab: TabSite;
             try {
-                site = await activeTabPlatform();
+                tab = await activeTabSite();
             } catch {
                 if (active) {
                     setPlace('unknown');
@@ -36,8 +37,16 @@ export function PopupApp() {
                 }
                 return;
             }
-            const status = site ? await readTabStatus() : 'waiting';
+            const { site } = tab;
+            const status = site ? await readTabStatus(tab.tabId) : 'waiting';
+            // What the tab said holds only while it shows the site it was
+            // asked about; one that moved on is read again.
+            const now = await activeTabSite().catch(() => null);
             if (!active) {
+                return;
+            }
+            if (!now || now.tabId !== tab.tabId || now.site !== site) {
+                void read();
                 return;
             }
             setPlace((previous) =>
