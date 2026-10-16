@@ -137,6 +137,22 @@ describe('configService for one site', () => {
         ).toEqual({ subtitleFontScale: 1.2, subtitleGap: 0.5 });
     });
 
+    it("changes the shared value when the site's own one is unreadable here", async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            siteProfiles: { netflix: { subtitleFontScale: 4 } },
+        });
+        await configService.setMultiple(
+            { subtitleFontScale: 1.5 },
+            { site: 'netflix', target: 'source' }
+        );
+        expect(await stored()).toEqual({ netflix: { subtitleFontScale: 4 } });
+        expect(
+            (await fakeBrowser.storage.sync.get('subtitleFontScale'))
+                .subtitleFontScale
+        ).toBe(1.5);
+    });
+
     it("keeps a site's own value its own when a source write makes it equal the shared one", async () => {
         await fakeBrowser.storage.sync.set({
             subtitleTimeOffset: 0,
@@ -288,6 +304,25 @@ describe('configService for one site', () => {
             );
             await vi.waitFor(() => expect(changes).toHaveLength(3));
             expect(changes[2]).not.toHaveProperty('subtitleGap');
+            stop();
+        });
+
+        it('reports a site value its read missed with the next change', async () => {
+            await fakeBrowser.storage.sync.set({ subtitleFontScale: 1.2 });
+            const { changes, stop } = listen();
+            vi.spyOn(fakeBrowser.storage.sync, 'get').mockRejectedValueOnce(
+                new Error('storage busy')
+            );
+            await fakeBrowser.storage.sync.set({
+                siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+            });
+            await fakeBrowser.storage.sync.set({ uiLanguage: 'ko' });
+            await vi.waitFor(() =>
+                expect(Object.assign({}, ...changes)).toMatchObject({
+                    subtitleFontScale: 1.6,
+                    uiLanguage: 'ko',
+                })
+            );
             stop();
         });
     });
