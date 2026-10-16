@@ -1481,6 +1481,12 @@
     "welcomeTranslationOfficial": {
         "message": "节目有你的语言的自带翻译时，DualSub 会改用它。"
     },
+    "welcomeTranslationNone": {
+        "message": "翻译：不需要"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "视频的那行本来就是你的语言，所以不用翻译。"
+    },
     "welcomeOpenHelp": {
         "message": "像平常一样登录。"
     },

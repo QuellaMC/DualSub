@@ -1481,6 +1481,12 @@
     "welcomeTranslationOfficial": {
         "message": "Cuando una serie o película tiene su propia traducción a tu idioma, DualSub usa esa."
     },
+    "welcomeTranslationNone": {
+        "message": "Traducción: no hace falta"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "La línea del video ya está en tu idioma, así que no se traduce nada."
+    },
     "welcomeOpenHelp": {
         "message": "Inicia sesión como siempre."
     },
