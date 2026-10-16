@@ -6,7 +6,7 @@ import { PLATFORM_IDS, type PlatformId } from '@/shared/platforms';
 import {
     AUTO_LANGUAGE,
     browserLanguage,
-    SUBTITLE_LANGUAGES,
+    browserTargetLanguage,
 } from '@/shared/subtitleLanguages';
 
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
@@ -469,7 +469,7 @@ export const configSchema = {
         default: 'en',
         scope: 'sync',
         normalize: normalizeLanguageTag,
-        dynamicDefault: () => browserLanguage(SUBTITLE_LANGUAGES) ?? 'en',
+        dynamicDefault: () => browserTargetLanguage() ?? 'en',
     }),
     /** A language tag, or `auto` for the language spoken in the video. */
     originalLanguage: setting({
