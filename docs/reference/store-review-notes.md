@@ -65,9 +65,11 @@ provider account.
 ## How to test
 
 1. Install: the welcome page opens with the browser's language as the
-   translation language. Nothing else needs setting up.
+   translation language, or English when DualSub offers none of the
+   browser's languages. Nothing else needs setting up.
 2. Sign in to Netflix or Disney+ and open any title.
-3. Play: two subtitle lines appear. In the DualSub popup, toggle "use
+3. Play: two subtitle lines appear (one, for a video already in the
+   translation language). In the DualSub popup, toggle "use
    official translations" to switch between the platform's own
    translation track and the provider.
 4. Optional: in the options page's Word explanations section, paste an
