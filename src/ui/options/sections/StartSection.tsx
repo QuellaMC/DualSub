@@ -19,6 +19,7 @@ import { LanguageSelect } from '../../design/LanguageSelect';
 import { PROVIDER_NAME_KEYS } from '../../providerNames';
 import { SizePicker } from '../controls/SizePicker';
 import { useHostPermission } from '../hooks/useHostPermission';
+import { useNow } from '../hooks/useNow';
 import type { SectionId } from '../sections';
 import { SharedTag, SiteTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
@@ -59,8 +60,9 @@ export function StartSection({
     // An AI service at its own address works only once Chrome lets DualSub
     // reach it.
     const access = useHostPermission(settings.openaiCompatibleBaseUrl);
+    const now = useNow([settings.vertexTokenExpiresAt]);
     const unset =
-        missingCredentials(provider, settings).length > 0 ||
+        missingCredentials(provider, settings, now).length > 0 ||
         (provider === 'openai_compatible' && access.permitted === false);
     // Without fallback, a service still to be set up translates nothing.
     const stopped =
