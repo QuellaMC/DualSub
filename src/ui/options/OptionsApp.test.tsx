@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -829,13 +830,22 @@ describe('OptionsApp', () => {
         });
     });
 
-    it('turns a switch back when it is pressed twice in a row', async () => {
+    it('turns a switch back when it is pressed again while its first change is saved', async () => {
         await renderReady();
         const advanced = screen.getByRole('switch', {
             name: 'Show advanced options',
         });
+        const realSave = configService.setMultiple.bind(configService);
+        const firstWrite = Promise.withResolvers<void>();
+        vi.spyOn(configService, 'setMultiple').mockImplementationOnce(
+            (settings, siteWrite) =>
+                firstWrite.promise.then(() => realSave(settings, siteWrite))
+        );
         fireEvent.click(advanced);
+        // The second press comes in a later task, before the first is saved.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
         fireEvent.click(advanced);
+        firstWrite.resolve();
         await waitFor(async () =>
             expect(
                 (await fakeBrowser.storage.local.get('showAdvancedSettings'))
