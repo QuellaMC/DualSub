@@ -34,7 +34,9 @@ describe('DeepLProviderCard', () => {
         expect(screen.getByRole('status')).toHaveTextContent(
             'deeplApiKeyError'
         );
-        expect(screen.getByRole('button')).toBeDisabled();
+        expect(
+            screen.getByRole('button', { name: 'setupCheckKey' })
+        ).toBeDisabled();
 
         view.rerender(
             <DeepLProviderCard t={t} apiKey="k" plan="free" save={save} />
@@ -42,7 +44,23 @@ describe('DeepLProviderCard', () => {
         expect(screen.getByRole('status')).toHaveTextContent(
             'deeplTestNeedsTesting'
         );
-        expect(screen.getByRole('button')).toBeEnabled();
+        expect(
+            screen.getByRole('button', { name: 'setupCheckKey' })
+        ).toBeEnabled();
+    });
+
+    it('asks for the plan before the key is checked, since each plan has its own address', () => {
+        render(
+            <DeepLProviderCard t={t} apiKey="" plan="free" save={vi.fn()} />
+        );
+        const plan = screen.getByRole('group', {
+            name: 'translationDeepLPlan',
+        });
+        const check = screen.getByRole('button', { name: 'setupCheckKey' });
+        expect(
+            plan.compareDocumentPosition(check) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
     });
 
     it('saves edits and runs the connection check', async () => {
@@ -55,16 +73,14 @@ describe('DeepLProviderCard', () => {
         );
         render(<DeepLProviderCard t={t} apiKey="k" plan="free" save={save} />);
 
-        fireEvent.change(screen.getByLabelText('apiKeyLabel'), {
+        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
             target: { value: 'k2' },
         });
-        expect(save).toHaveBeenCalledWith({ deeplApiKey: 'k2' });
-        fireEvent.change(screen.getByLabelText('apiPlanLabel'), {
-            target: { value: 'pro' },
-        });
-        expect(save).toHaveBeenCalledWith({ deeplApiPlan: 'pro' });
+        expect(save).toHaveBeenCalledWith({ deeplApiKey: 'k2' }, 'quiet');
+        fireEvent.click(screen.getByRole('button', { name: 'apiPlanPro' }));
+        expect(save).toHaveBeenCalledWith({ deeplApiPlan: 'pro' }, 'quiet');
 
-        fireEvent.click(screen.getByRole('button'));
+        fireEvent.click(screen.getByRole('button', { name: 'setupCheckKey' }));
         await waitFor(() =>
             expect(screen.getByRole('status')).toHaveTextContent(
                 'deeplTestSuccessSimple'
@@ -85,7 +101,7 @@ describe('DeepLProviderCard', () => {
                 save={vi.fn(() => Promise.resolve(true))}
             />
         );
-        fireEvent.click(screen.getByRole('button'));
+        fireEvent.click(screen.getByRole('button', { name: 'setupCheckKey' }));
         await waitFor(() =>
             expect(screen.getByRole('status')).toHaveTextContent(
                 'deeplTestInvalidKey'

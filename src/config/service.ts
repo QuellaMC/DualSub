@@ -3,6 +3,7 @@ import { createLogger, setLoggingLevel } from '@/shared/logger';
 import type { PlatformId } from '@/shared/platforms';
 import {
     SETTINGS_KEYS,
+    changedSiteValues,
     configSchema,
     getDefaultValue,
     getKeysByScope,
@@ -10,11 +11,13 @@ import {
     isSiteSettingKey,
     prepareSettingValue,
     sameSettingValue,
+    sameSiteValue,
     siteProfileOf,
     type SettingsKey,
     type SettingsValues,
     type SiteProfile,
     type SiteSettingKey,
+    type SiteValueRef,
 } from './schema';
 import {
     ConfigServiceReadError,
@@ -75,6 +78,28 @@ export interface SiteWrite {
     readonly target: 'own' | 'source';
 }
 
+/** A change as its Undo needs it: what it replaced, and what it left. Both
+ *  hold the values it wrote, and `siteProfiles` when it changed a site's own
+ *  values. */
+export interface SettingsChange {
+    readonly before: Partial<SettingsValues>;
+    readonly after: Partial<SettingsValues>;
+}
+
+/** Whether `change` left every value as it found it. */
+export function leftAsFound({ before, after }: SettingsChange): boolean {
+    return Object.entries(after).every(([key, value]) =>
+        sameSettingValue(before[key as SettingsKey], value)
+    );
+}
+
+/** What `setMultiple` did: each value as written, with the site profiles
+ *  when a site's values went there, and the change it made in storage. */
+export interface SettingsWrite {
+    readonly written: Partial<SettingsValues>;
+    readonly change: SettingsChange;
+}
+
 export type SettingsChanges = Partial<SettingsValues>;
 export type ChangeListener = (changes: SettingsChanges) => unknown;
 
@@ -126,7 +151,7 @@ export function isSensitiveAccessExplicitlyEnabled(options: unknown): boolean {
 /** `profiles` with `site`'s own values replaced; an empty profile goes. */
 function withSiteProfile(
     profiles: SettingsValues['siteProfiles'],
-    site: PlatformId,
+    site: string,
     own: Record<string, unknown>
 ): SettingsValues['siteProfiles'] {
     const next = { ...profiles };
@@ -136,6 +161,35 @@ function withSiteProfile(
         delete next[site];
     }
     return next;
+}
+
+/** `profiles` with `site`'s own value of `key` as `source` holds it, none
+ *  where it holds none. */
+function withSiteValue(
+    profiles: SettingsValues['siteProfiles'],
+    [site, key]: SiteValueRef,
+    source: SettingsValues['siteProfiles']
+): SettingsValues['siteProfiles'] {
+    const own: Record<string, unknown> = { ...profiles[site] };
+    const held = source[site] ?? {};
+    if (Object.hasOwn(held, key)) {
+        own[key] = held[key];
+    } else {
+        delete own[key];
+    }
+    return withSiteProfile(profiles, site, own);
+}
+
+/** `values` of `keys` alone. */
+function pickValues(
+    values: Partial<SettingsValues>,
+    keys: readonly string[]
+): Partial<SettingsValues> {
+    return Object.fromEntries(
+        keys
+            .filter((key) => Object.hasOwn(values, key))
+            .map((key) => [key, values[key as SettingsKey]])
+    );
 }
 
 function detach<T>(value: T): T {
@@ -152,7 +206,20 @@ interface ResolvedStoredValue {
     resolution: StoredResolution;
 }
 
-const SITE_PROFILES_LOCK = 'dualsub:siteProfiles';
+/** Settings whose controls each change one part: the site profiles, the
+ *  subtitle filters, and the kinds of explanation. `updateSetting` rewrites
+ *  one from what is stored. */
+type EditedInPart = 'siteProfiles' | 'subtitleBlacklist' | 'aiContextTypes';
+
+const PARTS_LOCK = 'dualsub:settingParts';
+
+/** Run `change` once every earlier write has settled, so each builds on
+ *  what the one before it left and reads what it replaces in its turn. The
+ *  lock is shared by every extension page and the worker, which share the
+ *  extension's origin, so a popup and a settings tab take turns too. */
+function inTurn<T>(change: () => Promise<T>): Promise<T> {
+    return navigator.locks.request(PARTS_LOCK, change);
+}
 
 class ConfigService {
     private readonly logger = createLogger('ConfigService');
@@ -593,32 +660,56 @@ class ConfigService {
 
     /**
      * Multi-key write. Validates everything first (nothing is written when any
-     * key/value is invalid), then writes each storage area independently and
-     * aggregates area failures. A write that rewrites `siteProfiles` waits for
-     * the one before it, made in any extension page, so it builds on the
-     * profiles that one left.
+     * key/value is invalid), then writes each storage area; when one fails,
+     * the others get back what they held, so the write lands whole or not at
+     * all. It takes its turn after every earlier write, made in any extension
+     * page, and reads what it replaces in that turn.
      */
     setMultiple(
         settings: Partial<SettingsValues>,
         siteWrite?: SiteWrite
-    ): Promise<Partial<SettingsValues>> {
-        return siteWrite || Object.hasOwn(settings, 'siteProfiles')
-            ? this.afterProfiles(() => this.writeMultiple(settings, siteWrite))
-            : this.writeMultiple(settings, siteWrite);
+    ): Promise<SettingsWrite> {
+        return inTurn(() => this.writeMultiple(settings, siteWrite));
     }
 
-    /** Run `change` once every earlier rewrite of `siteProfiles` has
-     *  settled; each reads the profiles and writes them whole. The lock is
-     *  shared by every extension page and the worker, which share the
-     *  extension's origin, so a popup and a settings tab take turns too. */
-    private afterProfiles<T>(change: () => Promise<T>): Promise<T> {
-        return navigator.locks.request(SITE_PROFILES_LOCK, change);
+    /**
+     * Change a setting edited in part from what is stored now: `edit` gets
+     * the stored value and returns the next. Resolves to the value it
+     * replaced.
+     */
+    updateSetting<K extends EditedInPart>(
+        key: K,
+        edit: (current: SettingsValues[K]) => SettingsValues[K]
+    ): Promise<SettingsValues[K]> {
+        return this.updateSettings([key], (stored) => ({
+            [key]: edit(stored[key] as SettingsValues[K]),
+        })).then(({ change }) => change.before[key] as SettingsValues[K]);
     }
 
+    /**
+     * Write what `build` makes of the stored `keys`, read in the write's own
+     * turn, so a change decided by what is stored is decided by what it
+     * replaces. Reads strictly, so a failed read writes nothing. Resolves as
+     * `setMultiple` does.
+     */
+    updateSettings(
+        keys: readonly SettingsKey[],
+        build: (stored: Partial<SettingsValues>) => Partial<SettingsValues>
+    ): Promise<SettingsWrite> {
+        return inTurn(async () => {
+            const { values } = await this.readMultipleResultStrict(keys, {
+                includeSensitive: true,
+            });
+            return this.writeMultiple(build(values));
+        });
+    }
+
+    /** Write in a turn already taken; the read of what it replaces and the
+     *  write happen in that turn. */
     private async writeMultiple(
         settings: Partial<SettingsValues>,
         siteWrite?: SiteWrite
-    ): Promise<Partial<SettingsValues>> {
+    ): Promise<SettingsWrite> {
         const invalidKeys: string[] = [];
         const byArea: Record<StorageArea, Record<string, unknown>> = {
             sync: {},
@@ -651,38 +742,55 @@ class ConfigService {
         if (siteWrite) {
             await this.routeSiteValues(siteWrite, byArea.sync);
         }
+        const after = { ...byArea.sync, ...byArea.local };
+        const { values: before } = await this.readMultipleResultStrict(
+            Object.keys(after),
+            { includeSensitive: true }
+        );
 
+        const taken: string[] = [];
         const failures: { area: StorageArea; error: unknown }[] = [];
-        let successes = 0;
         for (const area of STORAGE_AREAS) {
-            if (Object.keys(byArea[area]).length === 0) {
+            const items = byArea[area];
+            if (Object.keys(items).length === 0) {
                 continue;
             }
             try {
-                await this.setToStorage(area, byArea[area]);
-                successes += 1;
+                await this.setToStorage(area, items);
+                taken.push(...Object.keys(items));
             } catch (error) {
                 failures.push({ area, error });
             }
         }
 
-        if (
-            Object.hasOwn(byArea.sync, 'loggingLevel') &&
-            !failures.some((failure) => failure.area === 'sync')
-        ) {
-            setLoggingLevel(byArea.sync.loggingLevel as number);
-        }
-
         if (failures.length > 0) {
-            const completeFailure = successes === 0;
+            // A write lands whole or not at all: what the other areas took
+            // goes back to what this turn read, where nothing changed it since.
+            const putBack = await this.restore({
+                before: pickValues(before, taken),
+                after: pickValues(after, taken),
+            }).then(
+                () => true,
+                () => false
+            );
             throw new ConfigWriteError(
-                completeFailure
+                taken.length === 0
                     ? `setMultiple() failed completely: ${failures.length} storage area(s) failed`
-                    : `setMultiple() completed with partial failures: ${successes} area(s) succeeded, ${failures.length} area(s) failed`,
-                { completeFailure, errors: failures }
+                    : putBack
+                      ? `setMultiple() failed: ${failures.length} storage area(s) failed, and what the others took was put back`
+                      : `setMultiple() completed with partial failures: ${failures.length} storage area(s) failed, and what the others took could not be put back`,
+                { completeFailure: putBack, errors: failures }
             );
         }
-        return detach(preparedSettings);
+        if (Object.hasOwn(byArea.sync, 'loggingLevel')) {
+            setLoggingLevel(byArea.sync.loggingLevel as number);
+        }
+        return detach({
+            written: Object.hasOwn(after, 'siteProfiles')
+                ? { ...preparedSettings, siteProfiles: after.siteProfiles }
+                : preparedSettings,
+            change: { before, after },
+        });
     }
 
     /**
@@ -736,23 +844,67 @@ class ConfigService {
         }
     }
 
-    /** `site` follows the shared values of `keys` again. Reads strictly:
-     *  a profile read from a failed store would erase every site's. */
+    /**
+     * `sites` follow the shared values of `keys` again, and `shared` is
+     * written in the same storage write. Resolves to the change, for
+     * `putBack`.
+     */
     removeSiteValues(
-        site: PlatformId,
-        keys: readonly SiteSettingKey[]
-    ): Promise<void> {
-        return this.afterProfiles(async () => {
-            const { values } = await this.readResultStrict('siteProfiles');
-            const profiles = values.siteProfiles ?? {};
-            const own: Record<string, unknown> = { ...profiles[site] };
-            for (const key of keys) {
-                delete own[key];
+        sites: readonly PlatformId[],
+        keys: readonly SiteSettingKey[],
+        shared: Partial<Omit<SettingsValues, 'siteProfiles'>> = {}
+    ): Promise<SettingsChange> {
+        return this.updateSettings(['siteProfiles'], (stored) => {
+            let profiles = stored.siteProfiles ?? {};
+            for (const site of sites) {
+                for (const key of keys) {
+                    profiles = withSiteValue(profiles, [site, key], {});
+                }
             }
-            await this.writeMultiple({
-                siteProfiles: withSiteProfile(profiles, site, own),
-            });
-        });
+            return { ...shared, siteProfiles: profiles };
+        }).then(({ change }) => change);
+    }
+
+    /**
+     * Undo `change`: put back what it replaced wherever storage still holds
+     * what it left, so an edit made since, on this page or another, stays.
+     * Each value it wrote counts whole, and each site value it changed on
+     * its own.
+     */
+    putBack(change: SettingsChange): Promise<void> {
+        return inTurn(() => this.restore(change));
+    }
+
+    /** `putBack` in a turn already taken. */
+    private async restore({ before, after }: SettingsChange): Promise<void> {
+        const { siteProfiles: left, ...wrote } = after;
+        const { values: now } = await this.readMultipleResultStrict(
+            Object.keys(after),
+            { includeSensitive: true }
+        );
+        const writes: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(wrote)) {
+            if (
+                isSettingsKey(key) &&
+                sameSettingValue(now[key], prepareSettingValue(key, value))
+            ) {
+                writes[key] = before[key];
+            }
+        }
+        if (left) {
+            const was = before.siteProfiles ?? {};
+            const stored = now.siteProfiles ?? {};
+            const kept = changedSiteValues(was, left).filter((value) =>
+                sameSiteValue(stored, left, value)
+            );
+            if (kept.length > 0) {
+                writes.siteProfiles = kept.reduce(
+                    (profiles, value) => withSiteValue(profiles, value, was),
+                    stored
+                );
+            }
+        }
+        await this.writeMultiple(writes);
     }
 
     // ------------------------------------------------------ change broadcast
@@ -1043,11 +1195,12 @@ class ConfigService {
      * Repair pass: persist canonical values for every key whose stored value
      * is missing, invalid, or non-canonical. Tolerates per-area read failures
      * (that area is skipped); throws only when every attempted repair write
-     * failed. It takes its turn with the rewrites of `siteProfiles`, so a
-     * profile saved while it reads is not overwritten with what it read.
+     * failed. It takes its turn with the rewrites of the settings edited in
+     * part, so a part saved while it reads is not overwritten with what it
+     * read.
      */
     setDefaultsForMissingKeys(): Promise<void> {
-        return this.afterProfiles(() => this.repairStoredValues());
+        return inTurn(() => this.repairStoredValues());
     }
 
     private async repairStoredValues(): Promise<void> {

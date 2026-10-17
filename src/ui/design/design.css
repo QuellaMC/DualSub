@@ -1,0 +1,488 @@
+@import '@fontsource-variable/atkinson-hyperlegible-next';
+
+/* DualSub's extension pages share one look: large type in a face drawn for
+   legibility, plain controls, high contrast. */
+
+:root {
+    color-scheme: light;
+    --ground: #f3f4f6;
+    --surface: #ffffff;
+    --surface-soft: #fafbfc;
+    --surface-sunken: #f6f7f9;
+    --fill: #eceef2;
+    --fill-ink: #454b57;
+    --hover: #e7eaef;
+    --ink: #15171c;
+    --ink-lead: #3b414d;
+    --ink-soft: #4a505c;
+    --line: #dcdfe5;
+    --line-soft: #eceef2;
+    --line-tile: #d5d9e0;
+    --line-control: #c3c9d4;
+    --line-strong: #b3bac6;
+    --line-hover: #8e97a7;
+    --line-tile-hover: #9aa6bb;
+    --switch-off: #7d8696;
+    --accent: #1f5ed6;
+    --accent-hover: #184fb8;
+    --accent-ink: #ffffff;
+    --accent-soft: #f1f6ff;
+    --accent-tint: #dce6fa;
+    --accent-text: #123f96;
+    --link-hover: #1546a3;
+    --info: #163f91;
+    --info-soft: #e1eafc;
+    --ok: #17613a;
+    --ok-soft: #e1f2e7;
+    --site: #6e4500;
+    --site-soft: #fff1d6;
+    --note: #4d3300;
+    --note-soft: #fff4dc;
+    --advanced: #4f3294;
+    --advanced-soft: #ece6f9;
+    --danger: #b3261e;
+    --danger-soft: #fdeceb;
+    --focus: #f2a516;
+    --screen: #141922;
+    --screen-tile: #2a3140;
+    --segment: #e4e7ec;
+    --radius: 12px;
+    --font:
+        'Atkinson Hyperlegible Next Variable', system-ui, -apple-system,
+        'Segoe UI', sans-serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 17px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+    color: inherit;
+}
+
+a {
+    color: var(--accent);
+}
+
+a:hover {
+    color: var(--link-hover);
+}
+
+h1,
+h2 {
+    font-weight: 800;
+}
+
+:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.icon {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.card {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 22px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.grow {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.label {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.strong {
+    font-weight: 700;
+}
+
+.help {
+    color: var(--ink-soft);
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.mono {
+    font-family: var(--mono);
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.tag.ok {
+    background: var(--ok-soft);
+    color: var(--ok);
+}
+
+.tag.accent {
+    background: var(--info-soft);
+    color: var(--info);
+}
+
+.tag.site {
+    background: var(--site-soft);
+    color: var(--site);
+}
+
+.tag.advanced {
+    background: var(--advanced-soft);
+    color: var(--advanced);
+}
+
+.tag.muted {
+    background: var(--fill);
+    color: var(--fill-ink);
+}
+
+.tag.danger {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid var(--line-control);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.button:hover {
+    border-color: var(--line-hover);
+    color: var(--ink);
+}
+
+.button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.button.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-ink);
+}
+
+.button.primary:hover {
+    border-color: var(--accent-hover);
+    background: var(--accent-hover);
+    color: var(--accent-ink);
+}
+
+.button.quiet {
+    border-color: transparent;
+    background: transparent;
+    color: var(--accent);
+}
+
+.button.quiet:hover {
+    border-color: transparent;
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+.button.danger {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: #ffffff;
+}
+
+.button.big {
+    min-height: 58px;
+    padding: 0 22px;
+    font-size: 18px;
+}
+
+.link-button {
+    padding: 4px 2px;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.field {
+    min-height: 44px;
+    max-width: 100%;
+    padding: 0 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+}
+
+.field.wide {
+    width: 100%;
+}
+
+.field[aria-invalid='true'] {
+    border-color: var(--danger);
+}
+
+input[type='range'] {
+    width: 100%;
+    min-height: 32px;
+    accent-color: var(--accent);
+}
+
+input[type='checkbox'] {
+    width: 22px;
+    height: 22px;
+    accent-color: var(--accent);
+}
+
+.switch {
+    position: relative;
+    flex: none;
+    width: 58px;
+    height: 34px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: var(--switch-off);
+    cursor: pointer;
+}
+
+.switch::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: left 0.15s;
+}
+
+.switch[aria-checked='true'] {
+    background: var(--accent);
+}
+
+.switch[aria-checked='true']::after {
+    left: 28px;
+}
+
+.switch:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.segmented {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--segment);
+}
+
+.segmented button {
+    min-height: 40px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--ink-lead);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.segmented.small button {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 15px;
+}
+
+.segmented button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 3px rgba(20, 24, 33, 0.2);
+}
+
+.choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+}
+
+.choice {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 16px 18px;
+    border: 2px solid var(--line-tile);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+}
+
+.choice:hover {
+    border-color: var(--line-tile-hover);
+}
+
+.choice[aria-pressed='true'],
+.choice[aria-checked='true'] {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+.choice-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.status-line {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.status-line.success {
+    color: var(--ok);
+}
+
+.status-line.error {
+    color: var(--danger);
+}
+
+.status-line.warning {
+    color: var(--site);
+}
+
+.status-line.info {
+    color: var(--ink-soft);
+}
+
+.notice {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    background: var(--note-soft);
+    color: var(--note);
+}
+
+.notice.danger {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+/* A night scene: a moon, drawn as a circle in the 16:9 frame, and two
+   hills. */
+.screen {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 10px;
+    background:
+        radial-gradient(
+            ellipse 6% 10.67% at 82% 22.67%,
+            #2b3344 98%,
+            transparent 100%
+        ),
+        var(--screen);
+}
+
+.screen::before,
+.screen::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+}
+
+.screen::before {
+    left: -12%;
+    bottom: -34%;
+    width: 75%;
+    height: 62%;
+    background: #1a202b;
+}
+
+.screen::after {
+    right: -18%;
+    bottom: -40%;
+    width: 70%;
+    height: 64%;
+    background: #1f2633;
+}

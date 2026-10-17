@@ -10,17 +10,19 @@
 ## Customization Options
 
 - Flexible Layouts: Vertical (top/bottom) or horizontal (left/right)
-- Appearance Control: Adjustable font size, spacing, display order, and a subtitle style that matches the platform's own look or your own custom look, previewed in the options page
+- Appearance Control: Adjustable font size, spacing, display order, and a subtitle style that matches the platform's own look or your own custom look, previewed in the settings page
 - Vertical Positioning: Precise control over subtitle placement on screen
 - Platform Placement: Cues the platform raises over on-screen text, or shows at the same time, are drawn where the platform puts them
 - Timing Precision: Fine-tune subtitle synchronization with offset controls
+- Per-Site Settings: Each site can keep its own on/off, languages, look, and timing
+- Plain-Language Settings: Every setting on one page, with search, undo, and a live preview
 - Multi-Language UI: Interface available in 6 languages (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
 ## Advanced Features
 
-- AI Context Analysis: Cultural, historical, and linguistic explanations (OpenAI or Google Gemini)
+- Word Explanations: Cultural, historical, and linguistic explanations of the words you click (OpenAI or Google Gemini)
 - Performance Tuning: Configurable delay between subtitle translation requests
-- Advanced Options: Provider-specific settings and comprehensive UI
+- Advanced Options: Exact values, limits, backup and restore, and a diagnostic report, shown on request
 - Logging System: Detailed debugging with configurable log levels
 - Official Subtitle Integration: Uses platform native subtitles when available (Netflix)
 

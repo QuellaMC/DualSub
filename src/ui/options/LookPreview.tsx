@@ -7,21 +7,20 @@ import {
     type DisplaySettings,
 } from '@/content/renderer/styling';
 
-/** The preview is drawn as on a picture this many pixels tall, so the text
- *  has the size it would have on a full-HD screen. */
-const PREVIEW_PICTURE_HEIGHT = 1080;
-
 /** A mock picture carrying one subtitle block, drawn by the renderer's own
- *  styling so the preview cannot drift from the overlay. */
+ *  styling so the preview cannot drift from the overlay. The text takes the
+ *  size it would have on a picture `pictureHeight` pixels tall. */
 export function LookPreview({
     display,
     look,
+    pictureHeight,
     originalText,
     translatedText,
     label,
 }: {
     display: DisplaySettings;
     look: SubtitleLook;
+    pictureHeight: number;
     originalText: string;
     translatedText: string;
     label: string;
@@ -40,19 +39,12 @@ export function LookPreview({
             elements,
             display,
             look,
-            PREVIEW_PICTURE_HEIGHT,
+            pictureHeight,
             STANDARD_PLACEMENT
         );
         host.replaceChildren(elements.container);
         return () => elements.container.remove();
-    }, [display, look, originalText, translatedText]);
+    }, [display, look, pictureHeight, originalText, translatedText]);
 
-    return (
-        <div
-            className="look-preview"
-            ref={frame}
-            role="img"
-            aria-label={label}
-        />
-    );
+    return <div className="screen" ref={frame} role="img" aria-label={label} />;
 }

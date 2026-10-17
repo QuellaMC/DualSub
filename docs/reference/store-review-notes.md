@@ -48,7 +48,7 @@ provider account.
   the user's own credentials. When the selected provider fails, Microsoft
   and then Google translate instead, unless the user turned that fallback
   off.
-- With AI Context enabled, the words the user clicked (and the target
+- With Word explanations (AI context) enabled, the words the user clicked (and the target
   language) go to the user's configured OpenAI or Gemini endpoint. The
   feature is off by default and re-checks its stored enablement before
   every request.
@@ -67,6 +67,7 @@ provider account.
 2. Click the DualSub icon, enable dual subtitles, pick a target language.
 3. Play: two subtitle lines appear. Toggle "use official translations" to
    switch between the platform's own translation track and the provider.
-4. Optional: in Options → AI Context, enable the feature with an API key,
-   then click a subtitle word; the side panel opens with the word selected
-   and "Analyze" returns a structured explanation.
+4. Optional: in the options page's Word explanations section, paste an
+   OpenAI or Gemini API key and turn the feature on, then click a subtitle
+   word; the side panel opens with the word selected and "Analyze" returns
+   a structured explanation.

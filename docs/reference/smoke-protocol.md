@@ -27,41 +27,54 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    window: the text restyles live and scales with the video. With the
    platform's own subtitles off, Match Platform still follows the
    profile's subtitle appearance settings, and the popup says so.
-6. In the options page's Appearance section, edit the custom look (font,
-   bold, text color, edge, background) and the translation color: the
-   preview follows each edit at once, the overlay follows after a pause,
-   both styles draw the translation in the chosen color, and the values
-   are still there after the options page is reloaded.
+6. In the settings page's How subtitles look section, pick each
+   ready-made look, then change colors and font (font, bold, text color,
+   edge, background) and the translation color: the preview follows each
+   edit at once, the overlay follows after a pause, both styles draw the
+   translation in the chosen color, and the values are still there after
+   the settings page is reloaded.
 7. Disney+ only: an ad or recap interstitial shows no subtitle, and the
    time source stays correct across the shadow-DOM player controls.
 
 ## Translation
 
-8. Switch providers in the options page (Microsoft, Google, a keyed one):
-   translations resume for the current line without a page reload. With
-   a keyed provider whose key is wrong, translations keep coming through
-   Microsoft, and after fixing the key the keyed provider takes over at
-   once.
+8. Switch the translation service in the settings page (Microsoft,
+   Google, a keyed one): translations resume for the current line without
+   a page reload. With a keyed service whose key is wrong, translations
+   keep coming through Microsoft, the Translation section names the
+   failing service and the one covering for it, and after fixing the key
+   the keyed service takes over at once.
 9. Kill the service worker from chrome://serviceworker-internals while
    playing: translations resume within a few cues.
 
 ## Side panel
 
-10. Enable AI Context. Click a subtitle word: the panel opens, the word is
-    highlighted, and playback pauses when auto-pause is on.
+10. Turn on Word explanations. Click a subtitle word: the panel opens, the
+    word is highlighted, and playback pauses when auto-pause is on.
 11. Click several words, remove one from the panel: the removal shows only
     after the subtitle highlight drops it.
 12. Switch tabs in the same window and back: the panel follows the active
     tab and restores its selection.
 13. Kill the service worker with the panel open: the panel reconnects and
     the selection is republished.
-14. Analyze: a result renders; turn AI Context off in options while a
-    request is in flight: no result appears afterwards.
+14. Analyze: a result renders; turn Word explanations off in the settings
+    page while a request is in flight: no result appears afterwards.
 
 ## Settings and locale
 
-15. Change the UI language: popup, options, and panel switch without a
-    reload; the options page title follows.
-16. Seeded 2.5.0 profile: after the first boot, credentials are gone from
+15. Change the UI language: popup, settings page, and panel switch
+    without a reload; the settings page title follows.
+16. On a clean profile the settings page opens on Start and says
+    it is working on Netflix and Disney+. Change the text size: the
+    notice confirms it, stays while pointed at, and Undo (or Ctrl+Z)
+    puts it back. Search "twice": Sites opens with focus on Netflix's
+    hide switch. Show advanced
+    options, pick Netflix in the bar at the top, and change the size:
+    it gets a "Netflix only" tag, the Netflix overlay follows, Disney+
+    keeps the shared size, and "Use the All-sites value" drops it
+    again. Choose DeepL without a key: Start says it isn't set up yet
+    and that Microsoft Translator translates until it is; turn
+    fallback off and Start says nothing is translated.
+17. Seeded 2.5.0 profile: after the first boot, credentials are gone from
     sync storage, the provider is Microsoft, and every option shows the
     value the old profile had.

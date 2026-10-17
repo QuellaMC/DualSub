@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+    CREDENTIAL_SETUP,
     SENSITIVE_KEYS,
     SETTINGS_KEYS,
     configSchema,
@@ -13,8 +14,8 @@ import {
 } from './schema';
 
 describe('registry shape', () => {
-    it('has exactly the 52 v3 keys', () => {
-        expect(SETTINGS_KEYS).toHaveLength(52);
+    it('has exactly the 53 v3 keys', () => {
+        expect(SETTINGS_KEYS).toHaveLength(53);
     });
 
     it('retired v2 keys are gone', () => {
@@ -35,6 +36,12 @@ describe('registry shape', () => {
         }
     });
 
+    it('names what every credential is sent with', () => {
+        expect(Object.keys(CREDENTIAL_SETUP).sort()).toEqual(
+            [...SENSITIVE_KEYS].sort()
+        );
+    });
+
     it('every default validates against its own schema', () => {
         for (const key of SETTINGS_KEYS) {
             expect(validateSetting(key, getDefaultValue(key)), key).toBe(true);
@@ -48,6 +55,7 @@ describe('registry shape', () => {
         expect(local.sort()).toEqual(
             [
                 'appearanceAccordionOpen',
+                'showAdvancedSettings',
                 'vertexTokenExpiresAt',
                 ...SENSITIVE_KEYS,
             ].sort()

@@ -1,85 +1,219 @@
-import { SETTING_BOUNDS } from '@/config/schema';
-import { PROVIDER_IDS, type ProviderId } from '@/shared/providers';
-import { SettingCard } from '../SettingCard';
+import { SETTING_BOUNDS, validateSetting } from '@/config/schema';
+import type { ProviderId } from '@/shared/providers';
+import { Switch } from '../../design/Switch';
+import { HealthNotice } from '../../HealthNotice';
+import { useCommittedTextField } from '../../hooks/useCommittedTextField';
+import { PROVIDER_NAME_KEYS } from '../../providerNames';
+import { CommittedField } from '../controls/CommittedField';
+import { DeepLProviderCard } from '../providers/DeepLProviderCard';
+import { OpenAICompatibleProviderCard } from '../providers/OpenAICompatibleProviderCard';
+import { VertexProviderCard } from '../providers/VertexProviderCard';
+import { SharedTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
-const PROVIDER_LABELS: Record<ProviderId, string> = {
-    google: 'providerGoogleName',
-    microsoft_edge: 'providerMicrosoftName',
-    deepl: 'providerDeepLName',
-    openai_compatible: 'providerOpenAICompatibleName',
-    vertex_gemini: 'providerVertexGeminiName',
-};
+const PROVIDERS: readonly {
+    id: ProviderId;
+    helpKey: string;
+    tags: readonly { textKey: string; tone: string }[];
+    advanced?: true;
+}[] = [
+    {
+        id: 'microsoft_edge',
+        helpKey: 'providerMicrosoftHelp',
+        tags: [
+            { textKey: 'tagFree', tone: 'ok' },
+            { textKey: 'tagNoSetup', tone: 'ok' },
+            { textKey: 'commonRecommended', tone: 'accent' },
+        ],
+    },
+    {
+        id: 'google',
+        helpKey: 'providerGoogleHelp',
+        tags: [
+            { textKey: 'tagFree', tone: 'ok' },
+            { textKey: 'tagNoSetup', tone: 'ok' },
+        ],
+    },
+    {
+        id: 'deepl',
+        helpKey: 'providerDeepLHelp',
+        tags: [{ textKey: 'tagNeedsKey', tone: 'muted' }],
+    },
+    {
+        id: 'openai_compatible',
+        helpKey: 'providerAiHelp',
+        tags: [{ textKey: 'tagNeedsKey', tone: 'muted' }],
+    },
+    {
+        id: 'vertex_gemini',
+        helpKey: 'providerVertexHelp',
+        tags: [{ textKey: 'tagGoogleCloud', tone: 'advanced' }],
+        advanced: true,
+    },
+];
 
-function isProviderId(value: string): value is ProviderId {
-    return (PROVIDER_IDS as readonly string[]).includes(value);
-}
-
-export function TranslationSection({ t, settings, save }: SectionProps) {
+export function TranslationSection({
+    t,
+    settings,
+    save,
+    advanced,
+}: SectionProps & { advanced: boolean }) {
     const delayBounds = SETTING_BOUNDS.translationDelay;
+    const delay = useCommittedTextField({
+        value: String(settings.translationDelay),
+        validate: (draft) =>
+            draft.trim() !== '' &&
+            validateSetting('translationDelay', Number(draft)),
+        onCommit: (draft) => save({ translationDelay: Number(draft) }, 'quiet'),
+    });
+    const listed = PROVIDERS.filter(
+        (provider) =>
+            advanced ||
+            !provider.advanced ||
+            provider.id === settings.selectedProvider
+    );
+
     return (
-        <section id="translation">
-            <h2>{t('sectionTranslation')}</h2>
+        <section className="section" aria-labelledby="translation-title">
+            <h1 id="translation-title" tabIndex={-1}>
+                {t('navTranslation')}
+            </h1>
+            <p className="lead">{t('translationLead')}</p>
+            <SharedTag />
 
-            <SettingCard
-                title={t('cardTranslationEngineTitle')}
-                description={t('cardTranslationEngineDesc')}
-            >
-                <div className="setting">
-                    <label htmlFor="translationProvider">
-                        {t('providerLabel')}
-                    </label>
-                    <select
-                        id="translationProvider"
-                        value={settings.selectedProvider}
-                        onChange={(event) => {
-                            if (isProviderId(event.target.value)) {
-                                void save({
-                                    selectedProvider: event.target.value,
-                                });
+            <HealthNotice t={t} provider={settings.selectedProvider} />
+
+            <div className="card" id="translation-service">
+                <h2 className="label" id="translation-service-title">
+                    {t('translationServiceTitle')}
+                </h2>
+                <div
+                    className="providers"
+                    role="radiogroup"
+                    aria-labelledby="translation-service-title"
+                >
+                    {listed.map((provider) => (
+                        <button
+                            key={provider.id}
+                            id={`provider-${provider.id}`}
+                            type="button"
+                            role="radio"
+                            className="choice"
+                            aria-checked={
+                                settings.selectedProvider === provider.id
                             }
-                        }}
-                    >
-                        {PROVIDER_IDS.map((id) => (
-                            <option key={id} value={id}>
-                                {t(PROVIDER_LABELS[id])}
-                            </option>
-                        ))}
-                    </select>
+                            onClick={() =>
+                                void save(
+                                    { selectedProvider: provider.id },
+                                    {
+                                        message: t(
+                                            'toastProvider',
+                                            t(PROVIDER_NAME_KEYS[provider.id])
+                                        ),
+                                    }
+                                )
+                            }
+                        >
+                            <span className="choice-title">
+                                {t(PROVIDER_NAME_KEYS[provider.id])}
+                                {provider.tags.map((tag) => (
+                                    <span
+                                        key={tag.textKey}
+                                        className={`tag ${tag.tone}`}
+                                    >
+                                        {t(tag.textKey)}
+                                    </span>
+                                ))}
+                            </span>
+                            <span className="help">{t(provider.helpKey)}</span>
+                        </button>
+                    ))}
                 </div>
-            </SettingCard>
+            </div>
 
-            <SettingCard
-                title={t('cardPerformanceTitle')}
-                description={t('cardPerformanceDesc')}
-            >
-                <div className="setting">
-                    <label htmlFor="translationDelay">
-                        {t('requestDelayLabel')}
-                    </label>
-                    <input
-                        type="number"
-                        id="translationDelay"
-                        min={delayBounds.min}
-                        max={delayBounds.max}
-                        step="50"
-                        value={settings.translationDelay}
-                        onChange={(event) => {
-                            const delay = Number.parseInt(
-                                event.target.value,
-                                10
-                            );
-                            if (
-                                Number.isInteger(delay) &&
-                                delay >= delayBounds.min &&
-                                delay <= delayBounds.max
-                            ) {
-                                void save({ translationDelay: delay });
-                            }
-                        }}
+            {settings.selectedProvider === 'deepl' && (
+                <DeepLProviderCard
+                    t={t}
+                    apiKey={settings.deeplApiKey}
+                    plan={settings.deeplApiPlan}
+                    save={save}
+                />
+            )}
+            {settings.selectedProvider === 'openai_compatible' && (
+                <OpenAICompatibleProviderCard
+                    t={t}
+                    apiKey={settings.openaiCompatibleApiKey}
+                    baseUrl={settings.openaiCompatibleBaseUrl}
+                    model={settings.openaiCompatibleModel}
+                    advanced={advanced}
+                    save={save}
+                />
+            )}
+            {settings.selectedProvider === 'vertex_gemini' && (
+                <VertexProviderCard t={t} settings={settings} save={save} />
+            )}
+
+            <div className="card" id="translation-fallback">
+                <div className="row">
+                    <div className="grow">
+                        <div className="label" id="translation-fallback-title">
+                            {t('translationFallbackTitle')}
+                        </div>
+                        <div className="help">
+                            {t('translationFallbackHelp')}
+                        </div>
+                    </div>
+                    <Switch
+                        checked={settings.translationFallback}
+                        labelledBy="translation-fallback-title"
+                        onChange={(fallback) =>
+                            save(
+                                { translationFallback: fallback },
+                                {
+                                    message: t(
+                                        fallback
+                                            ? 'toastFallbackOn'
+                                            : 'toastFallbackOff'
+                                    ),
+                                }
+                            )
+                        }
                     />
                 </div>
-            </SettingCard>
+            </div>
+
+            {advanced && (
+                <div className="card" id="translation-delay">
+                    <div className="row">
+                        <div className="grow">
+                            <label
+                                className="label"
+                                htmlFor="translation-delay-field"
+                            >
+                                {t('translationDelayTitle')}{' '}
+                                <span className="tag advanced">
+                                    {t('commonAdvanced')}
+                                </span>
+                            </label>
+                            <div className="help">
+                                {t('translationDelayHelp')}
+                            </div>
+                        </div>
+                        <div className="stack">
+                            <CommittedField
+                                t={t}
+                                id="translation-delay-field"
+                                field={delay}
+                                type="number"
+                                min={delayBounds.min}
+                                max={delayBounds.max}
+                                step={50}
+                                className="mono narrow"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </section>
     );
 }

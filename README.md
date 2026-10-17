@@ -20,7 +20,7 @@
 - [Features](docs/en/features.md)
 - [Supported Platforms](docs/en/platforms.md)
 - [Translation Providers](docs/en/providers.md)
-- [AI Context Analysis](docs/en/ai-context.md)
+- [Word Explanations (AI Context)](docs/en/ai-context.md)
 - [Installation](docs/en/installation.md)
 - [Configuration](docs/en/configuration.md)
 
@@ -40,8 +40,9 @@
 
 - Dual subtitles on Netflix and Disney+
 - Multiple translation providers with rate limiting and caching
-- AI Context Analysis (OpenAI, Google Gemini)
+- Word explanations through your own OpenAI or Google Gemini key
 - Flexible layouts, appearance controls, and timing offset
+- Every setting on one plain-language page, with search, undo, and per-site settings
 - Multi-language UI (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
 See details in: [features.md](docs/en/features.md), [platforms.md](docs/en/platforms.md), [providers.md](docs/en/providers.md).
@@ -51,7 +52,7 @@ See details in: [features.md](docs/en/features.md), [platforms.md](docs/en/platf
 1. Install from the Chrome Web Store or load unpacked (see [installation.md](docs/en/installation.md)).
 2. Open Netflix or Disney+ and enable subtitles.
 3. Click the DualSub icon → enable dual subtitles and choose target language.
-4. Optional: Configure AI Context (provider, API key, model) in Advanced Settings.
+4. Optional: in the settings page, set up Word explanations with your own OpenAI or Gemini key.
 
 Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: [ai-context.md](docs/en/ai-context.md).
 
@@ -60,32 +61,29 @@ Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: 
 **For Language Learning:**
 
 ```
-Translation Provider: Microsoft Translate (Free)
-Layout: Top/Bottom
-Display Order: Original First
-Font Size: Large
-AI Context: Enabled (OpenAI GPT-5.6 Luna)
-Context Types: Cultural, Historical, Linguistic
+Translation: Microsoft Translator (free)
+The top line shows: Always the language you are learning
+Which line goes on top: The video's language
+Text size: Large
+Word explanations: On (meaning, culture, history)
 ```
 
-**For Performance:**
+**For Speed:**
 
 ```
-Request Delay: 100ms
-Translation Provider: Google Translate
-AI Context: Enabled (Google Gemini Flash)
-Context Cache: Enabled
+Translation: Google Translate
+Pause between translation requests: 100 ms
+Word explanations: Gemini 3.5 Flash, remembering answers
 ```
 
 **For Advanced Users:**
 
 ```
-Translation Provider: OpenAI Compatible
-AI Context Provider: OpenAI GPT-5.6 Luna
-Context Types: All
-Rate Limit: 60 requests/minute
-Cache TTL: 1 hour
-Debug Logging: Enabled
+Translation: AI translation through an OpenAI-compatible address
+Word explanations: OpenAI GPT-5.6 Luna
+What to explain: All
+Most requests per minute: 60
+Detail in the browser console: Everything (debug)
 ```
 
 ## 🛠️ Development Setup

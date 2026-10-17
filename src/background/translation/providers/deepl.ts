@@ -8,6 +8,7 @@ import {
     readProviderSettings,
     type TranslationProvider,
 } from '../provider';
+import { missingCredentials } from '@/shared/providers';
 import {
     TranslationProviderError,
     type ProviderErrorDetails,
@@ -121,7 +122,7 @@ export const deeplProvider: TranslationProvider = {
             PROVIDER,
             ['deeplApiKey', 'deeplApiPlan']
         );
-        if (deeplApiKey.trim() === '') {
+        if (missingCredentials(PROVIDER, { deeplApiKey }).length > 0) {
             throw missingCredential(PROVIDER, 'DeepL API key');
         }
         return translateWithDeepL(

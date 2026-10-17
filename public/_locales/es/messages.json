@@ -17,14 +17,8 @@
     "originalLanguageLabel": {
         "message": "Idioma Original:"
     },
-    "providerLabel": {
-        "message": "Proveedor:"
-    },
     "targetLanguageLabel": {
         "message": "Traducir a:"
-    },
-    "requestDelayLabel": {
-        "message": "Retraso de Solicitud (ms):"
     },
     "subtitleAppearanceTimingLegend": {
         "message": "Apariencia y Sincronización de Subtítulos"
@@ -64,9 +58,6 @@
     },
     "subtitleStylePlatform": {
         "message": "Igual que la plataforma"
-    },
-    "uiLanguageLabel": {
-        "message": "Idioma:"
     },
     "statusLanguageSetTo": {
         "message": "Idioma Configurado (Recargar Página): "
@@ -111,91 +102,16 @@
         "message": "Desfase inválido, revirtiendo."
     },
     "optionsPageTitle": {
-        "message": "Opciones de DualSub"
-    },
-    "optionsH1Title": {
-        "message": "DualSub"
-    },
-    "navGeneral": {
-        "message": "General"
+        "message": "Configuración de DualSub"
     },
     "navTranslation": {
         "message": "Traducción"
     },
-    "navProviders": {
-        "message": "Proveedores"
-    },
-    "navAbout": {
-        "message": "Acerca de"
-    },
-    "sectionGeneral": {
-        "message": "General"
-    },
-    "cardUILanguageTitle": {
-        "message": "Idioma de la Interfaz"
-    },
-    "cardUILanguageDesc": {
-        "message": "Elige el idioma de visualización para la interfaz de la extensión."
-    },
-    "cardHideOfficialSubtitlesTitle": {
-        "message": "Ocultar Subtítulos Oficiales"
-    },
-    "cardHideOfficialSubtitlesDesc": {
-        "message": "Ocultar los subtítulos oficiales de la plataforma de video cuando DualSub esté activo."
-    },
-    "hideOfficialSubtitlesLabel": {
-        "message": "Ocultar subtítulos oficiales:"
-    },
-    "sectionTranslation": {
-        "message": "Traducción"
-    },
-    "cardTranslationEngineTitle": {
-        "message": "Motor de Traducción"
-    },
-    "cardTranslationEngineDesc": {
-        "message": "Selecciona tu servicio de traducción preferido."
-    },
-    "cardPerformanceTitle": {
-        "message": "Rendimiento"
-    },
-    "cardPerformanceDesc": {
-        "message": "Ajusta cómo la extensión maneja las solicitudes de traducción para equilibrar velocidad y estabilidad."
-    },
-    "sectionProviders": {
-        "message": "Configuración de Proveedores"
-    },
-    "cardDeepLTitle": {
-        "message": "DeepL"
-    },
-    "cardDeepLDesc": {
-        "message": "Ingresa tu clave API para DeepL Translate. Elige entre planes Gratuito y Pro."
-    },
-    "apiKeyLabel": {
-        "message": "Clave API:"
-    },
-    "apiPlanLabel": {
-        "message": "Plan API:"
-    },
     "apiPlanFree": {
-        "message": "DeepL API Gratuito"
+        "message": "Gratuito"
     },
     "apiPlanPro": {
-        "message": "DeepL API Pro"
-    },
-    "sectionAbout": {
-        "message": "Acerca de"
-    },
-    "cardAboutTitle": {
-        "message": "DualSub"
-    },
-    "aboutVersion": {
-        "message": "Versión"
-    },
-    "aboutDescription": {
-        "message": "Esta extensión te ayuda a ver videos con subtítulos en dos idiomas en varias plataformas."
-    },
-    "aboutDevelopment": {
-        "message": "Desarrollado por QuellaMC & 1jifang."
+        "message": "Pro"
     },
     "lang_en": {
         "message": "Inglés"
@@ -239,20 +155,17 @@
     "lang_auto": {
         "message": "Automático (según el audio)"
     },
-    "testDeepLButton": {
-        "message": "Probar Conexión DeepL"
-    },
     "deeplApiKeyError": {
         "message": "Por favor ingresa tu clave API de DeepL primero."
     },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ La clave API de DeepL necesita ser probada."
+    },
     "testingButton": {
-        "message": "Probando..."
+        "message": "Comprobando…"
     },
     "testingConnection": {
         "message": "Probando conexión DeepL..."
-    },
-    "deeplTestSuccessSimple": {
-        "message": "✅ ¡Prueba de API DeepL exitosa!"
     },
     "deeplTestUnexpectedFormat": {
         "message": "⚠️ DeepL API respondió pero con formato inesperado"
@@ -272,92 +185,17 @@
     "deeplTestGenericError": {
         "message": "❌ Prueba fallida: %s"
     },
-    "cardGoogleTitle": {
-        "message": "Google Translate"
-    },
-    "cardGoogleDesc": {
-        "message": "Servicio de traducción gratuito proporcionado por Google. No requiere configuración adicional."
-    },
-    "cardMicrosoftTitle": {
-        "message": "Microsoft Translate"
-    },
-    "cardMicrosoftDesc": {
-        "message": "Servicio de traducción gratuito proporcionado por Microsoft Edge. No requiere configuración adicional."
-    },
-    "providerStatus": {
-        "message": "Estado:"
-    },
-    "statusReady": {
-        "message": "Listo para usar"
-    },
-    "providerFeatures": {
-        "message": "Características:"
-    },
-    "featureFree": {
-        "message": "Gratis para usar"
-    },
-    "featureNoApiKey": {
-        "message": "No requiere clave API"
-    },
-    "featureWideLanguageSupport": {
-        "message": "Amplio soporte de idiomas"
-    },
-    "featureFastTranslation": {
-        "message": "Traducción rápida"
-    },
-    "featureHighQuality": {
-        "message": "Traducción de alta calidad"
-    },
-    "featureGoodPerformance": {
-        "message": "Buen rendimiento"
-    },
-    "featureHighestQuality": {
-        "message": "Traducción de la más alta calidad"
-    },
-    "featureApiKeyRequired": {
-        "message": "Requiere clave API"
-    },
-    "featureLimitedLanguages": {
-        "message": "Soporte limitado de idiomas"
-    },
-    "featureUsageLimits": {
-        "message": "Se aplican límites de uso"
-    },
-    "providerGoogleName": {
-        "message": "Google Translate (Gratuito)"
-    },
-    "providerMicrosoftName": {
-        "message": "Microsoft Translate (Gratuito)"
-    },
-    "providerDeepLName": {
-        "message": "DeepL (Requiere Clave API)"
-    },
-    "providerOpenAICompatibleName": {
-        "message": "Compatible con OpenAI (Requiere Clave API)"
-    },
-    "providerVertexGeminiName": {
-        "message": "Vertex AI Gemini (Requiere Clave API)"
-    },
-    "cardOpenAICompatibleTitle": {
-        "message": "Compatible con OpenAI (Requiere Clave API)"
-    },
-    "cardOpenAICompatibleDesc": {
-        "message": "Ingresa tu clave API y configuraciones para servicios compatibles con OpenAI como Gemini."
-    },
-    "cardVertexGeminiTitle": {
-        "message": "Vertex AI Gemini (Requiere Clave API)"
-    },
     "vertexAccessTokenLabel": {
-        "message": "Token de Acceso:"
+        "message": "Token de acceso"
     },
     "vertexProjectIdLabel": {
-        "message": "ID del Proyecto:"
+        "message": "ID del proyecto"
     },
     "vertexLocationLabel": {
-        "message": "Ubicación:"
+        "message": "Región"
     },
     "vertexModelLabel": {
-        "message": "Modelo:"
+        "message": "Modelo"
     },
     "vertexMissingConfig": {
         "message": "Por favor ingresa el token de acceso y el ID del proyecto."
@@ -366,13 +204,13 @@
         "message": "Conexión fallida: %s"
     },
     "vertexServiceAccountLabel": {
-        "message": "JSON de Cuenta de Servicio:"
+        "message": "Archivo de cuenta de servicio"
     },
     "vertexImportButton": {
-        "message": "Importar Archivo JSON"
+        "message": "Elegir archivo…"
     },
     "vertexImporting": {
-        "message": "Importando..."
+        "message": "Importando…"
     },
     "vertexGeneratingToken": {
         "message": "Generando token de acceso..."
@@ -383,29 +221,8 @@
     "vertexConfigured": {
         "message": "⚠️ Vertex AI configurado. Por favor prueba la conexión."
     },
-    "featureVertexServiceAccount": {
-        "message": "Importación de JSON de cuenta de servicio"
-    },
-    "featureVertexGemini": {
-        "message": "Modelos Google Gemini a través de Vertex AI"
-    },
-    "baseUrlLabel": {
-        "message": "URL Base:"
-    },
-    "modelLabel": {
-        "message": "Modelo:"
-    },
-    "featureCustomizable": {
-        "message": "Endpoint y modelo personalizables"
-    },
     "testConnectionButton": {
-        "message": "Probar Conexión"
-    },
-    "openaiApiKeyPlaceholder": {
-        "message": "Ingresa tu clave API compatible con OpenAI"
-    },
-    "openaiBaseUrlPlaceholder": {
-        "message": "ej., https://api.openai.com/v1"
+        "message": "Comprobar conexión"
     },
     "openaiApiKeyError": {
         "message": "Por favor ingresa tu clave API primero."
@@ -431,33 +248,6 @@
     "openaiFailedToFetchModels": {
         "message": "Error al obtener modelos: %s"
     },
-    "cardLoggingLevelTitle": {
-        "message": "Nivel de Registro"
-    },
-    "cardLoggingLevelDesc": {
-        "message": "Controla la cantidad de información de depuración mostrada en la consola del navegador. Los niveles más altos incluyen todos los mensajes de niveles inferiores."
-    },
-    "loggingLevelLabel": {
-        "message": "Nivel de Registro:"
-    },
-    "loggingLevelOff": {
-        "message": "Desactivado"
-    },
-    "loggingLevelError": {
-        "message": "Solo Errores"
-    },
-    "loggingLevelWarn": {
-        "message": "Advertencias y Errores"
-    },
-    "loggingLevelInfo": {
-        "message": "Info y Superior"
-    },
-    "loggingLevelDebug": {
-        "message": "Debug (Todo)"
-    },
-    "deeplTestNeedsTesting": {
-        "message": "⚠️ La clave API de DeepL necesita ser probada."
-    },
     "aiContextUsage": {
         "message": "💡 Uso y Ejemplos"
     },
@@ -469,90 +259,6 @@
     },
     "aiContextKeyInsights": {
         "message": "🔑 Perspectivas Clave"
-    },
-    "navAIContext": {
-        "message": "Contexto IA"
-    },
-    "sectionAIContext": {
-        "message": "Asistente de Contexto IA"
-    },
-    "cardAIContextToggleTitle": {
-        "message": "Habilitar Análisis de Contexto IA"
-    },
-    "cardAIContextToggleDesc": {
-        "message": "Habilita el análisis de contexto cultural, histórico y lingüístico impulsado por IA para el texto de los subtítulos. Haz clic en palabras o frases en los subtítulos para obtener explicaciones detalladas."
-    },
-    "aiContextEnabledLabel": {
-        "message": "Habilitar Contexto IA:"
-    },
-    "cardAIContextProviderTitle": {
-        "message": "Proveedor de IA"
-    },
-    "cardAIContextProviderDesc": {
-        "message": "Elige el proveedor de servicios de IA para el análisis de contexto. Diferentes proveedores pueden ofrecer calidad y tiempos de respuesta variables."
-    },
-    "aiContextProviderLabel": {
-        "message": "Proveedor:"
-    },
-    "cardOpenAIContextTitle": {
-        "message": "Configuración de OpenAI"
-    },
-    "cardOpenAIContextDesc": {
-        "message": "Configura tus ajustes de API de OpenAI para el análisis de contexto. Necesitas una clave API válida de OpenAI."
-    },
-    "openaiApiKeyLabel": {
-        "message": "Clave API:"
-    },
-    "openaiBaseUrlLabel": {
-        "message": "URL Base:"
-    },
-    "openaiModelLabel": {
-        "message": "Modelo:"
-    },
-    "cardGeminiContextTitle": {
-        "message": "Configuración de Google Gemini"
-    },
-    "cardGeminiContextDesc": {
-        "message": "Configura tus ajustes de API de Google Gemini para el análisis de contexto. Necesitas una clave API válida de Gemini."
-    },
-    "geminiApiKeyLabel": {
-        "message": "Clave API:"
-    },
-    "geminiModelLabel": {
-        "message": "Modelo:"
-    },
-    "cardAIContextTypesTitle": {
-        "message": "Tipos de Contexto"
-    },
-    "cardAIContextTypesDesc": {
-        "message": "Habilita los tipos de análisis de contexto que quieres usar. Puedes habilitar múltiples tipos."
-    },
-    "contextTypeCulturalLabel": {
-        "message": "Contexto Cultural:"
-    },
-    "contextTypeHistoricalLabel": {
-        "message": "Contexto Histórico:"
-    },
-    "contextTypeLinguisticLabel": {
-        "message": "Análisis Lingüístico:"
-    },
-    "cardAIContextAdvancedTitle": {
-        "message": "Configuración Avanzada"
-    },
-    "cardAIContextAdvancedDesc": {
-        "message": "Configure opciones avanzadas para el comportamiento del análisis de contexto de IA."
-    },
-    "aiContextTimeoutLabel": {
-        "message": "Tiempo de Espera de Solicitud (ms):"
-    },
-    "aiContextRateLimitLabel": {
-        "message": "Límite de Velocidad (solicitudes/min):"
-    },
-    "aiContextCacheEnabledLabel": {
-        "message": "Habilitar Caché:"
-    },
-    "aiContextRetryAttemptsLabel": {
-        "message": "Intentos de Reintento:"
     },
     "sidepanelLoading": {
         "message": "Cargando..."
@@ -597,112 +303,61 @@
         "message": "No hay palabras seleccionadas para el análisis"
     },
     "sidepanelErrorDisabled": {
-        "message": "El análisis de contexto IA está deshabilitado. Habilítalo en la configuración."
+        "message": "Las explicaciones de palabras están desactivadas. Actívalas en la configuración de DualSub."
     },
     "sidepanelErrorGeneric": {
         "message": "Ocurrió un error durante el análisis."
     },
-    "advancedNote": {
-        "message": "Automatic side-panel opening requires Chrome 116 or newer."
-    },
-    "advancedTitle": {
-        "message": "Configuración Avanzada"
-    },
-    "advancedWarningDescription": {
-        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
-    },
-    "advancedWarningTitle": {
-        "message": "Important Note"
-    },
     "aiContextTypesRequired": {
-        "message": "Select at least one context type."
+        "message": "Elige al menos una."
     },
-    "autoOpenSidePanel": {
-        "message": "Auto-Open Side Panel:"
-    },
-    "autoOpenSidePanelDescription": {
-        "message": "Automatically open the side panel when you click on subtitle words."
-    },
-    "autoPauseVideo": {
-        "message": "Auto-Pause Video:"
-    },
-    "autoPauseVideoDescription": {
-        "message": "Automatically pause the video when you open the side panel to select words."
-    },
-    "cardVertexGeminiEphemeralDesc": {
-        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
-    },
-    "featureVertexEphemeralToken": {
-        "message": "One-time token generation without storing the service-account key"
+    "deeplTestSuccessSimple": {
+        "message": "✅ ¡Prueba de API DeepL exitosa!"
     },
     "navAdvanced": {
-        "message": "Configuración Avanzada"
+        "message": "Avanzado"
     },
     "openaiEndpointPermissionRequired": {
-        "message": "Use Test Connection to grant access to this endpoint."
+        "message": "Haz clic en «%s» para que DualSub pueda acceder a esta dirección."
     },
     "openaiHostPermissionButton": {
-        "message": "Allow API host"
+        "message": "Permitir el host de la API"
     },
     "openaiHostPermissionChecking": {
-        "message": "Checking API host access…"
+        "message": "Comprobando el acceso al host de la API…"
     },
     "openaiHostPermissionDenied": {
-        "message": "API host access was not granted."
+        "message": "No se concedió el acceso al host de la API."
     },
     "openaiHostPermissionError": {
         "message": "No se pudo solicitar acceso al host de la API: %s"
     },
     "openaiHostPermissionGranted": {
-        "message": "API host access granted."
+        "message": "Acceso al host de la API concedido."
     },
     "openaiHostPermissionScope": {
         "message": "Endpoint configurado: %s. Ámbito del permiso de Chrome: %s (todas las rutas y puertos de este host)."
     },
-    "sidePanelBehaviorDescription": {
-        "message": "Configure how the AI analysis side panel opens and looks."
-    },
-    "sidePanelBehaviorTitle": {
-        "message": "Side Panel Behavior"
-    },
     "sidepanelErrorNoContextTypes": {
-        "message": "Selecciona al menos un tipo de contexto antes de analizar."
-    },
-    "sidePanelTheme": {
-        "message": "Side Panel Theme:"
-    },
-    "themeAuto": {
-        "message": "Auto (System)"
-    },
-    "themeDark": {
-        "message": "Dark"
-    },
-    "themeLight": {
-        "message": "Light"
+        "message": "En la configuración de DualSub, elige al menos una cosa que explicar."
     },
     "vertexImportSuccessEphemeral": {
-        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+        "message": "Token de acceso generado. La clave de la cuenta de servicio no se guardó; vuelve a importar el JSON cuando caduque el token."
     },
     "vertexNotConfiguredEphemeral": {
-        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+        "message": "Importa una vez un JSON de cuenta de servicio para generar un token temporal, o pega un token manualmente."
     },
     "vertexTokenExpiredReimport": {
-        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+        "message": "⚠️ Token de acceso caducado. Vuelve a importar el JSON de la cuenta de servicio o pega un token de acceso nuevo."
     },
     "vertexTokenExpiringReimport": {
-        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
-    },
-    "videoControlDescription": {
-        "message": "Control how the video player behaves when the side panel opens."
+        "message": "⚠️ El token caduca en %s minutos. Vuelve a importar el JSON de la cuenta de servicio o prepara otro token de acceso."
     },
     "invalidSettingValue": {
         "message": "Introduce un valor válido."
     },
     "settingsLoadFailed": {
-        "message": "No se pudo cargar la configuración. Intenta actualizar la ventana emergente."
-    },
-    "videoControlTitle": {
-        "message": "Video Control"
+        "message": "No se pudieron cargar los ajustes. Cierra esto y vuelve a abrirlo."
     },
     "translationApiError": {
         "message": "[Error de API de Traducción. Revisa la configuración o prueba otro proveedor.]"
@@ -728,91 +383,1174 @@
     "editCustomLook": {
         "message": "Editar el estilo personalizado en la configuración"
     },
-    "navAppearance": {
-        "message": "Apariencia"
+    "advancedBackupTitle": {
+        "message": "Copia de seguridad"
     },
-    "sectionAppearance": {
-        "message": "Apariencia de los subtítulos"
+    "advancedChooseFile": {
+        "message": "Elegir un archivo…"
     },
-    "cardSubtitleStyleTitle": {
-        "message": "Estilo de subtítulos"
+    "advancedCopy": {
+        "message": "Copiar"
     },
-    "cardSubtitleStyleDesc": {
-        "message": "Cómo se dibujan ambas líneas de subtítulos. Igual que la plataforma sigue la configuración de subtítulos de tu perfil en el sitio; la vista previa muestra el aspecto predeterminado de la plataforma. Personalizado empieza con el estilo propio de DualSub y se edita abajo."
+    "advancedCopyFailed": {
+        "message": "Se bloqueó la copia. Selecciona el texto y cópialo tú."
     },
-    "previewPlatformLabel": {
-        "message": "Plataforma de la vista previa:"
+    "advancedDownload": {
+        "message": "Descargar ajustes"
     },
-    "lookPreviewLabel": {
-        "message": "Vista previa de los subtítulos"
+    "advancedJsonHelp": {
+        "message": "Lo que guarda DualSub, sin tus claves. Cada sitio guarda solo lo que es distinto."
     },
-    "lookPreviewOriginal": {
-        "message": "Where there's a will, there's a way."
+    "advancedJsonTitle": {
+        "message": "Todos los ajustes en JSON"
     },
-    "lookPreviewTranslation": {
-        "message": "Querer es poder."
+    "advancedLead": {
+        "message": "Copias de seguridad, los ajustes en bruto y herramientas para resolver problemas."
     },
-    "cardCustomLookTitle": {
-        "message": "Estilo personalizado"
+    "advancedLoadApply": {
+        "message": "Reemplazarlos"
     },
-    "cardCustomLookDesc": {
-        "message": "Tu propia tipografía para ambas líneas. Cambiar un valor selecciona el estilo Personalizado."
+    "advancedLoadFile": {
+        "message": "Cargar ajustes desde un archivo"
     },
-    "customFontLabel": {
-        "message": "Fuente:"
+    "advancedLoadFileHelp": {
+        "message": "Antes de reemplazar nada, verás cuántos ajustes van a cambiar."
     },
-    "customFontDefault": {
-        "message": "Predeterminada de la página"
+    "advancedLoadNothing": {
+        "message": "Ese archivo no cambia nada."
     },
-    "customFontSansSerif": {
-        "message": "Sans-serif"
+    "advancedLoadPreview": {
+        "message": "Ajustes que van a cambiar: %d."
     },
-    "customFontSerif": {
-        "message": "Serif"
+    "advancedLoadUnreadable": {
+        "message": "No se puede cargar ese archivo: no es un archivo de ajustes de DualSub o uno de sus ajustes no es válido."
     },
-    "customFontMonospace": {
-        "message": "Monoespaciada"
+    "advancedLoggingErrors": {
+        "message": "Solo errores"
     },
-    "customFontCasual": {
-        "message": "Informal"
+    "advancedLoggingEverything": {
+        "message": "Todo (depuración)"
     },
-    "customFontSmallCaps": {
-        "message": "Versalitas"
+    "advancedLoggingNormal": {
+        "message": "Normal"
     },
-    "customBoldLabel": {
-        "message": "Negrita:"
+    "advancedLoggingOff": {
+        "message": "Nada"
     },
-    "customOriginalColorLabel": {
-        "message": "Color del texto original:"
+    "advancedLoggingTitle": {
+        "message": "Detalle en la consola del navegador"
     },
-    "customEdgeLabel": {
-        "message": "Borde del texto:"
+    "advancedLoggingWarnings": {
+        "message": "Advertencias y errores"
     },
-    "customEdgeNone": {
-        "message": "Ninguno"
+    "advancedReportCopy": {
+        "message": "Copiar informe"
     },
-    "customEdgeShadow": {
-        "message": "Sombra"
+    "advancedReportHelp": {
+        "message": "Versión, navegador y ajustes sin claves, listos para pegar en un informe de error."
     },
-    "customEdgeOutline": {
-        "message": "Contorno"
+    "advancedReportTitle": {
+        "message": "Informe de diagnóstico"
     },
-    "customEdgeRaised": {
-        "message": "Relieve"
+    "advancedResetButton": {
+        "message": "Restablecer todo…"
     },
-    "customEdgeDepressed": {
+    "advancedResetConfirm": {
+        "message": "¿Restablecer todos los ajustes? Podrás deshacerlo justo después."
+    },
+    "advancedResetDo": {
+        "message": "Restablecer"
+    },
+    "advancedResetHelp": {
+        "message": "Devuelve todos los ajustes a los recomendados y quita los ajustes propios de cada sitio. Tus claves se mantienen, junto con lo que configuraste para cada una, como su dirección y su modelo, y también el idioma de estas páginas."
+    },
+    "advancedResetTitle": {
+        "message": "Empezar de cero"
+    },
+    "advancedSaveFile": {
+        "message": "Guardar mis ajustes en un archivo"
+    },
+    "advancedSaveFileHelp": {
+        "message": "Incluye los ajustes propios de cada sitio. Las claves API se quedan en este equipo y nunca se guardan en el archivo."
+    },
+    "advancedTroubleshootingTitle": {
+        "message": "Solución de problemas"
+    },
+    "commonAdvanced": {
+        "message": "Avanzado"
+    },
+    "commonCancel": {
+        "message": "Cancelar"
+    },
+    "commonChange": {
+        "message": "Cambiar"
+    },
+    "commonLoading": {
+        "message": "Cargando…"
+    },
+    "commonRecommended": {
+        "message": "Recomendado"
+    },
+    "commonOn": {
+        "message": "Activado"
+    },
+    "commonOff": {
+        "message": "Desactivado"
+    },
+    "explainCache": {
+        "message": "Recordar respuestas"
+    },
+    "explainAllowHost": {
+        "message": "DualSub necesita tu permiso para conectarse a esta dirección antes de poder explicar palabras."
+    },
+    "explainLead": {
+        "message": "Haz clic en cualquier palabra de los subtítulos para ver qué significa, cómo se usa y la historia que hay detrás."
+    },
+    "explainLimitsTitle": {
+        "message": "Modelo y límites"
+    },
+    "explainOpenTitle": {
+        "message": "Abrir el panel de explicaciones al hacer clic en una palabra"
+    },
+    "explainPauseTitle": {
+        "message": "Pausar el video"
+    },
+    "explainRateLimit": {
+        "message": "Máximo de solicitudes por minuto"
+    },
+    "explainReadingTitle": {
+        "message": "Mientras leo"
+    },
+    "explainRetries": {
+        "message": "Intentos antes de rendirse"
+    },
+    "explainSampleMeaning": {
+        "message": "Lluvia muy fuerte. Una expresión inglesa antigua e informal; nadie sabe bien de dónde viene."
+    },
+    "explainSetupHelp": {
+        "message": "Las explicaciones vienen de un servicio de IA, a través de tu propia cuenta. Tu clave se queda en este equipo."
+    },
+    "explainSetupTitle": {
+        "message": "Configúralo en tres pasos"
+    },
+    "explainStatusOff": {
+        "message": "Desactivado. Tu clave sigue guardada."
+    },
+    "explainNeedsSetup": {
+        "message": "Falta configurar"
+    },
+    "explainSetUpWith": {
+        "message": "Configurado con %s"
+    },
+    "explainKeySaved": {
+        "message": "Tu clave solo está guardada en este equipo."
+    },
+    "explainChangeKey": {
+        "message": "Cambiar clave"
+    },
+    "explainChooseService": {
+        "message": "Elige un servicio de IA"
+    },
+    "explainAddress": {
+        "message": "Dirección, para servidores compatibles"
+    },
+    "explainStatusOn": {
+        "message": "Haz clic en una palabra de los subtítulos para probarlo."
+    },
+    "explainStatusSetup": {
+        "message": "Completa los tres pasos de abajo para activarlo."
+    },
+    "explainThemeAuto": {
+        "message": "Igual que mi equipo"
+    },
+    "explainThemeDark": {
+        "message": "Oscuro"
+    },
+    "explainThemeLight": {
+        "message": "Claro"
+    },
+    "explainThemeTitle": {
+        "message": "Colores del panel"
+    },
+    "explainTimeout": {
+        "message": "Esperar como máximo (segundos)"
+    },
+    "explainTitle": {
+        "message": "Explicaciones de palabras"
+    },
+    "explainTurnOn": {
+        "message": "Activar"
+    },
+    "explainTypeCulture": {
+        "message": "La cultura que hay detrás"
+    },
+    "explainTypeHistory": {
+        "message": "Historia y origen"
+    },
+    "explainTypeMeaning": {
+        "message": "Significado y cómo se usa"
+    },
+    "explainTypesTitle": {
+        "message": "Qué explicar"
+    },
+    "healthCovered": {
+        "message": "Mientras tanto, traduce %s."
+    },
+    "healthCredentials": {
+        "message": "No se aceptó la clave."
+    },
+    "healthNotCovered": {
+        "message": "Las traducciones se detienen hasta que vuelva a funcionar."
+    },
+    "healthQuota": {
+        "message": "El límite del plan está agotado."
+    },
+    "healthRejected": {
+        "message": "Rechazó las solicitudes. Revisa el modelo y la dirección."
+    },
+    "healthTitle": {
+        "message": "%s no funciona."
+    },
+    "helpAboutTitle": {
+        "message": "Acerca de DualSub"
+    },
+    "helpFixIt": {
+        "message": "Arréglalo por mí"
+    },
+    "helpGoTiming": {
+        "message": "Ir a Sincronización"
+    },
+    "helpGoTranslation": {
+        "message": "Ir a Traducción"
+    },
+    "helpLead": {
+        "message": "Problemas comunes y cómo resolver cada uno."
+    },
+    "helpNoSubtitlesPlaying": {
+        "message": "Asegúrate de que el video se esté reproduciendo y no esté detenido en la pantalla del título."
+    },
+    "helpNoSubtitlesReload": {
+        "message": "Recarga la página."
+    },
+    "helpNoSubtitlesSite": {
+        "message": "Comprueba que DualSub esté activado en el sitio, en %s."
+    },
+    "helpNoSubtitlesTitle": {
+        "message": "No aparecen subtítulos"
+    },
+    "helpNoSubtitlesTracks": {
+        "message": "Comprueba que el video tenga subtítulos: abre el menú de subtítulos del propio sitio."
+    },
+    "helpPrivacy": {
+        "message": "El texto de los subtítulos solo va al servicio de traducción que elijas. No hay rastreo y no se nos envía nada."
+    },
+    "helpPrivacyFallback": {
+        "message": "El texto de los subtítulos solo va al servicio de traducción que elijas y a los gratuitos que lo cubren cuando falla. No hay rastreo y no se nos envía nada."
+    },
+    "helpSource": {
+        "message": "Código fuente"
+    },
+    "helpMadeBy": {
+        "message": "Hecho por QuellaMC y 1jifang"
+    },
+    "helpTimingHelp": {
+        "message": "Adelanta o atrasa un poco los subtítulos."
+    },
+    "helpTimingTitle": {
+        "message": "Las palabras no coinciden con lo que oigo"
+    },
+    "helpTranslationHelp": {
+        "message": "Prueba otro servicio de traducción o usa la traducción oficial."
+    },
+    "helpTranslationTitle": {
+        "message": "La traducción no suena bien"
+    },
+    "helpTwiceHelp": {
+        "message": "Los subtítulos propios del sitio se muestran debajo de los de DualSub."
+    },
+    "helpTwiceTitle": {
+        "message": "Veo los subtítulos dos veces"
+    },
+    "helpVersion": {
+        "message": "Versión %s"
+    },
+    "languagesLead": {
+        "message": "Qué idioma muestra cada línea de subtítulos."
+    },
+    "languagesOfficialHelp": {
+        "message": "Netflix y Disney+ suelen tener subtítulos en tu idioma hechos por personas. Se leen mejor que una traducción automática. Cuando una serie o película no los tiene, DualSub traduce."
+    },
+    "languagesOfficialTitle": {
+        "message": "Usar la traducción oficial cuando la haya"
+    },
+    "languagesSpeakHelp": {
+        "message": "La línea de abajo se traduce a este idioma."
+    },
+    "languagesSpeakTitle": {
+        "message": "Hablo"
+    },
+    "languagesTopAuto": {
+        "message": "El idioma que se habla en el video"
+    },
+    "languagesTopAutoHelp": {
+        "message": "DualSub se adapta a cada video. Una serie coreana muestra coreano arriba; una película en inglés, inglés."
+    },
+    "languagesTopFixed": {
+        "message": "Siempre el mismo idioma"
+    },
+    "languagesTopFixedHelp": {
+        "message": "Para aprender un idioma con todos los videos. Funciona cuando el sitio tiene subtítulos en ese idioma."
+    },
+    "languagesTopFixedMenu": {
+        "message": "Idioma de la línea de arriba"
+    },
+    "languagesTopTitle": {
+        "message": "La línea de arriba muestra"
+    },
+    "lookArrangementSideBySide": {
+        "message": "Una al lado de la otra"
+    },
+    "lookArrangementStacked": {
+        "message": "Una encima de la otra"
+    },
+    "lookArrangementTitle": {
+        "message": "Cómo se colocan las dos líneas"
+    },
+    "lookBoldLabel": {
+        "message": "Letras en negrita"
+    },
+    "lookBoxColorLabel": {
+        "message": "Color del recuadro detrás del texto"
+    },
+    "lookBoxOpacityLabel": {
+        "message": "Cuánto se ve el recuadro: %d %"
+    },
+    "lookColorCyan": {
+        "message": "Cian"
+    },
+    "lookColorGreen": {
+        "message": "Verde"
+    },
+    "lookColorOther": {
+        "message": "Otro color"
+    },
+    "lookColorPink": {
+        "message": "Rosa"
+    },
+    "lookColorWhite": {
+        "message": "Blanco"
+    },
+    "lookColorYellow": {
+        "message": "Amarillo"
+    },
+    "lookCustomizeButton": {
+        "message": "Cambiar colores y tipo de letra"
+    },
+    "lookEdgeDepressed": {
         "message": "Hundido"
     },
-    "customBackgroundColorLabel": {
-        "message": "Color de fondo:"
+    "lookEdgeLabel": {
+        "message": "Borde alrededor de las letras"
     },
-    "customBackgroundOpacityLabel": {
-        "message": "Opacidad del fondo:"
+    "lookEdgeNone": {
+        "message": "Ninguno"
     },
-    "translationColorLabel": {
-        "message": "Color del texto traducido:"
+    "lookEdgeOutline": {
+        "message": "Contorno"
     },
-    "translationColorHelp": {
-        "message": "Ambos estilos dibujan la línea traducida con este color."
+    "lookEdgeRaised": {
+        "message": "En relieve"
+    },
+    "lookEdgeShadow": {
+        "message": "Sombra suave"
+    },
+    "lookExactPosition": {
+        "message": "Altura exacta: %s (de 0.1, lo más abajo, a 9.9, el centro)"
+    },
+    "lookExactSize": {
+        "message": "Tamaño exacto del texto: %s×"
+    },
+    "lookFineTuneButton": {
+        "message": "Afinar tamaño, altura y espaciado"
+    },
+    "lookFontCasual": {
+        "message": "Informal"
+    },
+    "lookFontDefault": {
+        "message": "La letra del propio sitio"
+    },
+    "lookFontLabel": {
+        "message": "Tipo de letra"
+    },
+    "lookFontMono": {
+        "message": "Máquina de escribir"
+    },
+    "lookFontSans": {
+        "message": "Sencilla (sans-serif)"
+    },
+    "lookFontSerif": {
+        "message": "De libro (serif)"
+    },
+    "lookFontSmallCaps": {
+        "message": "Mayúsculas pequeñas"
+    },
+    "lookGap": {
+        "message": "Espacio entre las líneas: %s de una línea"
+    },
+    "lookGapTitle": {
+        "message": "Espacio entre las líneas"
+    },
+    "lookLead": {
+        "message": "La vista previa cambia al instante y tu video se actualiza en menos de un segundo."
+    },
+    "lookMoveDown": {
+        "message": "Bajar"
+    },
+    "lookMoveUp": {
+        "message": "Subir"
+    },
+    "lookOrderMineFirst": {
+        "message": "Mi idioma arriba"
+    },
+    "lookOrderTitle": {
+        "message": "Qué línea va arriba"
+    },
+    "lookOrderVideoFirst": {
+        "message": "El idioma del video arriba"
+    },
+    "lookPositionBottom": {
+        "message": "Cerca del borde de abajo"
+    },
+    "lookPositionLower": {
+        "message": "En la parte baja de la imagen"
+    },
+    "lookPositionMiddle": {
+        "message": "Cerca del centro de la imagen"
+    },
+    "lookPositionTitle": {
+        "message": "Posición en la pantalla"
+    },
+    "lookPositionUsual": {
+        "message": "Un poco por encima del borde de abajo, donde los prefiere la mayoría"
+    },
+    "lookPresetBoxed": {
+        "message": "En recuadro"
+    },
+    "lookPresetCinema": {
+        "message": "Cine"
+    },
+    "lookPresetClassic": {
+        "message": "Clásico"
+    },
+    "lookPresetContrast": {
+        "message": "Alto contraste"
+    },
+    "lookPresetsLabel": {
+        "message": "Diseños listos para usar"
+    },
+    "lookPresetSample": {
+        "message": "Hola"
+    },
+    "lookSizeTitle": {
+        "message": "Tamaño del texto"
+    },
+    "lookStyleCustom": {
+        "message": "Mi propio estilo"
+    },
+    "lookStyleCustomHelp": {
+        "message": "Empieza con un diseño listo para usar y, si quieres, cambia los colores y el tipo de letra."
+    },
+    "lookStylePlatform": {
+        "message": "Igual que el sitio donde estás"
+    },
+    "lookStylePlatformSite": {
+        "message": "Igual que %s"
+    },
+    "lookStylePlatformHelp": {
+        "message": "Sigue los ajustes de subtítulos de tu perfil de Netflix o Disney+."
+    },
+    "lookStyleTitle": {
+        "message": "Estilo"
+    },
+    "lookTopColorLabel": {
+        "message": "Color de la línea de arriba"
+    },
+    "lookTranslationColorHelp": {
+        "message": "Se usa con los dos estilos, para que las dos líneas se distingan fácilmente."
+    },
+    "lookTranslationColorTitle": {
+        "message": "Color de la línea traducida"
+    },
+    "navAdvancedSwitch": {
+        "message": "Mostrar opciones avanzadas"
+    },
+    "navAdvancedSwitchHelp": {
+        "message": "Perfiles por sitio, detalles de la API, límites y copias de seguridad."
+    },
+    "navExplanations": {
+        "message": "Explicaciones de palabras"
+    },
+    "navHelp": {
+        "message": "Ayuda"
+    },
+    "navLabel": {
+        "message": "Secciones de la configuración"
+    },
+    "navLanguages": {
+        "message": "Idiomas"
+    },
+    "navLook": {
+        "message": "Cómo se ven los subtítulos"
+    },
+    "navSites": {
+        "message": "Sitios"
+    },
+    "navStart": {
+        "message": "Inicio"
+    },
+    "navTiming": {
+        "message": "Sincronización"
+    },
+    "previewCaptionAuto": {
+        "message": "Línea del video: %s, el idioma que se habla en este video. Tu línea: %s, la de la propia serie o película cuando tiene traducción."
+    },
+    "previewCaptionFixed": {
+        "message": "Línea del video: %s. Tu línea: %s, la de la propia serie o película cuando tiene traducción."
+    },
+    "previewCaptionAutoTranslated": {
+        "message": "Línea del video: %s, el idioma que se habla en este video. Tu línea: %s, traducida por DualSub."
+    },
+    "previewCaptionAutoOne": {
+        "message": "Línea del video: %s, el idioma que se habla en este video."
+    },
+    "previewCaptionFixedTranslated": {
+        "message": "Línea del video: %s. Tu línea: %s, traducida por DualSub."
+    },
+    "previewCaptionFixedOne": {
+        "message": "Línea del video: %s."
+    },
+    "previewEnglishFilm": {
+        "message": "Película en inglés"
+    },
+    "previewKoreanDrama": {
+        "message": "Serie coreana"
+    },
+    "previewLabel": {
+        "message": "Vista previa de los subtítulos"
+    },
+    "previewOff": {
+        "message": "Los subtítulos duales están desactivados"
+    },
+    "previewOneLine": {
+        "message": "Este video ya está en tu idioma, así que DualSub muestra una sola línea."
+    },
+    "previewSampleVideo": {
+        "message": "Video de ejemplo"
+    },
+    "previewStandIn": {
+        "message": "Aquí no hay una muestra en %s, así que el inglés ocupa su lugar."
+    },
+    "previewShownOn": {
+        "message": "Como se ve en"
+    },
+    "previewTitle": {
+        "message": "Vista previa en vivo"
+    },
+    "providerAi": {
+        "message": "Traducción con IA"
+    },
+    "providerAiHelp": {
+        "message": "ChatGPT, Gemini u otro modelo de IA traduce teniendo en cuenta toda la escena."
+    },
+    "providerDeepL": {
+        "message": "DeepL"
+    },
+    "providerDeepLHelp": {
+        "message": "Traducciones muy naturales. Necesitas una cuenta de DeepL, que tiene un plan gratuito."
+    },
+    "providerGoogle": {
+        "message": "Google Translate"
+    },
+    "providerGoogleHelp": {
+        "message": "También funciona al instante. Vale la pena probarlo si Microsoft traduce raro a tu idioma."
+    },
+    "providerMicrosoft": {
+        "message": "Microsoft Translator"
+    },
+    "providerMicrosoftHelp": {
+        "message": "Buena calidad en la mayoría de los idiomas. Funciona al instante."
+    },
+    "providerVertex": {
+        "message": "Google Vertex AI"
+    },
+    "providerVertexHelp": {
+        "message": "Gemini a través de tu proyecto de Google Cloud."
+    },
+    "scopeAll": {
+        "message": "Todos los sitios"
+    },
+    "scopeBackToAll": {
+        "message": "Volver a Todos los sitios"
+    },
+    "scopeEditingSite": {
+        "message": "Estás cambiando solo los ajustes de %s."
+    },
+    "scopeEditingSiteHelp": {
+        "message": "Lo que cambies aquí lleva la etiqueta «Solo en %s». Lo demás sigue a Todos los sitios."
+    },
+    "scopeHelp": {
+        "message": "Un sitio sin ajustes propios usa los de Todos los sitios."
+    },
+    "scopeLabel": {
+        "message": "Ajustes para"
+    },
+    "scopeOwnCount": {
+        "message": "%d ajustes propios"
+    },
+    "scopeSameAsAll": {
+        "message": "Igual que Todos los sitios"
+    },
+    "scopeSharedSetting": {
+        "message": "Común a todos los sitios"
+    },
+    "scopeSiteOnly": {
+        "message": "Solo en %s"
+    },
+    "scopeUseShared": {
+        "message": "Usar el valor de Todos los sitios"
+    },
+    "setupAddress": {
+        "message": "Dirección del servicio"
+    },
+    "setupCheckKey": {
+        "message": "Comprobar clave"
+    },
+    "setupOpenAIStudio": {
+        "message": "Abrir Google AI Studio"
+    },
+    "setupOpenOpenAI": {
+        "message": "Abrir OpenAI"
+    },
+    "setupChooseService": {
+        "message": "Elige el servicio de IA"
+    },
+    "setupGeminiKeyHelp": {
+        "message": "Inicia sesión con tu cuenta de Google, haz clic en «Create API key» y cópiala."
+    },
+    "setupGetKey": {
+        "message": "Consigue una clave"
+    },
+    "setupModel": {
+        "message": "Modelo"
+    },
+    "setupOpenAIKeyHelp": {
+        "message": "Inicia sesión, abre «API keys», crea una clave secreta y cópiala."
+    },
+    "setupOtherKeyHelp": {
+        "message": "Usa la clave y la dirección que te da tu servicio."
+    },
+    "setupPasteKey": {
+        "message": "Pégala aquí"
+    },
+    "setupServiceGemini": {
+        "message": "Google Gemini"
+    },
+    "setupServiceOpenAI": {
+        "message": "OpenAI"
+    },
+    "setupServiceOther": {
+        "message": "Otro servicio"
+    },
+    "sitesEditOwn": {
+        "message": "Editar los ajustes de %s"
+    },
+    "sitesFilterAdd": {
+        "message": "Añadir una regla"
+    },
+    "sitesFilterRemove": {
+        "message": "Quitar la regla %s"
+    },
+    "sitesFiltersHelp": {
+        "message": "Nunca se usa una pista de subtítulos si su nombre o sus atributos contienen alguno de estos textos."
+    },
+    "sitesFiltersTitle": {
+        "message": "Pistas de subtítulos que no se usan"
+    },
+    "sitesGiveOwn": {
+        "message": "Dar a %s sus propios ajustes"
+    },
+    "sitesHasOwn": {
+        "message": "Tiene sus propios ajustes"
+    },
+    "sitesHideHelp": {
+        "message": "Así no ves las mismas palabras dos veces."
+    },
+    "sitesHideOwn": {
+        "message": "Ocultar los subtítulos propios de %s"
+    },
+    "sitesHideTitle": {
+        "message": "Ocultar los subtítulos propios del sitio"
+    },
+    "sitesLead": {
+        "message": "DualSub se activa automáticamente en estos sitios. Puedes desactivarlo en uno o darle a uno sus propios ajustes."
+    },
+    "sitesMoreHelp": {
+        "message": "Cuando DualSub aprenda a funcionar en un sitio nuevo, aparecerá aquí ya activado y con tus ajustes de Todos los sitios."
+    },
+    "sitesMoreTitle": {
+        "message": "Pronto llegarán más sitios"
+    },
+    "sitesRemoveOwn": {
+        "message": "Quitarlos"
+    },
+    "sitesUseHere": {
+        "message": "Usar DualSub aquí"
+    },
+    "sitesUsesShared": {
+        "message": "Usa tus ajustes de Todos los sitios"
+    },
+    "sitesUsesSharedHelp": {
+        "message": "Dale a %s su propio tamaño, colores, idiomas o sincronización."
+    },
+    "sizeExtraLarge": {
+        "message": "Muy grande"
+    },
+    "sizeLarge": {
+        "message": "Grande"
+    },
+    "sizeMedium": {
+        "message": "Mediano"
+    },
+    "sizeSmall": {
+        "message": "Pequeño"
+    },
+    "startEnabled": {
+        "message": "Subtítulos duales"
+    },
+    "startFixNone": {
+        "message": "No aparecen subtítulos"
+    },
+    "startFixTiming": {
+        "message": "Las palabras no coinciden con lo que oigo"
+    },
+    "startFixTranslation": {
+        "message": "La traducción no suena bien"
+    },
+    "startFixTwice": {
+        "message": "Veo los subtítulos dos veces"
+    },
+    "startFromBrowser": {
+        "message": "Elegido según tu navegador"
+    },
+    "startLead": {
+        "message": "Abre Netflix o Disney+ y pon lo que quieras. Verás dos líneas de subtítulos: el idioma del video arriba y el tuyo debajo."
+    },
+    "startOpenSite": {
+        "message": "Abrir %s"
+    },
+    "startProblemsTitle": {
+        "message": "¿Algo no va bien?"
+    },
+    "startProviderAi": {
+        "message": "Traducción con IA, con tu clave"
+    },
+    "startProviderDeepL": {
+        "message": "DeepL, con tu clave"
+    },
+    "startProviderGoogle": {
+        "message": "Google Translate, gratis y sin configurar nada"
+    },
+    "startProviderMicrosoft": {
+        "message": "Microsoft Translator, gratis y sin configurar nada"
+    },
+    "startProviderVertex": {
+        "message": "Google Vertex AI"
+    },
+    "startSetUpTitle": {
+        "message": "Ya lo configuramos por ti"
+    },
+    "startTopTitle": {
+        "message": "Línea de arriba"
+    },
+    "startStatusOff": {
+        "message": "Los subtítulos duales están desactivados"
+    },
+    "startStatusOn": {
+        "message": "Los subtítulos duales están activados"
+    },
+    "startStatusWorking": {
+        "message": "Funcionando en %s"
+    },
+    "startStatusWorkingSome": {
+        "message": "Funcionando en %s, desactivado en %s"
+    },
+    "startSitesUnreadable": {
+        "message": "No se pudo leer dónde está activado DualSub."
+    },
+    "startStatusOffHelp": {
+        "message": "Vuelve a activarlos con el interruptor."
+    },
+    "startStatusReadyHelp": {
+        "message": "No hay que configurar nada. Solo pon un video."
+    },
+    "startTitle": {
+        "message": "¡Hola! DualSub está listo."
+    },
+    "startTopAuto": {
+        "message": "El idioma que se habla en cada video"
+    },
+    "startTopFixed": {
+        "message": "Siempre en %s"
+    },
+    "tagFree": {
+        "message": "Gratis"
+    },
+    "tagGoogleCloud": {
+        "message": "Para usuarios de Google Cloud"
+    },
+    "tagNeedsKey": {
+        "message": "Necesita una clave"
+    },
+    "tagNoSetup": {
+        "message": "Nada que configurar"
+    },
+    "timingEarlier": {
+        "message": "Mostrar antes"
+    },
+    "timingEarlierBy": {
+        "message": "%s s antes"
+    },
+    "timingEarlierHelp": {
+        "message": "Cada línea aparece un poco antes."
+    },
+    "timingExactHelp": {
+        "message": "En segundos. Los números positivos muestran los subtítulos antes (se guarda como %s)."
+    },
+    "timingExactTitle": {
+        "message": "Desfase exacto"
+    },
+    "timingLater": {
+        "message": "Mostrar después"
+    },
+    "timingLaterBy": {
+        "message": "%s s después"
+    },
+    "timingLaterHelp": {
+        "message": "Cada línea aparece un poco después."
+    },
+    "timingLead": {
+        "message": "Si las palabras no coinciden con lo que oyes, mueve un poco los subtítulos. La mayoría de los videos no necesitan nada aquí."
+    },
+    "timingOnTime": {
+        "message": "A tiempo"
+    },
+    "timingOnTimeHelp": {
+        "message": "Los subtítulos siguen exactamente al video."
+    },
+    "timingReset": {
+        "message": "Poner a tiempo"
+    },
+    "timingTipHelp": {
+        "message": "El botón de DualSub en la barra de herramientas de tu navegador tiene estos mismos dos botones, así que puedes ajustar los subtítulos a lo que oyes sin salir del video."
+    },
+    "timingTipTitle": {
+        "message": "Ajústalo mientras ves el video"
+    },
+    "timingTitle": {
+        "message": "Sincronización de los subtítulos"
+    },
+    "toastCopied": {
+        "message": "Copiado"
+    },
+    "toastEarlier": {
+        "message": "Subtítulos %s s antes"
+    },
+    "toastExplainOff": {
+        "message": "Explicaciones de palabras desactivadas"
+    },
+    "toastExplainOn": {
+        "message": "Explicaciones de palabras activadas"
+    },
+    "toastFallbackOff": {
+        "message": "Solo traduce el servicio que elegiste"
+    },
+    "toastFallbackOn": {
+        "message": "Si tu servicio falla, uno gratuito lo reemplaza"
+    },
+    "toastFilterAdded": {
+        "message": "Ya no se usan las pistas que coinciden con «%s»"
+    },
+    "toastFilterRemoved": {
+        "message": "Se vuelven a usar las pistas que coinciden con «%s»"
+    },
+    "toastFollowsShared": {
+        "message": "De nuevo con el valor de Todos los sitios"
+    },
+    "toastHiddenEverywhere": {
+        "message": "Listo. Los subtítulos propios de los sitios quedan ocultos en todas partes."
+    },
+    "toastLater": {
+        "message": "Subtítulos %s s después"
+    },
+    "toastLoaded": {
+        "message": "Ajustes cargados"
+    },
+    "toastMovedDown": {
+        "message": "Subtítulos más abajo"
+    },
+    "toastMovedUp": {
+        "message": "Subtítulos más arriba"
+    },
+    "toastOfficialOff": {
+        "message": "DualSub siempre traduce"
+    },
+    "toastOfficialOn": {
+        "message": "La traducción oficial va primero"
+    },
+    "toastOnTime": {
+        "message": "Los subtítulos vuelven a ir a tiempo"
+    },
+    "toastPreset": {
+        "message": "Diseño: %s"
+    },
+    "toastProvider": {
+        "message": "Traducción: %s"
+    },
+    "toastReportCopied": {
+        "message": "Informe copiado"
+    },
+    "toastReset": {
+        "message": "Todo vuelve a los ajustes recomendados"
+    },
+    "toastSiteHide": {
+        "message": "Los subtítulos propios de %s quedan ocultos"
+    },
+    "toastSiteOff": {
+        "message": "DualSub está desactivado en %s"
+    },
+    "toastSiteOn": {
+        "message": "DualSub está activado en %s"
+    },
+    "toastSiteShared": {
+        "message": "%s vuelve a usar tus ajustes de Todos los sitios"
+    },
+    "toastSiteShow": {
+        "message": "Se mostrarán los subtítulos propios de %s"
+    },
+    "toastSize": {
+        "message": "Tamaño del texto: %s"
+    },
+    "toastSpeak": {
+        "message": "Hablo: %s"
+    },
+    "toastStyleCustom": {
+        "message": "Estilo: el mío"
+    },
+    "toastStylePlatform": {
+        "message": "Estilo: igual que el sitio"
+    },
+    "toastSubtitlesOff": {
+        "message": "Subtítulos duales desactivados"
+    },
+    "toastSubtitlesOn": {
+        "message": "Subtítulos duales activados"
+    },
+    "toastTopAuto": {
+        "message": "Línea de arriba: el idioma que se habla en el video"
+    },
+    "toastTopFixed": {
+        "message": "Línea de arriba: siempre en %s"
+    },
+    "toastTranslationColor": {
+        "message": "Color de la traducción: %s"
+    },
+    "toastUndo": {
+        "message": "Deshacer"
+    },
+    "topMenuLanguage": {
+        "message": "Idioma de los menús de DualSub"
+    },
+    "topSearchLabel": {
+        "message": "Buscar ajustes"
+    },
+    "topSearchNothing": {
+        "message": "No hay nada que coincida con «%s». Prueba con «tamaño», «color» o «sincronización»."
+    },
+    "topSearchPlaceholder": {
+        "message": "Busca ajustes, como «tamaño» o «dos veces»"
+    },
+    "searchWordsSpeak": {
+        "message": "idioma idiomas mi lengua materna nativo nativa hablar traducir traducción traduccion traducido destino"
+    },
+    "searchWordsTopLine": {
+        "message": "idioma original del video vídeo audio hablado aprender aprendizaje automático automatico versión version superior primera linea"
+    },
+    "searchWordsOfficial": {
+        "message": "subtítulos subtitulos oficiales traduccion humana humanos personas profesionales netflix disney"
+    },
+    "searchWordsSize": {
+        "message": "tamano subtítulos subtitulos letras fuente grandes más mas pequeños pequeñas pequenos pequenas chicos chicas agrandar ampliar aumentar achicar reducir zoom lupa leer no veo bien"
+    },
+    "searchWordsPosition": {
+        "message": "posicion ubicación ubicacion lugar altura vertical mover subir bajar arriba abajo alto bajo tapan subtítulos subtitulos"
+    },
+    "searchWordsStyle": {
+        "message": "estilos aspecto apariencia diseños disenos personalizado personalizar mi propio igual como sitio plataforma netflix disney perfil listos predefinidos subtítulos subtitulos"
+    },
+    "searchWordsCustomLook": {
+        "message": "fuente tipografía tipografia negrita gruesa contorno bordes sombra relieve fondo recuadro caja opacidad transparencia transparente sólido solido color del texto subtítulos subtitulos"
+    },
+    "searchWordsTranslationColor": {
+        "message": "traducción traduccion colores celeste azul amarillo verde rosa blanco segunda linea abajo texto subtítulos subtitulos"
+    },
+    "searchWordsOrder": {
+        "message": "orden ordenar primera primero abajo encima debajo superior inferior invertir líneas lineas mi idioma del video subtítulos subtitulos"
+    },
+    "searchWordsArrangement": {
+        "message": "disposición disposicion orientación orientacion colocar una encima de otra al lado juntas apiladas horizontal filas columnas lineas subtítulos subtitulos"
+    },
+    "searchWordsFineTune": {
+        "message": "espacio separación separacion distancia entre líneas lineas exacto exacta precisión precision ajuste fino tamano subtítulos subtitulos"
+    },
+    "searchWordsTiming": {
+        "message": "sincronizacion sincronizar desincronizados desfase desfasados retraso retrasados atrasados adelantados adelantar atrasar antes después despues tarde temprano tiempo no coinciden con lo que oigo oír oir escucho voz voces labios audio subtitulos"
+    },
+    "searchWordsService": {
+        "message": "proveedor motor traductor traducir traduccion microsoft google deepl translate translator calidad mala mejor"
+    },
+    "searchWordsDeepL": {
+        "message": "deepl claves api plan gratuito gratis pro cuenta configuración configuracion"
+    },
+    "searchWordsVertex": {
+        "message": "vertex google cloud gemini cuenta de servicio proyecto token región region"
+    },
+    "searchWordsAiTranslation": {
+        "message": "ia ai inteligencia artificial openai chatgpt gemini modelos claves api llm compatible traduccion configuración configuracion"
+    },
+    "searchWordsFallback": {
+        "message": "respaldo alternativa alternativo reserva fallo falló fallos errores no funciona deja roto caído caido traducción traduccion traduce microsoft google"
+    },
+    "searchWordsDelay": {
+        "message": "retraso espera demora intervalo velocidad rápido rapido lento rendimiento límite limite peticiones muchas milisegundos traduccion"
+    },
+    "searchWordsExplanations": {
+        "message": "ia ai contexto explicar explicación qué significa significado cultural historia origen click definición definicion diccionario gemini openai claves panel lateral"
+    },
+    "searchWordsPause": {
+        "message": "pausa detener parar automático automatico vídeo leer"
+    },
+    "searchWordsKinds": {
+        "message": "tipos clases significado cultura historia origen qué explicar elegir"
+    },
+    "searchWordsAutoOpen": {
+        "message": "abrir panel automáticamente automaticamente clic palabra lateral"
+    },
+    "searchWordsCache": {
+        "message": "recordar respuestas caché cache guardar repetir"
+    },
+    "searchWordsTheme": {
+        "message": "tema oscuro claro modo nocturno noche luz negro blanco"
+    },
+    "searchWordsLimits": {
+        "message": "modelos limites tiempo espera máximo maximo intentos reintentos caché cache memoria recordar respuestas solicitudes minuto segundos"
+    },
+    "searchWordsAddress": {
+        "message": "dirección direccion url servidor punto de acceso"
+    },
+    "searchWordsSiteOnOff": {
+        "message": "netflix disney sitios página pagina web desactivar desactivado encender apagar prender aqui"
+    },
+    "searchWordsDualSubtitles": {
+        "message": "activar desactivar encender apagar todos los sitios en todas partes dos líneas"
+    },
+    "searchWordsHide": {
+        "message": "dos veces doble dobles repetidos repetidas duplicados veo oficiales quitar esconder superpuestos subtitulos"
+    },
+    "searchWordsSiteOwn": {
+        "message": "perfiles por cada separados distintos diferentes independientes personalizados configuración configuracion netflix disney"
+    },
+    "searchWordsFilters": {
+        "message": "lista negra filtros forced forzados bloquear omitir saltar excluir ignorar reglas subtitulos"
+    },
+    "searchWordsBackup": {
+        "message": "exportar importar respaldo backup restaurar recuperar archivos fichero guardar cargar descargar"
+    },
+    "searchWordsJson": {
+        "message": "json código codigo bruto crudo configuración configuracion desarrolladores programador copiar"
+    },
+    "searchWordsLogging": {
+        "message": "registros logs debug depuración depuracion diagnóstico diagnostico informe reporte errores bug solución solucion problemas"
+    },
+    "searchWordsReset": {
+        "message": "restablecer reiniciar resetear restaurar valores predeterminados por defecto recomendados originales fábrica fabrica borrar todo"
+    },
+    "searchWordsPageLanguage": {
+        "message": "interfaz ui menus página pagina pantalla lengua textos español espanol inglés ingles english"
+    },
+    "searchWordsNoSubtitles": {
+        "message": "ayuda problemas no salen se ven veo hay nada funciona faltan vacío vacio roto errores desaparecen subtitulos video vídeo"
+    },
+    "searchSiteOwn": {
+        "message": "Dar a un sitio sus propios ajustes"
+    },
+    "topSettings": {
+        "message": "Configuración"
+    },
+    "topSkipToContent": {
+        "message": "Saltar a los ajustes"
+    },
+    "translationAiSetupTitle": {
+        "message": "Configurar la traducción con IA"
+    },
+    "translationDeepLKeyHelp": {
+        "message": "Inicia sesión en DeepL, abre tu cuenta y copia la clave que aparece en «API keys»."
+    },
+    "translationDeepLOpen": {
+        "message": "Abrir DeepL"
+    },
+    "translationDeepLGetKey": {
+        "message": "Consigue tu clave"
+    },
+    "translationDeepLKeyPlaceholder": {
+        "message": "Tu clave de DeepL"
+    },
+    "translationDeepLPlan": {
+        "message": "¿Qué plan tienes?"
+    },
+    "translationDeepLSetupTitle": {
+        "message": "Configurar DeepL"
+    },
+    "translationDelayHelp": {
+        "message": "Súbelo si el servicio se queja de que hay demasiadas solicitudes. Recomendado: 150 ms."
+    },
+    "translationDelayTitle": {
+        "message": "Pausa entre solicitudes de traducción (ms)"
+    },
+    "translationFallbackHelp": {
+        "message": "Si el servicio que elegiste deja de funcionar, Microsoft Translator y luego Google Translate traducen hasta que vuelva a funcionar. Desactívalo para que el texto de los subtítulos solo vaya a tu servicio."
+    },
+    "translationFallbackTitle": {
+        "message": "Seguir traduciendo si este servicio falla"
+    },
+    "translationLead": {
+        "message": "Quién traduce la línea de abajo cuando no hay traducción oficial."
+    },
+    "translationServiceTitle": {
+        "message": "Servicio de traducción"
+    },
+    "translationVertexHelp": {
+        "message": "DualSub crea con él un token temporal y no guarda el archivo."
+    },
+    "translationVertexSetupTitle": {
+        "message": "Configurar Google Vertex AI"
+    },
+    "startNeedsSetupTitle": {
+        "message": "Falta configurar %s"
+    },
+    "startNeedsSetupCovered": {
+        "message": "Mientras tanto, traduce %s."
+    },
+    "startNeedsSetupStopped": {
+        "message": "Mientras tanto, los subtítulos no se traducen."
     }
 }

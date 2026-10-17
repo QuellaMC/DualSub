@@ -172,7 +172,10 @@ describe('configService', () => {
         it('writes the canonical value and returns it', async () => {
             await expect(
                 configService.setMultiple({ targetLanguage: 'zh-cn' })
-            ).resolves.toEqual({ targetLanguage: 'zh-CN' });
+            ).resolves.toMatchObject({
+                written: { targetLanguage: 'zh-CN' },
+                change: { after: { targetLanguage: 'zh-CN' } },
+            });
             expect(
                 (await fakeBrowser.storage.sync.get('targetLanguage'))
                     .targetLanguage
@@ -190,13 +193,17 @@ describe('configService', () => {
         });
 
         it('splits writes by scope and returns prepared values', async () => {
-            const result = await configService.setMultiple({
+            const { written, change } = await configService.setMultiple({
                 subtitlesEnabled: false,
                 vertexTokenExpiresAt: 5,
             });
-            expect(result).toEqual({
+            expect(written).toEqual({
                 subtitlesEnabled: false,
                 vertexTokenExpiresAt: 5,
+            });
+            expect(change).toEqual({
+                before: { subtitlesEnabled: true, vertexTokenExpiresAt: 0 },
+                after: { subtitlesEnabled: false, vertexTokenExpiresAt: 5 },
             });
             expect(
                 (await fakeBrowser.storage.sync.get('subtitlesEnabled'))
@@ -208,10 +215,65 @@ describe('configService', () => {
             ).toBe(5);
         });
 
-        it('aggregates partial area failures', async () => {
+        it('takes its turn after a write another page is making, and reads what that one left', async () => {
+            await fakeBrowser.storage.sync.set({ subtitleFontScale: 1 });
+            const release = Promise.withResolvers<void>();
+            const elsewhere = navigator.locks.request(
+                'dualsub:settingParts',
+                async () => {
+                    await release.promise;
+                    await fakeBrowser.storage.sync.set({
+                        subtitleFontScale: 1.6,
+                    });
+                }
+            );
+            const write = configService.setMultiple({ subtitleFontScale: 1.3 });
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(
+                (await fakeBrowser.storage.sync.get('subtitleFontScale'))
+                    .subtitleFontScale
+            ).toBe(1);
+
+            release.resolve();
+            await elsewhere;
+            expect((await write).change).toEqual({
+                before: { subtitleFontScale: 1.6 },
+                after: { subtitleFontScale: 1.3 },
+            });
+        });
+
+        it('puts back what one area took when another fails, so nothing is written', async () => {
             vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
                 new Error('local broken')
             );
+            await expect(
+                configService.setMultiple({
+                    subtitlesEnabled: false,
+                    vertexTokenExpiresAt: 5,
+                })
+            ).rejects.toMatchObject({
+                name: 'ConfigWriteError',
+                completeFailure: true,
+                failedAreas: ['local'],
+            });
+            expect(
+                (await fakeBrowser.storage.sync.get('subtitlesEnabled'))
+                    .subtitlesEnabled
+            ).toBe(true);
+        });
+
+        it('says a write landed in part when what one area took cannot be put back', async () => {
+            vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
+                new Error('local broken')
+            );
+            const realSet = fakeBrowser.storage.sync.set.bind(
+                fakeBrowser.storage.sync
+            );
+            vi.spyOn(browser.storage.sync, 'set')
+                .mockImplementationOnce(
+                    (items: Record<string, unknown>) => realSet(items) as never
+                )
+                .mockRejectedValueOnce(new Error('sync broken'));
             await expect(
                 configService.setMultiple({
                     subtitlesEnabled: false,

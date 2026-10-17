@@ -77,7 +77,10 @@ export function useOpenAIModels(
                     publish(current, {
                         result: {
                             tone: 'warning',
-                            message: t('openaiEndpointPermissionRequired'),
+                            message: t(
+                                'openaiEndpointPermissionRequired',
+                                t('setupCheckKey')
+                            ),
                         },
                     });
                     return;

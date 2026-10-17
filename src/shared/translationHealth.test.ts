@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
+    onTranslationHealthChanged,
     readTranslationHealth,
     writeTranslationHealth,
     type TranslationHealth,
@@ -23,6 +24,21 @@ describe('translation health', () => {
         expect(await readTranslationHealth()).toEqual(RECORD);
         await writeTranslationHealth(null);
         expect(await readTranslationHealth()).toBeNull();
+    });
+
+    it('reports each recorded failure and its clearing until stopped', async () => {
+        const seen: (TranslationHealth | null)[] = [];
+        const stop = onTranslationHealthChanged((health) => seen.push(health));
+        await writeTranslationHealth(RECORD);
+        await fakeBrowser.storage.session.set({ unrelated: 1 });
+        await fakeBrowser.storage.local.set({ translationHealth: RECORD });
+        await fakeBrowser.storage.session.set({
+            translationHealth: { ...RECORD, problem: 'sadness' },
+        });
+        await writeTranslationHealth(null);
+        stop();
+        await writeTranslationHealth(RECORD);
+        expect(seen).toEqual([RECORD, null, null]);
     });
 
     it.each([

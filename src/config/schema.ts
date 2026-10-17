@@ -6,7 +6,7 @@ import { PLATFORM_IDS, type PlatformId } from '@/shared/platforms';
 import {
     AUTO_LANGUAGE,
     browserLanguage,
-    SUBTITLE_LANGUAGES,
+    browserTargetLanguage,
 } from '@/shared/subtitleLanguages';
 
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
@@ -113,10 +113,15 @@ function hasUniqueItems(items: readonly string[]): boolean {
 
 const uiLanguageSchema = z.enum(['en', 'es', 'ja', 'ko', 'zh-CN', 'zh-TW']);
 export type UiLanguage = z.infer<typeof uiLanguageSchema>;
+export const UI_LANGUAGES = uiLanguageSchema.options;
+
+export function isUiLanguage(value: string): value is UiLanguage {
+    return uiLanguageSchema.safeParse(value).success;
+}
 
 /** Browser language → closest supported UI locale. */
 export function detectBrowserLanguage(): UiLanguage {
-    return browserLanguage(uiLanguageSchema.options) ?? 'en';
+    return browserLanguage(UI_LANGUAGES) ?? 'en';
 }
 
 /** The look of the platform being watched, or the viewer's own, which
@@ -464,7 +469,7 @@ export const configSchema = {
         default: 'en',
         scope: 'sync',
         normalize: normalizeLanguageTag,
-        dynamicDefault: () => browserLanguage(SUBTITLE_LANGUAGES) ?? 'en',
+        dynamicDefault: () => browserTargetLanguage() ?? 'en',
     }),
     /** A language tag, or `auto` for the language spoken in the video. */
     originalLanguage: setting({
@@ -553,6 +558,12 @@ export const configSchema = {
         normalize: normalizeSiteProfiles,
     }),
 
+    /** The settings page shows its advanced options on this device. */
+    showAdvancedSettings: setting({
+        schema: z.boolean(),
+        default: false,
+        scope: 'local',
+    }),
     appearanceAccordionOpen: setting({
         schema: z.boolean(),
         default: false,
@@ -702,6 +713,47 @@ export function isSiteSettingKey(key: string): key is SiteSettingKey {
     return (SITE_SETTING_KEYS as readonly string[]).includes(key);
 }
 
+/** One site's own value of one setting, as a `[site, key]` pair. */
+export type SiteValueRef = readonly [site: string, key: string];
+
+/** Whether two profile maps give a site the same own value of a setting,
+ *  or both none. */
+export function sameSiteValue(
+    left: SettingsValues['siteProfiles'],
+    right: SettingsValues['siteProfiles'],
+    [site, key]: SiteValueRef
+): boolean {
+    const was = left[site] ?? {};
+    const now = right[site] ?? {};
+    return (
+        Object.hasOwn(was, key) === Object.hasOwn(now, key) &&
+        sameSettingValue(was[key], now[key])
+    );
+}
+
+/** The site values that differ between two profile maps, including one
+ *  present in only one of them. */
+export function changedSiteValues(
+    before: SettingsValues['siteProfiles'],
+    after: SettingsValues['siteProfiles']
+): SiteValueRef[] {
+    const changed: SiteValueRef[] = [];
+    for (const site of new Set([
+        ...Object.keys(before),
+        ...Object.keys(after),
+    ])) {
+        for (const key of new Set([
+            ...Object.keys(before[site] ?? {}),
+            ...Object.keys(after[site] ?? {}),
+        ])) {
+            if (!sameSiteValue(before, after, [site, key])) {
+                changed.push([site, key]);
+            }
+        }
+    }
+    return changed;
+}
+
 /** `site`'s own values this version can use, from a resolved
  *  `siteProfiles` value: known site settings with valid values. */
 export function siteProfileOf(
@@ -716,9 +768,36 @@ export function siteProfileOf(
     );
 }
 
+/** Whether this version can use every value `profiles` holds for a site
+ *  and a setting it knows. Stored profiles keep the values it cannot use,
+ *  for the newer version that wrote them; a backup it loads must not. */
+export function siteProfilesUsable(
+    profiles: SettingsValues['siteProfiles']
+): boolean {
+    return PLATFORM_IDS.every(
+        (site) =>
+            Object.keys(profiles[site] ?? {}).filter(isSiteSettingKey)
+                .length === Object.keys(siteProfileOf(profiles, site)).length
+    );
+}
+
 export const SENSITIVE_KEYS = SETTINGS_KEYS.filter(
     (key) => configSchema[key].sensitive === true
 );
+
+/** For each credential, the settings it is sent with: where it goes and
+ *  what it asks for there. Kept without them, a credential could reach a
+ *  host it was never set up for. */
+export const CREDENTIAL_SETUP = {
+    deeplApiKey: ['deeplApiPlan'],
+    openaiCompatibleApiKey: [
+        'openaiCompatibleBaseUrl',
+        'openaiCompatibleModel',
+    ],
+    vertexAccessToken: ['vertexProjectId', 'vertexLocation', 'vertexModel'],
+    openaiApiKey: ['openaiBaseUrl', 'openaiModel'],
+    geminiApiKey: ['geminiModel'],
+} as const satisfies Partial<Record<SettingsKey, readonly SettingsKey[]>>;
 
 export function isSettingsKey(key: string): key is SettingsKey {
     return Object.prototype.hasOwnProperty.call(configSchema, key);

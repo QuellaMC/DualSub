@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
     configService,
+    type SettingsChange,
     type SettingsChanges,
     type SiteWrite,
 } from '@/config/service';
@@ -15,9 +16,12 @@ export interface SettingsHandle<K extends SettingsKey> {
     readonly status: SettingsStatus;
     /** The complete projection once ready; null while loading or unavailable. */
     readonly settings: SettingsProjection<K> | null;
-    /** Persist one or more settings. Rejects when validation or storage
-     *  fails; nothing is written in that case. */
-    readonly save: (changes: Partial<SettingsProjection<K>>) => Promise<void>;
+    /** Persist one or more settings, resolving to the change made, for
+     *  `putBack`. Rejects when validation or storage fails; nothing is
+     *  written in that case. */
+    readonly save: (
+        changes: Partial<SettingsProjection<K>>
+    ) => Promise<SettingsChange>;
 }
 
 interface SettingsState<K extends SettingsKey> {
@@ -147,13 +151,16 @@ export function useSettings<K extends SettingsKey>(
     }, [view, keyList, includeSensitive, site]);
 
     const save = useCallback(
-        async (changes: Partial<SettingsProjection<K>>): Promise<void> => {
-            const written = await configService.setMultiple(
+        async (
+            changes: Partial<SettingsProjection<K>>
+        ): Promise<SettingsChange> => {
+            const { written, change } = await configService.setMultiple(
                 changes,
                 site ? { site, target: siteTarget } : undefined
             );
             const relevant = pickWatched(written, keyList.split(' ') as K[]);
             setState((previous) => withChanges(previous, view, relevant));
+            return change;
         },
         [view, keyList, site, siteTarget]
     );

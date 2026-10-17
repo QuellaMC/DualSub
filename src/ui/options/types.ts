@@ -1,20 +1,27 @@
 import type { SettingsValues } from '@/config/schema';
+import type { PlatformId } from '@/shared/platforms';
 import type { Translate } from '../hooks/useI18n';
 
 export const OPTIONS_SETTINGS_KEYS = [
     'uiLanguage',
-    'hideOfficialSubtitles',
+    'showAdvancedSettings',
+    'subtitlesEnabled',
+    'targetLanguage',
+    'originalLanguage',
+    'useOfficialTranslations',
     'subtitleStyle',
     'subtitleCustomLook',
     'subtitleTranslationColor',
-    'subtitleLayoutOrder',
-    'subtitleLayoutOrientation',
     'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
-    'loggingLevel',
+    'subtitleLayoutOrder',
+    'subtitleLayoutOrientation',
+    'subtitleTimeOffset',
+    'siteProfiles',
     'selectedProvider',
     'translationDelay',
+    'translationFallback',
     'deeplApiKey',
     'deeplApiPlan',
     'openaiCompatibleApiKey',
@@ -40,6 +47,7 @@ export const OPTIONS_SETTINGS_KEYS = [
     'sidePanelAutoOpen',
     'sidePanelAutoPauseVideo',
     'sidePanelTheme',
+    'loggingLevel',
 ] as const;
 
 export type OptionsSettings = Pick<
@@ -47,9 +55,18 @@ export type OptionsSettings = Pick<
     (typeof OPTIONS_SETTINGS_KEYS)[number]
 >;
 
-/** Persist settings; resolves false (and the app shows its banner) on failure. */
+/** Which sites the page is editing: all of them, or one site's own. */
+export type Scope = 'all' | PlatformId;
+
+/** What a save tells the viewer: a toast naming the change, with Undo, or
+ *  nothing (a field being typed). */
+export type SaveFeedback = { readonly message: string } | 'quiet';
+
+/** Persist settings; resolves false (and the page shows its banner) on
+ *  failure. Without feedback the save is quiet. */
 export type SaveSettings = (
-    changes: Partial<OptionsSettings>
+    changes: Partial<OptionsSettings>,
+    feedback?: SaveFeedback
 ) => Promise<boolean>;
 
 export interface SectionProps {

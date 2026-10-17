@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
+    changedSiteValues,
     prepareSettingValue,
     sameSettingValue,
     siteProfileOf,
@@ -11,6 +12,27 @@ import { configService, type SettingsChanges } from './service';
 async function stored(): Promise<unknown> {
     return (await fakeBrowser.storage.sync.get('siteProfiles')).siteProfiles;
 }
+
+describe('changedSiteValues', () => {
+    it('lists each site value added, changed, or removed, newer entries included', () => {
+        expect(
+            changedSiteValues(
+                {
+                    netflix: { subtitleGap: 0.5, subtitleFontScale: 1.2 },
+                    hulu: { futureSetting: 1 },
+                },
+                {
+                    netflix: { subtitleGap: 0.5, subtitleFontScale: 1.6 },
+                    disneyplus: { subtitlesEnabled: false },
+                }
+            )
+        ).toEqual([
+            ['netflix', 'subtitleFontScale'],
+            ['hulu', 'futureSetting'],
+            ['disneyplus', 'subtitlesEnabled'],
+        ]);
+    });
+});
 
 describe('siteProfiles values', () => {
     it('keeps each site’s valid site settings, canonicalized', () => {
@@ -184,7 +206,7 @@ describe('configService for one site', () => {
             { subtitleFontScale: 1.6 },
             { site: 'netflix', target: 'own' }
         );
-        await configService.removeSiteValues('netflix', ['subtitleGap']);
+        await configService.removeSiteValues(['netflix'], ['subtitleGap']);
         expect(await stored()).toEqual({
             netflix: { futureSetting: 'x', subtitleFontScale: 1.6 },
             hulu: { subtitleGap: 0.1 },
@@ -201,10 +223,108 @@ describe('configService for one site', () => {
         await Promise.all([
             configService.setMultiple({ subtitleGap: 0.7 }, netflix),
             configService.setMultiple({ subtitleTimeOffset: 1 }, netflix),
-            configService.removeSiteValues('disneyplus', ['subtitleGap']),
+            configService.removeSiteValues(['disneyplus'], ['subtitleGap']),
         ]);
         expect(await stored()).toEqual({
             netflix: { subtitleGap: 0.7, subtitleTimeOffset: 1 },
+        });
+    });
+
+    it("drops sites' own values with a shared one in one write, and puts back only those", async () => {
+        await fakeBrowser.storage.sync.set({
+            hideOfficialSubtitles: false,
+            siteProfiles: {
+                netflix: { hideOfficialSubtitles: false },
+                disneyplus: { hideOfficialSubtitles: true, subtitleGap: 0.5 },
+            },
+        });
+        const set = vi.spyOn(fakeBrowser.storage.sync, 'set');
+        const change = await configService.removeSiteValues(
+            ['netflix', 'disneyplus'],
+            ['hideOfficialSubtitles'],
+            { hideOfficialSubtitles: true }
+        );
+        expect(set).toHaveBeenCalledOnce();
+        expect(await stored()).toEqual({ disneyplus: { subtitleGap: 0.5 } });
+
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { disneyplus: { subtitleGap: 0.7 }, hulu: { x: 1 } },
+        });
+        await configService.putBack(change);
+        expect(await stored()).toEqual({
+            netflix: { hideOfficialSubtitles: false },
+            disneyplus: { hideOfficialSubtitles: true, subtitleGap: 0.7 },
+            hulu: { x: 1 },
+        });
+        expect(
+            (await fakeBrowser.storage.sync.get('hideOfficialSubtitles'))
+                .hideOfficialSubtitles
+        ).toBe(false);
+    });
+
+    it('puts back only what still holds what a change left, so a later edit stays', async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            subtitleGap: 0.4,
+            hideOfficialSubtitles: false,
+            siteProfiles: {
+                netflix: { hideOfficialSubtitles: false },
+                disneyplus: { hideOfficialSubtitles: true },
+            },
+        });
+        const { change: sized } = await configService.setMultiple({
+            subtitleFontScale: 1.6,
+            subtitleGap: 0.8,
+        });
+        const hidden = await configService.removeSiteValues(
+            ['netflix', 'disneyplus'],
+            ['hideOfficialSubtitles'],
+            { hideOfficialSubtitles: true }
+        );
+        // Another page changes one shared value and one site's choice.
+        await fakeBrowser.storage.sync.set({
+            subtitleGap: 1,
+            siteProfiles: { disneyplus: { hideOfficialSubtitles: false } },
+        });
+
+        await configService.putBack(sized);
+        await configService.putBack(hidden);
+        expect(
+            await fakeBrowser.storage.sync.get([
+                'subtitleFontScale',
+                'subtitleGap',
+                'hideOfficialSubtitles',
+            ])
+        ).toEqual({
+            subtitleFontScale: 1.2,
+            subtitleGap: 1,
+            hideOfficialSubtitles: false,
+        });
+        expect(await stored()).toEqual({
+            netflix: { hideOfficialSubtitles: false },
+            disneyplus: { hideOfficialSubtitles: false },
+        });
+    });
+
+    it("puts back a site's own value that a write through the site dropped", async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            siteProfiles: { netflix: { subtitleFontScale: 1.4 } },
+        });
+        const { written, change } = await configService.setMultiple(
+            { subtitleFontScale: 1.2 },
+            { site: 'netflix', target: 'own' }
+        );
+        expect(written).toEqual({ subtitleFontScale: 1.2, siteProfiles: {} });
+        expect(change).toEqual({
+            before: { siteProfiles: { netflix: { subtitleFontScale: 1.4 } } },
+            after: { siteProfiles: {} },
+        });
+        expect(await stored()).toEqual({});
+
+        await configService.putBack(change);
+        expect(await stored()).toEqual({
+            netflix: { subtitleFontScale: 1.4 },
         });
     });
 
@@ -215,7 +335,7 @@ describe('configService for one site', () => {
         const release = Promise.withResolvers<void>();
         // Another page holds the lock that every extension page shares.
         const elsewhere = navigator.locks.request(
-            'dualsub:siteProfiles',
+            'dualsub:settingParts',
             async () => {
                 await fakeBrowser.storage.sync.set({
                     siteProfiles: {
@@ -251,12 +371,15 @@ describe('configService for one site', () => {
                 disneyplus: { subtitlesEnabled: false },
             },
         });
-        await configService.removeSiteValues('netflix', ['subtitleFontScale']);
+        await configService.removeSiteValues(
+            ['netflix'],
+            ['subtitleFontScale']
+        );
         expect(await stored()).toEqual({
             netflix: { subtitleGap: 0.5 },
             disneyplus: { subtitlesEnabled: false },
         });
-        await configService.removeSiteValues('netflix', ['subtitleGap']);
+        await configService.removeSiteValues(['netflix'], ['subtitleGap']);
         expect(await stored()).toEqual({
             disneyplus: { subtitlesEnabled: false },
         });
@@ -270,7 +393,7 @@ describe('configService for one site', () => {
             new Error('storage broken')
         );
         await expect(
-            configService.removeSiteValues('disneyplus', ['subtitleGap'])
+            configService.removeSiteValues(['disneyplus'], ['subtitleGap'])
         ).rejects.toThrow();
         expect(await stored()).toEqual({ netflix: { subtitleGap: 0.5 } });
     });
@@ -346,9 +469,10 @@ describe('configService for one site', () => {
             await vi.waitFor(() => expect(changes).toHaveLength(1));
             expect(changes[0]).toMatchObject({ subtitleFontScale: 1.6 });
 
-            await configService.removeSiteValues('netflix', [
-                'subtitleFontScale',
-            ]);
+            await configService.removeSiteValues(
+                ['netflix'],
+                ['subtitleFontScale']
+            );
             await vi.waitFor(() => expect(changes).toHaveLength(2));
             expect(changes[1]).toMatchObject({ subtitleFontScale: 1.2 });
 

@@ -17,15 +17,17 @@ const translationHealthSchema = z.strictObject({
  *  up quota, or a refused request. */
 export type TranslationHealth = z.infer<typeof translationHealthSchema>;
 
+function toHealth(value: unknown): TranslationHealth | null {
+    const parsed = translationHealthSchema.safeParse(value);
+    return parsed.success ? parsed.data : null;
+}
+
 /** The failure the translation service last recorded, or null while the
  *  chosen provider works. Kept in session storage, so it outlives a worker
  *  restart and ends with the browser session. */
 export async function readTranslationHealth(): Promise<TranslationHealth | null> {
     const items = await browser.storage.session.get(TRANSLATION_HEALTH_KEY);
-    const parsed = translationHealthSchema.safeParse(
-        items[TRANSLATION_HEALTH_KEY]
-    );
-    return parsed.success ? parsed.data : null;
+    return toHealth(items[TRANSLATION_HEALTH_KEY]);
 }
 
 export async function writeTranslationHealth(
@@ -36,4 +38,23 @@ export async function writeTranslationHealth(
     } else {
         await browser.storage.session.remove(TRANSLATION_HEALTH_KEY);
     }
+}
+
+/** Follow the recorded failure as the translation service updates it. */
+export function onTranslationHealthChanged(
+    callback: (health: TranslationHealth | null) => void
+): () => void {
+    const listener = (
+        changes: Record<string, { newValue?: unknown }>,
+        areaName: string
+    ): void => {
+        if (
+            areaName === 'session' &&
+            Object.hasOwn(changes, TRANSLATION_HEALTH_KEY)
+        ) {
+            callback(toHealth(changes[TRANSLATION_HEALTH_KEY]?.newValue));
+        }
+    };
+    browser.storage.onChanged.addListener(listener);
+    return () => browser.storage.onChanged.removeListener(listener);
 }

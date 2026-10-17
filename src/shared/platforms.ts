@@ -9,7 +9,8 @@ export const PLATFORM_NAMES: Record<PlatformId, string> = {
     disneyplus: 'Disney+',
 };
 
-const PLATFORM_HOSTS: Record<PlatformId, string> = {
+/** The domain each site lives on, subdomains included. */
+export const PLATFORM_HOSTS: Record<PlatformId, string> = {
     netflix: 'netflix.com',
     disneyplus: 'disneyplus.com',
 };
