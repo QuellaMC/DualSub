@@ -305,7 +305,7 @@ describe('default resolution', () => {
         }
     );
 
-    it('starts the top line on the language spoken in the video', () => {
+    it('starts the original line on the language spoken in the video', () => {
         expect(getDefaultValue('originalLanguage')).toBe('auto');
         expect(prepareSettingValue('originalLanguage', 'auto')).toBe('auto');
         expect(validateSetting('originalLanguage', 'AUTO')).toBe(false);

@@ -10,7 +10,7 @@ const controlAck = z.discriminatedUnion('success', [
 ]);
 
 /** Whether DualSub is serving a video player on this tab, and the language
- *  its top line shows there once that is known. */
+ *  its original line shows there once that is known. */
 export const playerStatus = defineContract({
     action: MessageActions.PLAYER_STATUS,
     transport: 'tab',
@@ -20,7 +20,7 @@ export const playerStatus = defineContract({
     }),
     response: z.strictObject({
         onPlayer: z.boolean(),
-        topLanguage: languageTag.nullable(),
+        originalLanguage: languageTag.nullable(),
     }),
 });
 

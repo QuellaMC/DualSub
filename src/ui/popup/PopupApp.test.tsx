@@ -32,7 +32,7 @@ import { PopupApp } from './PopupApp';
 const EN = readFileSync(resolve('public/_locales/en/messages.json'), 'utf8');
 const NETFLIX_WATCH = 'https://www.netflix.com/watch/1';
 
-/** The active tab at `url`; on a player, its top line shows English. */
+/** The active tab at `url`; on a player, its original line shows English. */
 function stubTab(url: string, onPlayer = false) {
     vi.spyOn(browser.tabs, 'query').mockResolvedValue([
         { id: 7, url } as unknown as Browser.tabs.Tab,
@@ -42,8 +42,8 @@ function stubTab(url: string, onPlayer = false) {
     );
 }
 
-function player(onPlayer: boolean, topLanguage: string | null = 'en') {
-    return { onPlayer, topLanguage: onPlayer ? topLanguage : null };
+function player(onPlayer: boolean, originalLanguage: string | null = 'en') {
+    return { onPlayer, originalLanguage: onPlayer ? originalLanguage : null };
 }
 
 async function sync(key: string): Promise<unknown> {
@@ -280,7 +280,7 @@ describe('PopupApp on a site DualSub works on', () => {
         expect(await sync('subtitleFontScale')).toBeUndefined();
     });
 
-    it('changes the language you speak and says what the top line shows', async () => {
+    it('changes the language you speak and says what the original line shows', async () => {
         stubTab(NETFLIX_WATCH, true);
         render(<PopupApp />);
         fireEvent.change(await screen.findByLabelText('I speak'), {
@@ -299,7 +299,7 @@ describe('PopupApp on a site DualSub works on', () => {
         expect(await screen.findByText('Korean')).toBeInTheDocument();
     });
 
-    it('says the top line is automatic until the player names its language', async () => {
+    it('says the original line is automatic until the player names its language', async () => {
         stubTab(NETFLIX_WATCH, true);
         vi.mocked(browser.tabs.sendMessage).mockResolvedValue(
             player(true, null) as never

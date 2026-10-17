@@ -30,10 +30,10 @@ const ENTRIES: readonly SearchEntry[] = [
         anchors: ['target-language'],
     },
     {
-        labelKey: 'languagesTopTitle',
-        wordsKey: 'searchWordsTopLine',
+        labelKey: 'languagesOriginalTitle',
+        wordsKey: 'searchWordsOriginalLine',
         section: 'languages',
-        anchors: ['top-line'],
+        anchors: ['original-line'],
     },
     {
         labelKey: 'languagesOfficialTitle',

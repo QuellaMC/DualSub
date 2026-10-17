@@ -113,8 +113,8 @@ export function Stage({
 
     useLayoutEffect(() => {
         const lines: readonly [HTMLElement, string][] = [
-            [elements.original, t('lookLineTop')],
-            [elements.translated, t('lookLineYours')],
+            [elements.original, t('lookLineOriginal')],
+            [elements.translated, t('lookLineTranslation')],
         ];
         for (const [line, label] of lines) {
             line.setAttribute('role', 'button');

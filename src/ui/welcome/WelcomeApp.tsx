@@ -399,16 +399,16 @@ function Welcome({
                     <Picked
                         title={
                             automaticTop
-                                ? t('welcomeTopAuto')
+                                ? t('welcomeOriginalAuto')
                                 : t(
-                                      'welcomeTopFixed',
+                                      'welcomeOriginalFixed',
                                       languageName(t, settings.originalLanguage)
                                   )
                         }
                         help={t(
                             automaticTop
-                                ? 'welcomeTopAutoHelp'
-                                : 'welcomeTopFixedHelp'
+                                ? 'welcomeOriginalAutoHelp'
+                                : 'welcomeOriginalFixedHelp'
                         )}
                     />
                     {!translates ? (

@@ -11,12 +11,12 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    container stays hidden. On a title with on-screen text (Disney+ Marvel
    films open with location cards), the cue the platform raises shows at
    the top with its translation while dialogue stays at the bottom.
-2. Change your language from the popup, and the top line and the show's
+2. Change your language from the popup, and the original line and the show's
    own translation in the settings page's Languages section: the current line
    stays up behind the loading placeholder, then the new languages take
-   over at the right time. With the top line on
+   over at the right time. With the original line on
    Automatic (a fresh profile's default), switch the audio track in the
-   player: the top line reloads in the new audio language within a few
+   player: the original line reloads in the new audio language within a few
    seconds, and the popup names it; pick audio in the translation
    language: one line shows.
 3. Next episode (autoplay and manual): no duplicated cues, no cue from the
@@ -35,12 +35,14 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    Disney+ tab keeps dual subtitles. On any other page the popup names
    the sites and opens each one.
 7. In the settings page's Style section, pick each ready-made look in
-   the Look row, then change the font, edge, bold, top line color, and
+   the Look row, then change the font, edge, bold, original color, and
    box, and the translation color: the stage follows each edit at once,
    the overlay follows after a pause, every look draws the translation in
    the chosen color, and the values are still there after the settings
-   page is reloaded. Click each line on the stage: the top line opens
-   Look, yours opens Translation color. Drag the subtitles up: the
+   page is reloaded. Click each line on the stage: the original line
+   opens Look, the translation opens Translation color. In Lines, put
+   the translation on top: the row reads "Translation on top" and the
+   original line keeps its name and color. Drag the subtitles up: the
    Position row opens, a guide marks the usual height, the overlay
    follows once they drop, and Undo puts them back. Open Full screen: the
    text is the size it has on a full-screen video, and Escape closes it

@@ -19,7 +19,7 @@ export const SUBTITLE_LANGUAGES = [
 
 export type SubtitleLanguage = (typeof SUBTITLE_LANGUAGES)[number];
 
-/** The top line's language when it follows the language spoken in the
+/** The original line's language when it follows the language spoken in the
  *  video. */
 export const AUTO_LANGUAGE = 'auto';
 

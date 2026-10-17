@@ -44,7 +44,7 @@ async function settle(ms = 0): Promise<void> {
 
 interface PlayerAnswer {
     readonly onPlayer: boolean;
-    readonly topLanguage: string | null;
+    readonly originalLanguage: string | null;
 }
 
 /** What the tab tells the popup about its player. */
@@ -132,20 +132,20 @@ describe('ContentOrchestrator', () => {
         expect(await onPlayer()).toBe(false);
     });
 
-    it('names no top line language before its subtitles arrive, whatever was asked for', async () => {
+    it('names no original line language before its subtitles arrive, whatever was asked for', async () => {
         await fakeBrowser.storage.sync.set({ originalLanguage: 'ko' });
         start();
         await settle();
         expect(await playerAnswer()).toEqual({
             onPlayer: false,
-            topLanguage: null,
+            originalLanguage: null,
         });
 
         addPlayer();
         await settle(1000);
         expect(await playerAnswer()).toEqual({
             onPlayer: true,
-            topLanguage: null,
+            originalLanguage: null,
         });
     });
 });
