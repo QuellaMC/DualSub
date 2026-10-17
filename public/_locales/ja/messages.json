@@ -551,6 +551,12 @@
     "languagesOfficialHelp": {
         "message": "ある場合に使います。人が訳しているので読みやすいです。"
     },
+    "languagesPairTitle": {
+        "message": "原文の行と一緒に表示"
+    },
+    "languagesPairHelp": {
+        "message": "公式字幕の各行が、対応する原文の行と一緒に出て消えます。"
+    },
     "languagesOfficialTitle": {
         "message": "作品の公式字幕を使う"
     },
@@ -1184,6 +1190,12 @@
     "toastOfficialOff": {
         "message": "常にDualSubが翻訳します"
     },
+    "toastPairOn": {
+        "message": "公式字幕を原文の行に合わせます"
+    },
+    "toastPairOff": {
+        "message": "公式字幕は独自のタイミングで表示します"
+    },
     "toastOfficialOn": {
         "message": "作品の公式字幕を優先します"
     },
@@ -1264,6 +1276,9 @@
     },
     "searchWordsOfficial": {
         "message": "公式 こうしき 正式 日本語字幕 人の翻訳 人間の翻訳 人が訳した プロの翻訳 機械翻訳 用意された字幕 netflix disney ネットフリックス ネトフリ ディズニー ディズニープラス"
+    },
+    "searchWordsPair": {
+        "message": "そろえる 合わせる 同期 タイミング ずれ 一致 公式字幕 翻訳"
     },
     "searchWordsSize": {
         "message": "サイズ 文字サイズ 字幕サイズ 字幕の大きさ おおきさ 大きく おおきく 大きい 小さく ちいさく 小さい 文字を大きく 字幕を大きく 拡大 縮小 ズーム 見えにくい 見づらい 読みにくい もじ フォント 細かく 正確"

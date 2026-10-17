@@ -551,6 +551,12 @@
     "languagesOfficialHelp": {
         "message": "있을 때만요. 사람이 만들어서 읽기 더 좋아요."
     },
+    "languagesPairTitle": {
+        "message": "원문 줄과 함께 보여 주기"
+    },
+    "languagesPairHelp": {
+        "message": "공식 자막의 각 줄이 해당하는 원문 줄과 함께 나오고 사라져요."
+    },
     "languagesOfficialTitle": {
         "message": "공식 자막 사용"
     },
@@ -1184,6 +1190,12 @@
     "toastOfficialOff": {
         "message": "항상 DualSub에서 번역해요"
     },
+    "toastPairOn": {
+        "message": "공식 자막이 원문 줄을 따라가요"
+    },
+    "toastPairOff": {
+        "message": "공식 자막이 자체 타이밍으로 나와요"
+    },
     "toastOfficialOn": {
         "message": "공식 자막을 먼저 사용해요"
     },
@@ -1264,6 +1276,9 @@
     },
     "searchWordsOfficial": {
         "message": "공식자막 정식자막 정식 사람번역 사람 번역가 기계번역 netflix disney 넷플릭스 넷플 디즈니"
+    },
+    "searchWordsPair": {
+        "message": "맞추기 정렬 동기화 타이밍 어긋남 일치 공식자막 번역"
     },
     "searchWordsSize": {
         "message": "자막크기 글자크기 글씨크기 폰트크기 텍스트 사이즈 크게 작게 확대 축소 큰글씨 작은글씨 조절 변경 세밀 정확"

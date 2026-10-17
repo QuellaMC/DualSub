@@ -551,6 +551,12 @@
     "languagesOfficialHelp": {
         "message": "有的时候才用。它是人工翻译的，读起来更好。"
     },
+    "languagesPairTitle": {
+        "message": "与原文字幕同步显示"
+    },
+    "languagesPairHelp": {
+        "message": "节目自带翻译的每一行，都和对应的原文字幕一起出现、一起消失。"
+    },
     "languagesOfficialTitle": {
         "message": "使用节目自带的翻译"
     },
@@ -1184,6 +1190,12 @@
     "toastOfficialOff": {
         "message": "始终由 DualSub 翻译"
     },
+    "toastPairOn": {
+        "message": "节目自带的翻译会跟随原文字幕"
+    },
+    "toastPairOff": {
+        "message": "节目自带的翻译按自己的时间显示"
+    },
     "toastOfficialOn": {
         "message": "优先使用节目自带的翻译"
     },
@@ -1264,6 +1276,9 @@
     },
     "searchWordsOfficial": {
         "message": "netflix disney 网飞 奈飞 迪士尼 官方字幕 官方翻译 自带字幕 人工翻译 人工字幕 真人翻译 机器翻译 机翻 平台字幕"
+    },
+    "searchWordsPair": {
+        "message": "对齐 同步 时间 错位 不同步 匹配 官方翻译 自带翻译"
     },
     "searchWordsSize": {
         "message": "字体大小 字幕大小 字号 字大小 字太小 字太大 看不清 老花眼 放大 缩小 调大 调小 变大 变小 大字 小字 大一点 小一点 精确"

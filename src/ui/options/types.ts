@@ -10,6 +10,7 @@ export const OPTIONS_SETTINGS_KEYS = [
     'targetLanguage',
     'originalLanguage',
     'useOfficialTranslations',
+    'pairOfficialTranslations',
     'subtitleStyle',
     'subtitleCustomLook',
     'subtitleTranslationColor',

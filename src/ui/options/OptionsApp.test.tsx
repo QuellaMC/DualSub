@@ -383,6 +383,39 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('offers showing the show’s translation with the original line among the advanced options', async () => {
+        location.hash = '#languages';
+        await renderReady();
+        const pairing = (): HTMLElement | null =>
+            screen.queryByRole('switch', {
+                name: 'Show it with the original line',
+            });
+        expect(pairing()).toBeNull();
+
+        fireEvent.click(
+            screen.getByRole('switch', { name: 'Advanced options' })
+        );
+        await waitFor(() =>
+            expect(pairing()).toHaveAttribute('aria-checked', 'false')
+        );
+        fireEvent.click(pairing()!);
+        await waitFor(async () =>
+            expect(await sync('pairOfficialTranslations')).toBe(true)
+        );
+        expect(
+            await screen.findByText(
+                "The show's translation follows the original line"
+            )
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('switch', {
+                name: "Use the show's own translation",
+            })
+        );
+        await waitFor(() => expect(pairing()).toBeNull());
+    });
+
     it('keeps credentials available to the setup cards', async () => {
         await fakeBrowser.storage.sync.set({ selectedProvider: 'deepl' });
         await fakeBrowser.storage.local.set({ deeplApiKey: 'secret' });

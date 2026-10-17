@@ -551,6 +551,12 @@
     "languagesOfficialHelp": {
         "message": "Cuando la haya. La escribieron personas, así que se lee mejor."
     },
+    "languagesPairTitle": {
+        "message": "Mostrarla con la línea original"
+    },
+    "languagesPairHelp": {
+        "message": "Cada línea de la traducción oficial aparece y se va con la línea original que le corresponde."
+    },
     "languagesOfficialTitle": {
         "message": "Usar la traducción oficial"
     },
@@ -1184,6 +1190,12 @@
     "toastOfficialOff": {
         "message": "DualSub siempre traduce"
     },
+    "toastPairOn": {
+        "message": "La traducción oficial sigue a la línea original"
+    },
+    "toastPairOff": {
+        "message": "La traducción oficial mantiene su propio tiempo"
+    },
     "toastOfficialOn": {
         "message": "La traducción oficial va primero"
     },
@@ -1264,6 +1276,9 @@
     },
     "searchWordsOfficial": {
         "message": "subtítulos subtitulos oficiales traduccion humana humanos personas profesionales netflix disney"
+    },
+    "searchWordsPair": {
+        "message": "alinear sincronizar tiempo coincidir emparejar traducción oficial desfase"
     },
     "searchWordsSize": {
         "message": "tamano subtítulos subtitulos letras fuente grandes más mas pequeños pequeñas pequenos pequenas chicos chicas agrandar ampliar aumentar achicar reducir zoom lupa leer no veo bien exacto preciso"

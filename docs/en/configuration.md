@@ -29,7 +29,7 @@ The settings page holds every setting, the popup's included, with a menu of its 
 - Sites: DualSub on or off for each site, and hiding each site's own subtitles
 - Help: fixes for common problems, one of which hides the sites' own subtitles everywhere
 
-The Advanced options switch in the top bar adds the exact timing shift, the pause between translation requests, per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
+The Advanced options switch in the top bar adds the exact timing shift, showing the show's own translation with the original line it belongs with, the pause between translation requests, per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
 
 API keys stay on this computer: they don't sync and never go into a backup file. A key goes only to the address it was entered for. When that address moves to another host (on this computer, on another one you sync with, or by loading a backup), DualSub treats the key as missing until you enter one for the new address.
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- With advanced options shown, Languages can show each line of the show's own translation with the original line it belongs with: the two come and go together, where today each keeps its own timing. It is off by default until it has been compared on real shows, and switching it applies at once to the subtitles on screen.
+
 ## [3.1.1] - 2026-10-17
 
 ### Fixed

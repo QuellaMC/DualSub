@@ -551,6 +551,12 @@
     "languagesOfficialHelp": {
         "message": "When it has one. People wrote it, so it reads better."
     },
+    "languagesPairTitle": {
+        "message": "Show it with the original line"
+    },
+    "languagesPairHelp": {
+        "message": "Each line of the show's translation comes and goes with the original line it belongs with."
+    },
     "languagesOfficialTitle": {
         "message": "Use the show's own translation"
     },
@@ -1184,6 +1190,12 @@
     "toastOfficialOff": {
         "message": "DualSub always translates"
     },
+    "toastPairOn": {
+        "message": "The show's translation follows the original line"
+    },
+    "toastPairOff": {
+        "message": "The show's translation keeps its own timing"
+    },
     "toastOfficialOn": {
         "message": "The show's own translation comes first"
     },
@@ -1264,6 +1276,9 @@
     },
     "searchWordsOfficial": {
         "message": "official native subtitles human netflix disney"
+    },
+    "searchWordsPair": {
+        "message": "line up align sync timing match pair official translation mismatch out of step"
     },
     "searchWordsSize": {
         "message": "font size bigger smaller large small zoom text exact"

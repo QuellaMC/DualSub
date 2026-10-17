@@ -369,7 +369,9 @@ export function OptionsApp() {
             case 'start':
                 return <StartSection {...sectionProps} go={go} />;
             case 'languages':
-                return <LanguagesSection {...sectionProps} />;
+                return (
+                    <LanguagesSection {...sectionProps} advanced={advanced} />
+                );
             case 'look':
                 return <LookSection {...sectionProps} />;
             case 'timing':

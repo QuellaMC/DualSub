@@ -470,6 +470,14 @@ export const configSchema = {
         default: true,
         scope: 'sync',
     }),
+    /** Each line of the show's own translation comes and goes with the
+     *  original line it belongs to, instead of on its own timing. Off until
+     *  it has been compared with the old behavior on real shows. */
+    pairOfficialTranslations: setting({
+        schema: z.boolean(),
+        default: false,
+        scope: 'sync',
+    }),
     targetLanguage: setting({
         schema: languageTag,
         default: 'en',
