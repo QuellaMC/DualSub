@@ -236,6 +236,9 @@
     "lang_hi": {
         "message": "印地語"
     },
+    "lang_auto": {
+        "message": "自動（跟隨音訊）"
+    },
     "testDeepLButton": {
         "message": "測試 DeepL 連線"
     },

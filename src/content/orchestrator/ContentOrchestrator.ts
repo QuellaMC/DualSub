@@ -24,12 +24,12 @@ import {
     FETCH_SETTINGS_KEYS,
     INTERACTION_SETTINGS_KEYS,
     PlayerSession,
-    toSubtitleLanguages,
+    toLanguageSettings,
     type ContentSettings,
     type InteractionSettings,
+    type LanguageSettings,
     type SessionEndReason,
 } from './PlayerSession';
-import type { SubtitleLanguages } from '../platform/types';
 
 /**
  * Document root of the content side. Owns document-lifetime services (page
@@ -131,8 +131,11 @@ export class ContentOrchestrator {
                 session &&
                 FETCH_SETTINGS_KEYS.some((key) => changes[key] !== undefined)
             ) {
-                session.updateLanguages(
-                    toSubtitleLanguages({ ...session.languages, ...changes })
+                session.updateLanguageSettings(
+                    toLanguageSettings({
+                        ...session.languageSettings,
+                        ...changes,
+                    })
                 );
             }
         });
@@ -150,6 +153,14 @@ export class ContentOrchestrator {
         if (classification.kind === 'subtitle') {
             this.cache.publish(classification.videoId, event);
             this.requestReconcile();
+            return;
+        }
+        if (classification.kind === 'spoken-language') {
+            if (this.activeSession?.videoId === classification.videoId) {
+                this.activeSession.updateSpokenLanguage(
+                    classification.language
+                );
+            }
             return;
         }
         if (classification.kind === 'appearance') {
@@ -217,7 +228,7 @@ export class ContentOrchestrator {
     }
 
     private async startSession(videoId: string): Promise<void> {
-        const { settings, languages, interaction } =
+        const { settings, languageSettings, interaction } =
             await this.readSessionSettings();
         // The route may have moved on while settings were loading.
         if (
@@ -238,7 +249,7 @@ export class ContentOrchestrator {
             handoff: this.handoff,
             platformLook: this.platformLook,
             settings,
-            languages,
+            languageSettings,
             interaction,
             onNavigationMismatch: () => this.requestReconcile(),
             onContextInvalidated: () => this.teardown('context-invalidated'),
@@ -250,7 +261,7 @@ export class ContentOrchestrator {
 
     private async readSessionSettings(): Promise<{
         settings: ContentSettings;
-        languages: SubtitleLanguages;
+        languageSettings: LanguageSettings;
         interaction: InteractionSettings;
     }> {
         const values = await configService.getMultiple([
@@ -260,7 +271,7 @@ export class ContentOrchestrator {
         ]);
         return {
             settings: values as ContentSettings,
-            languages: toSubtitleLanguages(values),
+            languageSettings: toLanguageSettings(values),
             interaction: values as InteractionSettings,
         };
     }

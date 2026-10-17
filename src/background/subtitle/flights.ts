@@ -48,7 +48,10 @@ function sameRequest(
         return false;
     }
     if (a.source === 'disneyplus' && b.source === 'disneyplus') {
-        return a.url === b.url;
+        return (
+            a.url === b.url &&
+            a.useOfficialTranslations === b.useOfficialTranslations
+        );
     }
     if (a.source === 'netflix' && b.source === 'netflix') {
         return (

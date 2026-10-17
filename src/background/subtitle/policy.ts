@@ -67,6 +67,7 @@ export interface DisneyAuthorizedRequest {
     readonly url: string;
     readonly targetLanguage: string;
     readonly originalLanguage: string;
+    readonly useOfficialTranslations: boolean;
 }
 
 export interface NetflixAuthorizedRequest {
@@ -355,6 +356,7 @@ export function authorizeSubtitleRequest(
             ),
             targetLanguage: request.targetLanguage,
             originalLanguage: request.originalLanguage,
+            useOfficialTranslations: request.useOfficialTranslations,
         });
     }
 

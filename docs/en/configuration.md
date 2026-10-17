@@ -3,7 +3,7 @@
 ## Popup (Quick Access)
 
 - Enable/Disable dual subtitles
-- Translation Provider and Target Language
+- Languages: the translation language starts as your browser's language. The top line starts on Automatic and follows the language spoken in the video, including when you switch the audio track in the player; pick a fixed language to learn one language with every video. When the video is already in your translation language, DualSub shows one line.
 - Layout (Top/Bottom, Left/Right), appearance, and timing offset
 - Subtitle style: Match Platform, which follows the subtitle appearance settings of your Netflix or Disney+ profile, or Custom, which starts as DualSub's own look and is edited in the options page. The translation line's color is a setting of its own for both. Font size is a scale over the look's base size, which follows the video's height.
 

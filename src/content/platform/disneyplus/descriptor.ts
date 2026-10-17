@@ -27,6 +27,12 @@ export const disneyPlusDescriptor: PlatformDescriptor = {
         if (event.t === 'subtitle-appearance') {
             return { kind: 'appearance', appearance: event.appearance };
         }
+        if (event.t === 'spoken-language') {
+            const videoId = normalizeDisneyPlusVideoId(event.videoId);
+            return videoId
+                ? { kind: 'spoken-language', videoId, language: event.language }
+                : null;
+        }
         return null;
     },
     look: DISNEY_LOOK,

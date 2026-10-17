@@ -19,6 +19,7 @@ function disneyRequest(
         url: 'https://cdn.media.dssott.com/master.m3u8',
         targetLanguage: 'zh-CN',
         originalLanguage: 'en',
+        useOfficialTranslations: true,
         ...overrides,
     };
 }
@@ -51,6 +52,27 @@ describe('SubtitleFlightTable', () => {
         resolve(OK);
         await expect(first).resolves.toEqual(OK);
         await expect(second).resolves.toEqual(OK);
+    });
+
+    it('runs a Disney+ request anew when official translations were toggled', async () => {
+        const table = new SubtitleFlightTable();
+        let observedSignal: AbortSignal | undefined;
+        const official = table.admit(disneyRequest(), (signal) => {
+            observedSignal = signal;
+            return new Promise<FetchVttResponse>(() => undefined);
+        });
+        const run = vi.fn(() => Promise.resolve(OK));
+        const translated = table.admit(
+            disneyRequest({ useOfficialTranslations: false }),
+            run
+        );
+
+        expect(run).toHaveBeenCalledOnce();
+        await expect(translated).resolves.toEqual(OK);
+        await expect(official).resolves.toEqual(
+            SUBTITLE_REQUEST_REJECTED_RESPONSE
+        );
+        expect(observedSignal?.aborted).toBe(true);
     });
 
     it('caps coalesced responders at 8', async () => {

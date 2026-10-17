@@ -172,3 +172,90 @@ describe('disneyRecipe appearance', () => {
         ]);
     });
 });
+
+describe('disneyRecipe spoken language', () => {
+    const emitted: CapturedEvent[] = [];
+    const emit = (event: CapturedEvent): void => {
+        emitted.push(event);
+    };
+
+    function mountAudio(selectedLanguage: unknown): {
+        audio: Record<string, unknown>;
+    } {
+        const audio: Record<string, unknown> = { selectedLanguage };
+        const player = document.createElement(
+            'disney-web-player-ui'
+        ) as Element & { mediaPlayerApi?: unknown };
+        player.mediaPlayerApi = { audio };
+        document.body.append(player);
+        return { audio };
+    }
+
+    function spoken(): unknown[] {
+        return emitted
+            .filter((event) => event.t === 'spoken-language')
+            .map((event) => (event as { language: unknown }).language);
+    }
+
+    async function settle(ms: number): Promise<void> {
+        await vi.advanceTimersByTimeAsync(ms);
+    }
+
+    beforeEach(() => {
+        emitted.length = 0;
+        document.body.innerHTML = '';
+        setUrl('https://www.disneyplus.com/play/abc-123');
+    });
+    afterEach(() => {
+        disneyRecipe.onClose?.();
+    });
+
+    it("reports the selected audio track's language and each change", async () => {
+        const { audio } = mountAudio('en');
+        disneyRecipe.onControl?.(
+            { t: 'watch-spoken-language', videoId: 'abc-123' },
+            emit
+        );
+        expect(emitted).toEqual([
+            {
+                t: 'spoken-language',
+                platform: 'disneyplus',
+                videoId: 'abc-123',
+                language: 'en',
+            },
+        ]);
+        audio.selectedLanguage = 'cmn-TW';
+        await settle(1000);
+        expect(spoken()).toEqual(['en', 'cmn-TW']);
+    });
+
+    it('ignores the player once the route shows another video', async () => {
+        mountAudio('en');
+        disneyRecipe.onControl?.(
+            { t: 'watch-spoken-language', videoId: 'other-video' },
+            emit
+        );
+        await settle(14_000);
+        expect(spoken()).toEqual([]);
+        await settle(1000);
+        expect(spoken()).toEqual([null]);
+    });
+
+    it('treats an unreadable player as silent', async () => {
+        const player = document.createElement(
+            'disney-web-player-ui'
+        ) as Element & { mediaPlayerApi?: unknown };
+        Object.defineProperty(player, 'mediaPlayerApi', {
+            get: () => {
+                throw new Error('torn down');
+            },
+        });
+        document.body.append(player);
+        disneyRecipe.onControl?.(
+            { t: 'watch-spoken-language', videoId: 'abc-123' },
+            emit
+        );
+        await settle(15_000);
+        expect(spoken()).toEqual([null]);
+    });
+});

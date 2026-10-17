@@ -13,7 +13,10 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    the top with its translation while dialogue stays at the bottom.
 2. Toggle "use official translations" and change both languages from the
    popup: the current line stays up behind the loading placeholder, then
-   the new languages take over at the right time.
+   the new languages take over at the right time. With the top line on
+   Automatic (a fresh profile's default), switch the audio track in the
+   player: the top line reloads in the new audio language within a few
+   seconds; pick audio in the translation language: one line shows.
 3. Next episode (autoplay and manual): no duplicated cues, no cue from the
    previous episode, timing correct from the first line.
 4. Leave the player, come back, and reload the page: subtitles return

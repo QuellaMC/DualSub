@@ -236,6 +236,9 @@
     "lang_hi": {
         "message": "힌디어"
     },
+    "lang_auto": {
+        "message": "자동 (오디오에 맞춤)"
+    },
     "testDeepLButton": {
         "message": "DeepL 연결 테스트"
     },

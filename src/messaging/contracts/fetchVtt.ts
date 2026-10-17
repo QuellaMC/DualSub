@@ -34,6 +34,7 @@ export const fetchVtt = defineContract({
             url: z.string(),
             targetLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
             originalLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
+            useOfficialTranslations: z.boolean(),
         }),
         z.strictObject({
             action: z.literal(MessageActions.FETCH_VTT),

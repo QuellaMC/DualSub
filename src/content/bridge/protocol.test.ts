@@ -223,3 +223,48 @@ describe('track resolution frames', () => {
         ).toBe(false);
     });
 });
+
+describe('spoken language frames', () => {
+    it('accepts a watch, an unwatch, and a report with or without a language', () => {
+        expect(
+            isIsolatedToMain({ t: 'watch-spoken-language', videoId: '81' })
+        ).toBe(true);
+        expect(isIsolatedToMain({ t: 'unwatch-spoken-language' })).toBe(true);
+        for (const language of ['cmn-TW', null]) {
+            expect(
+                isCapturedEvent({
+                    t: 'spoken-language',
+                    platform: 'disneyplus',
+                    videoId: 'abc',
+                    language,
+                })
+            ).toBe(true);
+        }
+    });
+
+    it.each([
+        ['an empty language', { language: '' }],
+        ['an overlong language', { language: 'x'.repeat(65) }],
+        ['a numeric language', { language: 7 }],
+        ['a missing language', { language: undefined }],
+        ['an unknown platform', { platform: 'hulu' }],
+        ['a blank video id', { videoId: '' }],
+    ])('rejects a report with %s', (_label, overrides) => {
+        expect(
+            isCapturedEvent({
+                t: 'spoken-language',
+                platform: 'netflix',
+                videoId: '81',
+                language: 'en',
+                ...overrides,
+            })
+        ).toBe(false);
+    });
+
+    it('rejects a watch without a video id', () => {
+        expect(isIsolatedToMain({ t: 'watch-spoken-language' })).toBe(false);
+        expect(
+            isIsolatedToMain({ t: 'watch-spoken-language', videoId: '' })
+        ).toBe(false);
+    });
+});

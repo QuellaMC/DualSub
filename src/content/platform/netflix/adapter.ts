@@ -1,3 +1,4 @@
+import { isSameLanguage } from '@/shared/languageNormalization';
 import type { CapturedEvent } from '../../bridge/protocol';
 import type {
     AdapterContext,
@@ -32,13 +33,16 @@ const NETFLIX_NATIVE_SUB_RECIPE: NativeSubRecipe = {
 };
 
 /** Languages the page bridge should resolve, original first. The target is
- *  only wanted when official translations may replace API translation. */
+ *  only wanted when official translations may replace API translation, and
+ *  never when it is the original's own language. */
 export function requestedSubtitleLanguages(
     languages: SubtitleLanguages
 ): string[] {
-    return languages.useOfficialTranslations
-        ? [languages.originalLanguage, languages.targetLanguage]
-        : [languages.originalLanguage];
+    const { originalLanguage, targetLanguage } = languages;
+    return languages.useOfficialTranslations &&
+        !isSameLanguage(originalLanguage, targetLanguage)
+        ? [originalLanguage, targetLanguage]
+        : [originalLanguage];
 }
 
 function sameLanguages(
@@ -65,8 +69,14 @@ export class NetflixAdapter implements PlatformAdapter {
         }
         // A resolution for other languages answered an earlier request;
         // the one for the current languages is on its way.
-        const requested = requestedSubtitleLanguages(this.context.languages());
-        if (!sameLanguages(event.languages, requested)) {
+        const languages = this.context.languages();
+        if (
+            !languages ||
+            !sameLanguages(
+                event.languages,
+                requestedSubtitleLanguages(languages)
+            )
+        ) {
             return null;
         }
         if (event.tracks.length === 0) {
@@ -93,11 +103,17 @@ export class NetflixAdapter implements PlatformAdapter {
         this.requestTracks();
     }
 
+    /** Waits for concrete languages: an automatic top line needs the
+     *  spoken language first. */
     private requestTracks(): void {
+        const languages = this.context.languages();
+        if (!languages) {
+            return;
+        }
         this.context.bridge.sendControl({
             t: 'request-subtitle-tracks',
             videoId: this.context.videoId,
-            languages: requestedSubtitleLanguages(this.context.languages()),
+            languages: requestedSubtitleLanguages(languages),
         });
     }
 

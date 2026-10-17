@@ -19,11 +19,10 @@ import type {
 } from '@/messaging/contracts/fetchVtt';
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import { netflixDescriptor } from '../platform/netflix/descriptor';
-import type { SubtitleLanguages } from '../platform/types';
 import { UiRoot } from '../renderer/domLayer';
-import { PlayerSession } from './PlayerSession';
+import { PlayerSession, type LanguageSettings } from './PlayerSession';
 
-const LANGUAGES: SubtitleLanguages = {
+const LANGUAGES: LanguageSettings = {
     originalLanguage: 'en',
     targetLanguage: 'zh-CN',
     useOfficialTranslations: true,
@@ -93,7 +92,7 @@ function resolution(
     };
 }
 
-function startSession() {
+function startSession(languageSettings: LanguageSettings = LANGUAGES) {
     const controller = new AbortController();
     const cache = new SubtitleEventCache();
     const sendControl = vi.fn(() => true);
@@ -119,7 +118,7 @@ function startSession() {
             subtitleLayoutOrder: 'original_top',
             subtitleTimeOffset: 0,
         },
-        languages: LANGUAGES,
+        languageSettings,
         interaction: {
             aiContextEnabled: false,
             sidePanelAutoOpen: true,
@@ -199,7 +198,10 @@ describe('PlayerSession', () => {
         active.tick(1.5);
         expect(texts()).toEqual(['Hello', '你好']);
 
-        active.session.updateLanguages({ ...LANGUAGES, targetLanguage: 'ja' });
+        active.session.updateLanguageSettings({
+            ...LANGUAGES,
+            targetLanguage: 'ja',
+        });
         expect(active.sendControl).toHaveBeenLastCalledWith({
             t: 'request-subtitle-tracks',
             videoId: '1',
@@ -222,7 +224,7 @@ describe('PlayerSession', () => {
         active.cache.publish('1', resolution(['en', 'zh-CN']));
         await settle();
         active.tick(1.5);
-        active.session.updateLanguages({ ...LANGUAGES });
+        active.session.updateLanguageSettings({ ...LANGUAGES });
         expect(texts()).toEqual(['Hello', '你好']);
     });
 
@@ -259,5 +261,166 @@ describe('PlayerSession', () => {
         expect(texts()).toEqual(['', 'Loading…']);
         await settle(1_000);
         expect(texts()).toEqual(['', '']);
+    });
+
+    it('watches the spoken language for its whole life', () => {
+        stubBackground({});
+        active = startSession();
+        expect(active.sendControl).toHaveBeenCalledWith({
+            t: 'watch-spoken-language',
+            videoId: '1',
+        });
+        active.session.end('navigation');
+        expect(active.sendControl).toHaveBeenLastCalledWith({
+            t: 'cancel-subtitle-tracks',
+        });
+        expect(active.sendControl).toHaveBeenCalledWith({
+            t: 'unwatch-spoken-language',
+        });
+    });
+});
+
+describe('PlayerSession with an automatic top line', () => {
+    const AUTO: LanguageSettings = { ...LANGUAGES, originalLanguage: 'auto' };
+
+    function trackRequests(): unknown[] {
+        return active!.sendControl.mock.calls
+            .map(([message]: unknown[]) => message)
+            .filter(
+                (message) =>
+                    (message as { t: string }).t === 'request-subtitle-tracks'
+            );
+    }
+
+    it('asks for tracks only once the player reports the spoken language', () => {
+        stubBackground({});
+        active = startSession(AUTO);
+        expect(trackRequests()).toEqual([]);
+        expect(texts()).toEqual(['', 'Loading…']);
+
+        active.session.updateSpokenLanguage('ko-KR');
+        expect(trackRequests()).toEqual([
+            {
+                t: 'request-subtitle-tracks',
+                videoId: '1',
+                languages: ['ko', 'zh-CN'],
+            },
+        ]);
+    });
+
+    it('follows the audio when the viewer switches it', async () => {
+        const requests = stubBackground({ 'zh-CN': '你好' });
+        active = startSession(AUTO);
+        active.session.updateSpokenLanguage('en');
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+        expect(requests.map((request) => request.originalLanguage)).toEqual([
+            'en',
+        ]);
+
+        active.session.updateSpokenLanguage('cmn-TW');
+        expect(trackRequests()).toContainEqual({
+            t: 'request-subtitle-tracks',
+            videoId: '1',
+            languages: ['zh-TW', 'zh-CN'],
+        });
+        active.cache.publish('1', resolution(['zh-TW', 'zh-CN']));
+        await settle();
+        expect(requests.map((request) => request.originalLanguage)).toEqual([
+            'en',
+            'zh-TW',
+        ]);
+    });
+
+    it('shows only the subtitles for the audio playing now', async () => {
+        const requests: FetchVttRequest[] = [];
+        const answers: ((response: FetchVttResponse) => void)[] = [];
+        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(((
+            message: FetchVttRequest
+        ) => {
+            requests.push(message);
+            return new Promise((resolve) => {
+                answers.push(resolve);
+            });
+        }) as never);
+        const english: FetchVttResponse = {
+            success: true,
+            vttText: vtt('Hello'),
+            targetVttText: vtt('你好'),
+            sourceLanguage: 'en',
+            targetLanguage: 'zh-CN',
+            useNativeTarget: true,
+            selectedLanguage: { normalizedCode: 'en', displayName: 'English' },
+        };
+        active = startSession(AUTO);
+        active.session.updateSpokenLanguage('en');
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+
+        active.session.updateSpokenLanguage('ja');
+        answers[0]!(english);
+        await settle();
+        active.tick(1.5);
+        expect(texts()).toEqual(['', 'Loading…']);
+
+        active.session.updateSpokenLanguage('en');
+        await settle();
+        expect(requests.map((request) => request.originalLanguage)).toEqual([
+            'en',
+            'en',
+        ]);
+        answers[1]!(english);
+        await settle();
+        active.tick(1.6);
+        expect(texts()).toEqual(['Hello', '你好']);
+    });
+
+    it('falls back to English when the player cannot tell', () => {
+        stubBackground({});
+        active = startSession(AUTO);
+        active.session.updateSpokenLanguage(null);
+        expect(trackRequests()).toEqual([
+            {
+                t: 'request-subtitle-tracks',
+                videoId: '1',
+                languages: ['en', 'zh-CN'],
+            },
+        ]);
+    });
+
+    it('asks for one line when the video speaks the target language', async () => {
+        const messages: { action: string }[] = [];
+        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(((message: {
+            action: string;
+        }) => {
+            messages.push(message);
+            const response: FetchVttResponse = {
+                success: true,
+                vttText: vtt('你好'),
+                targetVttText: null,
+                sourceLanguage: 'zh-CN',
+                targetLanguage: 'zh-CN',
+                useNativeTarget: false,
+                selectedLanguage: {
+                    normalizedCode: 'zh-CN',
+                    displayName: '中文',
+                },
+            };
+            return Promise.resolve(response);
+        }) as never);
+        active = startSession(AUTO);
+        active.session.updateSpokenLanguage('zh-Hans');
+        expect(trackRequests()).toEqual([
+            {
+                t: 'request-subtitle-tracks',
+                videoId: '1',
+                languages: ['zh-CN'],
+            },
+        ]);
+        active.cache.publish('1', resolution(['zh-CN']));
+        await settle(5_000);
+        active.tick(1.5);
+        expect(texts()).toEqual(['你好', '']);
+        expect(messages.map((message) => message.action)).toEqual(['fetchVTT']);
     });
 });

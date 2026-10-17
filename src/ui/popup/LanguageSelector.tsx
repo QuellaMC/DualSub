@@ -1,22 +1,7 @@
+import { AUTO_LANGUAGE, SUBTITLE_LANGUAGES } from '@/shared/subtitleLanguages';
 import type { Translate } from '../hooks/useI18n';
 
-/** Selectable subtitle languages, each keyed to its catalog label. */
-export const SUBTITLE_LANGUAGES = [
-    'en',
-    'es',
-    'fr',
-    'de',
-    'it',
-    'pt',
-    'ja',
-    'ko',
-    'zh-CN',
-    'zh-TW',
-    'ru',
-    'ar',
-    'hi',
-] as const;
-
+/** The catalog key of a language's label; `auto` has one too. */
 export function languageLabelKey(code: string): string {
     return `lang_${code.replace('-', '_')}`;
 }
@@ -25,12 +10,14 @@ function LanguageSelect({
     id,
     label,
     value,
+    choices,
     onChange,
     t,
 }: {
     id: string;
     label: string;
     value: string;
+    choices: readonly string[];
     onChange: (code: string) => void;
     t: Translate;
 }) {
@@ -42,7 +29,7 @@ function LanguageSelect({
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
             >
-                {SUBTITLE_LANGUAGES.map((code) => (
+                {choices.map((code) => (
                     <option key={code} value={code}>
                         {t(languageLabelKey(code))}
                     </option>
@@ -51,6 +38,8 @@ function LanguageSelect({
         </div>
     );
 }
+
+const ORIGINAL_LANGUAGE_CHOICES = [AUTO_LANGUAGE, ...SUBTITLE_LANGUAGES];
 
 export function LanguageSelector({
     t,
@@ -71,6 +60,7 @@ export function LanguageSelector({
                 id="originalLanguage"
                 label={t('originalLanguageLabel')}
                 value={originalLanguage}
+                choices={ORIGINAL_LANGUAGE_CHOICES}
                 onChange={onOriginalChange}
                 t={t}
             />
@@ -78,6 +68,7 @@ export function LanguageSelector({
                 id="targetLanguage"
                 label={t('targetLanguageLabel')}
                 value={targetLanguage}
+                choices={SUBTITLE_LANGUAGES}
                 onChange={onTargetChange}
                 t={t}
             />

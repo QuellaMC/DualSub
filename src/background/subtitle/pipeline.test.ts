@@ -105,6 +105,16 @@ describe('processNetflixSubtitles', () => {
         expect(mockedFetch).toHaveBeenCalledTimes(1);
     });
 
+    it('fetches no official target in the language the original fell back to', async () => {
+        const result = await processNetflixSubtitles(
+            netflixSnapshot({ originalLanguage: 'sv', targetLanguage: 'en-GB' })
+        );
+        expect(result.sourceLanguage).toBe('en');
+        expect(result.useNativeTarget).toBe(false);
+        expect(result.targetVttText).toBeNull();
+        expect(mockedFetch).toHaveBeenCalledTimes(1);
+    });
+
     it('rethrows caller aborts instead of swallowing them as fallbacks', async () => {
         mockedFetch.mockImplementation((_snapshot, reference) =>
             String(reference).includes('/zh')
@@ -136,6 +146,7 @@ function disneySnapshot(): DisneyAuthorizedRequest {
         url: 'https://cdn.media.dssott.com/master.m3u8',
         targetLanguage: 'zh-CN',
         originalLanguage: 'en',
+        useOfficialTranslations: true,
     };
 }
 
@@ -173,6 +184,28 @@ describe('processDisneyPlusSubtitles', () => {
         const fetched = mockedFetch.mock.calls.map((call) => call[1]);
         expect(fetched).not.toContain('forced.m3u8');
         expect(fetched).not.toContain('fr-forced.m3u8');
+    });
+
+    it.each([
+        ['official translations are off', { useOfficialTranslations: false }],
+        ['the target is the original language', { targetLanguage: 'en-US' }],
+    ])('fetches only the original when %s', async (_label, overrides) => {
+        mockedFetch.mockImplementation((_snapshot, reference) =>
+            Promise.resolve({
+                text: String(reference).endsWith('master.m3u8')
+                    ? MASTER
+                    : `WEBVTT\n\ncue for ${String(reference)}`,
+                canonicalUrl: String(reference),
+            })
+        );
+        const result = await processDisneyPlusSubtitles({
+            ...disneySnapshot(),
+            ...overrides,
+        });
+        expect(result.useNativeTarget).toBe(false);
+        expect(result.targetVttText).toBeNull();
+        const fetched = mockedFetch.mock.calls.map((call) => call[1]);
+        expect(fetched).not.toContain('zh.m3u8');
     });
 
     it('returns direct VTT masters as-is without a native target', async () => {

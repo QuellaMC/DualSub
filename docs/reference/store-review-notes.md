@@ -31,8 +31,9 @@ provider account.
 - One isolated-world script per platform draws the overlay and manages
   sessions.
 - One main-world script per platform, declared statically in the manifest,
-  reads the subtitle track list and the profile's subtitle appearance
-  settings from the platform's own player object and passes them to the
+  reads the subtitle track list, the language of the audio playing, and the
+  profile's subtitle appearance settings from the platform's own player
+  object and passes them to the
   isolated world over a `MessageChannel`. It injects no remote code and
   exposes nothing to the page.
 - No `web_accessible_resources`.

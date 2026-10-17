@@ -236,6 +236,9 @@
     "lang_hi": {
         "message": "ヒンディー語"
     },
+    "lang_auto": {
+        "message": "自動（音声に合わせる）"
+    },
     "testDeepLButton": {
         "message": "DeepL接続をテスト"
     },
