@@ -340,10 +340,9 @@ export function SitesSection({
 }) {
     return (
         <section className="section" aria-labelledby="sites-title" id="sites">
-            <h1 id="sites-title" tabIndex={-1}>
+            <h1 id="sites-title" className="sr-only" tabIndex={-1}>
                 {t('navSites')}
             </h1>
-            <p className="lead">{t('sitesLead')}</p>
             {PLATFORM_IDS.map((site) => (
                 <SiteCard
                     key={site}

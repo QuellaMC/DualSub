@@ -15,14 +15,13 @@ import { createLogger } from '@/shared/logger';
 import { PLATFORM_IDS, type PlatformId } from '@/shared/platforms';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
-import { Preview } from './preview/Preview';
 import type { SearchEntry } from './search';
 import { isSectionId, SECTIONS, type SectionId } from './sections';
 import { AdvancedSection } from './sections/AdvancedSection';
 import { ExplanationsSection } from './sections/ExplanationsSection';
 import { HelpSection } from './sections/HelpSection';
 import { LanguagesSection } from './sections/LanguagesSection';
-import { LookSection, type LookDraft } from './sections/LookSection';
+import { LookSection } from './sections/LookSection';
 import { ownSettingKeys, SitesSection } from './sections/SitesSection';
 import { StartSection } from './sections/StartSection';
 import { TimingSection } from './sections/TimingSection';
@@ -101,7 +100,6 @@ export function OptionsApp() {
     );
     const [saveFailed, setSaveFailed] = useState(false);
     const [toast, setToast] = useState<ToastState | null>(null);
-    const [lookDraft, setLookDraft] = useState<LookDraft>({});
     /** Where focus goes once the page shows it: the heading of the section
      *  just opened, or the first of a search result's elements on the page. */
     const [arrival, setArrival] = useState<{
@@ -373,7 +371,7 @@ export function OptionsApp() {
             case 'languages':
                 return <LanguagesSection {...sectionProps} />;
             case 'look':
-                return <LookSection {...sectionProps} onDraft={setLookDraft} />;
+                return <LookSection {...sectionProps} />;
             case 'timing':
                 return <TimingSection {...sectionProps} advanced={advanced} />;
             case 'translation':
@@ -426,17 +424,30 @@ export function OptionsApp() {
                             void savePage({ uiLanguage: next })
                         }
                         onOpen={(entry) => void openSearchResult(entry)}
-                        onHelp={() => go('help')}
+                        advanced={advanced}
+                        onAdvanced={(next) =>
+                            savePage(
+                                { showAdvancedSettings: next },
+                                {
+                                    message: t(
+                                        next
+                                            ? 'toastAdvancedOn'
+                                            : 'toastAdvancedOff'
+                                    ),
+                                }
+                            )
+                        }
                     />
-                    <div className="shell">
+                    <div
+                        className={
+                            SECTIONS[shown].wide ? 'shell wide' : 'shell'
+                        }
+                    >
                         <Nav
                             t={t}
                             section={shown}
                             advanced={advanced}
                             onSection={go}
-                            onAdvanced={(next) =>
-                                savePage({ showAdvancedSettings: next })
-                            }
                         />
                         <main className="main" id="main">
                             {saveFailed && (
@@ -452,34 +463,22 @@ export function OptionsApp() {
                                     onScope={setScope}
                                 />
                             )}
-                            <div className="columns">
-                                <div
-                                    className="content"
-                                    key={editing}
-                                    aria-busy={
-                                        settings || sectionUnavailable
-                                            ? undefined
-                                            : true
-                                    }
-                                >
-                                    {sectionUnavailable ? (
-                                        <p
-                                            role="alert"
-                                            className="notice danger"
-                                        >
-                                            {t('settingsLoadFailed')}
-                                        </p>
-                                    ) : (
-                                        settings &&
-                                        sectionContent({ t, settings, save })
-                                    )}
-                                </div>
-                                {settings && SECTIONS[shown].preview && (
-                                    <Preview
-                                        t={t}
-                                        settings={{ ...settings, ...lookDraft }}
-                                        scope={editing}
-                                    />
+                            <div
+                                className="content"
+                                key={editing}
+                                aria-busy={
+                                    settings || sectionUnavailable
+                                        ? undefined
+                                        : true
+                                }
+                            >
+                                {sectionUnavailable ? (
+                                    <p role="alert" className="notice danger">
+                                        {t('settingsLoadFailed')}
+                                    </p>
+                                ) : (
+                                    settings &&
+                                    sectionContent({ t, settings, save })
                                 )}
                             </div>
                         </main>

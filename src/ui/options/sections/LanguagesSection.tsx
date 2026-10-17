@@ -1,12 +1,21 @@
+import { useState } from 'react';
 import { closestLanguage } from '@/shared/languageNormalization';
 import { AUTO_LANGUAGE, SUBTITLE_LANGUAGES } from '@/shared/subtitleLanguages';
 import { Switch } from '../../design/Switch';
 import { languageName } from '../../languageLabels';
 import { LanguageSelect } from '../../design/LanguageSelect';
-import { SharedTag, SiteTag } from '../shell/scopeContext';
+import { sampleVideoLanguage } from '../../preview/sample';
+import { FromBrowserTag } from '../controls/FromBrowserTag';
+import { SampleVideoChoice } from '../preview/SampleVideoChoice';
+import { Specimen } from '../preview/Specimen';
+import { SharedTag, SiteTag, useScope } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
 export function LanguagesSection({ t, settings, save }: SectionProps) {
+    const scope = useScope();
+    const [spoken, setSpoken] = useState(() =>
+        sampleVideoLanguage(settings.targetLanguage)
+    );
     const automatic = settings.originalLanguage === AUTO_LANGUAGE;
     // A fixed language to start from when the viewer leaves Automatic.
     const fixedLanguage = automatic
@@ -16,23 +25,33 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
 
     return (
         <section className="section" aria-labelledby="languages-title">
-            <h1 id="languages-title" tabIndex={-1}>
+            <h1 id="languages-title" className="sr-only" tabIndex={-1}>
                 {t('navLanguages')}
             </h1>
-            <p className="lead">{t('languagesLead')}</p>
+
+            <Specimen
+                t={t}
+                settings={settings}
+                scope={scope}
+                spoken={spoken}
+                corner={
+                    <SampleVideoChoice
+                        t={t}
+                        spoken={spoken}
+                        onPick={setSpoken}
+                        overPicture
+                    />
+                }
+            />
 
             <div className="card" id="target-language">
                 <div className="row">
-                    <div className="grow">
-                        <div className="label" id="languages-speak">
-                            {t('languagesSpeakTitle')}
-                        </div>
-                        <div className="help">{t('languagesSpeakHelp')}</div>
-                    </div>
+                    <label className="label" htmlFor="target-language-menu">
+                        {t('languagesSpeakTitle')}
+                    </label>
                     <LanguageSelect
                         t={t}
                         id="target-language-menu"
-                        labelledBy="languages-speak"
                         value={settings.targetLanguage}
                         onChange={(language) =>
                             void save(
@@ -47,6 +66,7 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
                         }
                     />
                 </div>
+                <FromBrowserTag t={t} language={settings.targetLanguage} />
                 <SharedTag />
             </div>
 

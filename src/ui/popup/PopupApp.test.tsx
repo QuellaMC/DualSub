@@ -257,7 +257,7 @@ describe('PopupApp on a site DualSub works on', () => {
             expect(await sync('subtitleTimeOffset')).toBe(0.5)
         );
 
-        fireEvent.click(screen.getByRole('button', { name: 'Move up' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Up' }));
         await waitFor(async () =>
             expect(await sync('subtitleVerticalPosition')).toBe(3.5)
         );

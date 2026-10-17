@@ -285,25 +285,22 @@
         "message": "Copying was blocked. Select the text and copy it yourself."
     },
     "advancedDownload": {
-        "message": "Download settings"
+        "message": "Download"
     },
     "advancedJsonHelp": {
-        "message": "What DualSub stores, without your keys. Each site keeps only what differs."
+        "message": "Without your keys. Each site keeps only what differs."
     },
     "advancedJsonTitle": {
         "message": "All settings as JSON"
-    },
-    "advancedLead": {
-        "message": "Backups, the raw settings, and troubleshooting tools."
     },
     "advancedLoadApply": {
         "message": "Replace them"
     },
     "advancedLoadFile": {
-        "message": "Load settings from a file"
+        "message": "Load from a file"
     },
     "advancedLoadFileHelp": {
-        "message": "You see how many settings will change before anything is replaced."
+        "message": "You see what changes before anything is replaced."
     },
     "advancedLoadNothing": {
         "message": "That file changes nothing."
@@ -336,7 +333,7 @@
         "message": "Copy report"
     },
     "advancedReportHelp": {
-        "message": "Version, browser, and settings without keys, ready to paste into a bug report."
+        "message": "For a bug report. No keys."
     },
     "advancedReportTitle": {
         "message": "Diagnostic report"
@@ -351,16 +348,16 @@
         "message": "Reset"
     },
     "advancedResetHelp": {
-        "message": "Put every setting back to the recommended one and remove every site's own settings. Your keys stay, along with what each one is set up with, such as its address and model, and so does the language of these pages."
+        "message": "Every setting back to recommended, and no site keeps its own. Keys stay."
     },
     "advancedResetTitle": {
         "message": "Start over"
     },
     "advancedSaveFile": {
-        "message": "Save my settings to a file"
+        "message": "Save to a file"
     },
     "advancedSaveFileHelp": {
-        "message": "Includes every site's own settings. API keys stay on this computer and never go into the file."
+        "message": "Every site's settings. Keys stay on this computer."
     },
     "advancedTroubleshootingTitle": {
         "message": "Troubleshooting"
@@ -394,9 +391,6 @@
     },
     "explainAllowHost": {
         "message": "DualSub needs your permission to reach this address before it can explain words."
-    },
-    "explainLead": {
-        "message": "Click any word in the subtitles to see what it means, how people use it, and the story behind it."
     },
     "explainLimitsTitle": {
         "message": "Model and limits"
@@ -515,29 +509,26 @@
     "helpGoTranslation": {
         "message": "Go to Translation"
     },
-    "helpLead": {
-        "message": "Common problems, and what fixes each one."
-    },
     "helpNoSubtitlesPlaying": {
-        "message": "Make sure the video is playing, not paused on the title screen."
+        "message": "Play the video; a paused title screen shows none."
     },
     "helpNoSubtitlesReload": {
         "message": "Reload the page."
     },
     "helpNoSubtitlesSite": {
-        "message": "Check that DualSub is on for the site, under %s."
+        "message": "Check DualSub is on in %s."
     },
     "helpNoSubtitlesTitle": {
         "message": "No subtitles appear"
     },
     "helpNoSubtitlesTracks": {
-        "message": "Check that the video has subtitles: open the site's own subtitle menu."
+        "message": "Check the site's own subtitle menu has subtitles."
     },
     "helpPrivacy": {
-        "message": "Subtitle text goes only to the translation service you choose. No tracking, and nothing is sent to us."
+        "message": "Subtitle text goes only to the translation service you choose. Nothing is sent to us."
     },
     "helpPrivacyFallback": {
-        "message": "Subtitle text goes only to the translation service you choose, and to the free ones that cover for it when it fails. No tracking, and nothing is sent to us."
+        "message": "Subtitle text goes only to the translation service you choose, and to the free ones that cover for it. Nothing is sent to us."
     },
     "helpSource": {
         "message": "Source code"
@@ -545,20 +536,11 @@
     "helpMadeBy": {
         "message": "Made by QuellaMC and 1jifang"
     },
-    "helpTimingHelp": {
-        "message": "Shift the subtitles a little earlier or later."
-    },
     "helpTimingTitle": {
         "message": "The words don't match what I hear"
     },
-    "helpTranslationHelp": {
-        "message": "Try another translation service, or use the show's own translation."
-    },
     "helpTranslationTitle": {
         "message": "The translation reads badly"
-    },
-    "helpTwiceHelp": {
-        "message": "The site's own subtitles are showing under DualSub's."
     },
     "helpTwiceTitle": {
         "message": "I see subtitles twice"
@@ -566,56 +548,50 @@
     "helpVersion": {
         "message": "Version %s"
     },
-    "languagesLead": {
-        "message": "Which language each subtitle line shows."
-    },
     "languagesOfficialHelp": {
-        "message": "Netflix and Disney+ often have human-made subtitles in your language. They read better than machine translation. When a show has none, DualSub translates."
+        "message": "When it has one. People wrote it, so it reads better."
     },
     "languagesOfficialTitle": {
-        "message": "Use the show's own translation when it has one"
-    },
-    "languagesSpeakHelp": {
-        "message": "The bottom line is translated into this language."
+        "message": "Use the show's own translation"
     },
     "languagesSpeakTitle": {
         "message": "I speak"
     },
     "languagesTopAuto": {
-        "message": "The language spoken in the video"
+        "message": "The video's language"
     },
     "languagesTopAutoHelp": {
-        "message": "DualSub follows each video. A Korean drama shows Korean on top, an English film shows English."
+        "message": "Follows each video."
     },
     "languagesTopFixed": {
-        "message": "Always the same language"
+        "message": "Always one language"
     },
     "languagesTopFixedHelp": {
-        "message": "For learning one language with every video. Works when the site has subtitles in it."
+        "message": "For learning one language."
     },
     "languagesTopFixedMenu": {
-        "message": "Language of the top line"
+        "message": "Top line language"
     },
     "languagesTopTitle": {
-        "message": "The top line shows"
+        "message": "Top line"
     },
     "lookArrangementSideBySide": {
         "message": "Side by side"
     },
     "lookArrangementStacked": {
-        "message": "One above the other"
+        "message": "Stacked"
     },
     "lookArrangementTitle": {
         "message": "How the two lines sit"
     },
     "lookBoldLabel": {
-        "message": "Bold letters"
+        "message": "Bold"
     },
     "lookBoxColorLabel": {
-        "message": "Color of the box behind the text"
+        "message": "Box"
     },
     "lookBoxOpacityLabel": {
-        "message": "How solid the box is: %d%"
+        "message": "How solid the box is"
     },
     "lookColorCyan": {
         "message": "Cyan"
@@ -636,13 +612,13 @@
         "message": "Yellow"
     },
     "lookCustomizeButton": {
-        "message": "Change colors and font"
+        "message": "Colors and font"
     },
     "lookEdgeDepressed": {
         "message": "Pressed in"
     },
     "lookEdgeLabel": {
-        "message": "Edge around the letters"
+        "message": "Edge"
     },
     "lookEdgeNone": {
         "message": "None"
@@ -657,13 +633,10 @@
         "message": "Soft shadow"
     },
     "lookExactPosition": {
-        "message": "Exact height: %s (from 0.1 at the bottom to 9.9 in the middle)"
+        "message": "Exact height"
     },
     "lookExactSize": {
-        "message": "Exact text size: %s×"
-    },
-    "lookFineTuneButton": {
-        "message": "Fine-tune size, height and spacing"
+        "message": "Exact text size"
     },
     "lookFontCasual": {
         "message": "Casual"
@@ -686,44 +659,38 @@
     "lookFontSmallCaps": {
         "message": "Small capitals"
     },
-    "lookGap": {
-        "message": "Space between the lines: %s of a line"
-    },
     "lookGapTitle": {
         "message": "Space between the lines"
     },
-    "lookLead": {
-        "message": "The preview changes as you go, and your video follows within a second."
-    },
     "lookMoveDown": {
-        "message": "Move down"
+        "message": "Down"
     },
     "lookMoveUp": {
-        "message": "Move up"
+        "message": "Up"
     },
     "lookOrderMineFirst": {
-        "message": "My language on top"
+        "message": "Mine on top"
     },
     "lookOrderTitle": {
         "message": "Which line goes on top"
     },
     "lookOrderVideoFirst": {
-        "message": "The video's language on top"
+        "message": "Video's on top"
     },
     "lookPositionBottom": {
-        "message": "Close to the bottom edge"
+        "message": "Bottom edge"
     },
     "lookPositionLower": {
-        "message": "In the lower part of the picture"
+        "message": "Raised"
     },
     "lookPositionMiddle": {
-        "message": "Near the middle of the picture"
+        "message": "Middle"
     },
     "lookPositionTitle": {
         "message": "Position on screen"
     },
     "lookPositionUsual": {
-        "message": "Just above the bottom, where most people like it"
+        "message": "Usual height"
     },
     "lookPresetBoxed": {
         "message": "Boxed"
@@ -740,47 +707,101 @@
     "lookPresetsLabel": {
         "message": "Ready-made looks"
     },
-    "lookPresetSample": {
-        "message": "Hello"
-    },
     "lookSizeTitle": {
         "message": "Text size"
     },
-    "lookStyleCustom": {
-        "message": "My own style"
-    },
-    "lookStyleCustomHelp": {
-        "message": "Start from a ready-made look, then change colors and font if you like."
-    },
     "lookStylePlatform": {
-        "message": "Look like the site you're on"
+        "message": "Like the site"
     },
     "lookStylePlatformSite": {
-        "message": "Look like %s"
+        "message": "Like %s"
     },
     "lookStylePlatformHelp": {
-        "message": "Follows the subtitle settings in your Netflix or Disney+ profile."
+        "message": "Set by your Netflix or Disney+ subtitle settings."
     },
     "lookStyleTitle": {
-        "message": "Style"
+        "message": "Look and ready-made styles"
     },
     "lookTopColorLabel": {
-        "message": "Color of the top line"
-    },
-    "lookTranslationColorHelp": {
-        "message": "Used with both styles, so the two lines are easy to tell apart."
+        "message": "Top line"
     },
     "lookTranslationColorTitle": {
-        "message": "Color of the translation line"
+        "message": "Translation color"
+    },
+    "lookScene": {
+        "message": "Scene"
+    },
+    "lookNight": {
+        "message": "Night"
+    },
+    "lookDay": {
+        "message": "Day"
+    },
+    "lookFullScreen": {
+        "message": "Full screen"
+    },
+    "lookFullScreenTitle": {
+        "message": "See them at full size"
+    },
+    "lookStageHint": {
+        "message": "Click a line to style it. Drag the subtitles to move them."
+    },
+    "lookLineTop": {
+        "message": "Top line: change the look"
+    },
+    "lookLineYours": {
+        "message": "Your line: change its color"
+    },
+    "lookUsualHeight": {
+        "message": "Usual height"
+    },
+    "lookPaneLabel": {
+        "message": "Subtitle style"
+    },
+    "lookRowSize": {
+        "message": "Size"
+    },
+    "lookRowPosition": {
+        "message": "Position"
+    },
+    "lookRowLook": {
+        "message": "Look"
+    },
+    "lookRowLines": {
+        "message": "Lines"
+    },
+    "lookExact": {
+        "message": "Exact"
+    },
+    "lookCustom": {
+        "message": "Custom"
+    },
+    "lookOnTop": {
+        "message": "On top"
+    },
+    "lookOrderVideoShort": {
+        "message": "Video's"
+    },
+    "lookOrderMineShort": {
+        "message": "Mine"
+    },
+    "lookLayout": {
+        "message": "Layout"
+    },
+    "lookSpacing": {
+        "message": "Spacing"
     },
     "navAdvancedSwitch": {
-        "message": "Show advanced options"
+        "message": "Advanced options"
     },
-    "navAdvancedSwitchHelp": {
-        "message": "Site profiles, API details, limits and backups."
+    "toastAdvancedOn": {
+        "message": "Advanced options are showing"
+    },
+    "toastAdvancedOff": {
+        "message": "Advanced options are hidden"
     },
     "navExplanations": {
-        "message": "Word explanations"
+        "message": "Meanings"
     },
     "navHelp": {
         "message": "Help"
@@ -792,7 +813,7 @@
         "message": "Languages"
     },
     "navLook": {
-        "message": "How subtitles look"
+        "message": "Style"
     },
     "navSites": {
         "message": "Sites"
@@ -803,24 +824,6 @@
     "navTiming": {
         "message": "Timing"
     },
-    "previewCaptionAuto": {
-        "message": "Video's line: %s, the language spoken in this video. Your line: %s, from the show when it has its own translation."
-    },
-    "previewCaptionFixed": {
-        "message": "Video's line: %s. Your line: %s, from the show when it has its own translation."
-    },
-    "previewCaptionAutoTranslated": {
-        "message": "Video's line: %s, the language spoken in this video. Your line: %s, translated by DualSub."
-    },
-    "previewCaptionAutoOne": {
-        "message": "Video's line: %s, the language spoken in this video."
-    },
-    "previewCaptionFixedTranslated": {
-        "message": "Video's line: %s. Your line: %s, translated by DualSub."
-    },
-    "previewCaptionFixedOne": {
-        "message": "Video's line: %s."
-    },
     "previewEnglishFilm": {
         "message": "English film"
     },
@@ -830,11 +833,23 @@
     "previewLabel": {
         "message": "Subtitle preview"
     },
+    "previewLegendSpoken": {
+        "message": "%s · spoken in the video"
+    },
+    "previewLegendChosen": {
+        "message": "%s · the language you chose"
+    },
+    "previewLegendYours": {
+        "message": "%s · your language"
+    },
+    "previewLegendOneLine": {
+        "message": "%s · already your language, so one line"
+    },
+    "previewLinesLabel": {
+        "message": "Sample subtitles: %s"
+    },
     "previewOff": {
         "message": "Dual subtitles are off"
-    },
-    "previewOneLine": {
-        "message": "This video is already in your language, so DualSub shows one line."
     },
     "previewSampleVideo": {
         "message": "Sample video"
@@ -842,11 +857,8 @@
     "previewStandIn": {
         "message": "There is no %s sample here, so English stands in for it."
     },
-    "previewShownOn": {
-        "message": "Shown on"
-    },
-    "previewTitle": {
-        "message": "Live preview"
+    "lookPreviewSite": {
+        "message": "Site look"
     },
     "providerAi": {
         "message": "AI translation"
@@ -885,22 +897,16 @@
         "message": "Back to All sites"
     },
     "scopeEditingSite": {
-        "message": "You're changing %s only."
+        "message": "%s only."
     },
     "scopeEditingSiteHelp": {
-        "message": "Whatever you change here gets a “%s only” tag. The rest follows All sites."
-    },
-    "scopeHelp": {
-        "message": "A site without its own settings uses All sites."
+        "message": "The rest follows All sites."
     },
     "scopeLabel": {
         "message": "Settings for"
     },
     "scopeOwnCount": {
         "message": "%d own settings"
-    },
-    "scopeSameAsAll": {
-        "message": "Same as All sites"
     },
     "scopeSharedSetting": {
         "message": "The same on every site"
@@ -909,7 +915,7 @@
         "message": "%s only"
     },
     "scopeUseShared": {
-        "message": "Use the All-sites value"
+        "message": "Use All sites"
     },
     "setupAddress": {
         "message": "Service address"
@@ -983,9 +989,6 @@
     "sitesHideTitle": {
         "message": "Hide the site's own subtitles"
     },
-    "sitesLead": {
-        "message": "DualSub turns itself on for these sites. You can switch it off on one, or give one its own settings."
-    },
     "sitesMoreHelp": {
         "message": "When DualSub learns a new site, it shows up here already switched on, using your All-sites settings."
     },
@@ -1034,32 +1037,14 @@
     "startFromBrowser": {
         "message": "Picked from your browser"
     },
-    "startLead": {
-        "message": "Open Netflix or Disney+ and play anything. You'll see two lines of subtitles: the video's language on top, and yours underneath."
+    "startChangeStyle": {
+        "message": "Change the style"
     },
     "startOpenSite": {
         "message": "Open %s"
     },
     "startProblemsTitle": {
         "message": "Something not right?"
-    },
-    "startProviderAi": {
-        "message": "AI translation, with your key"
-    },
-    "startProviderDeepL": {
-        "message": "DeepL, with your key"
-    },
-    "startProviderGoogle": {
-        "message": "Google Translate, free, nothing to set up"
-    },
-    "startProviderMicrosoft": {
-        "message": "Microsoft Translator, free, nothing to set up"
-    },
-    "startProviderVertex": {
-        "message": "Google Vertex AI"
-    },
-    "startSetUpTitle": {
-        "message": "We set these up for you"
     },
     "startTopTitle": {
         "message": "Top line"
@@ -1085,20 +1070,17 @@
     "startStatusReadyHelp": {
         "message": "Nothing to set up. Just play a video."
     },
-    "startTitle": {
-        "message": "Hello! DualSub is ready."
-    },
-    "startTopAuto": {
-        "message": "The language spoken in each video"
-    },
-    "startTopFixed": {
-        "message": "Always %s"
-    },
     "tagFree": {
         "message": "Free"
     },
     "tagGoogleCloud": {
         "message": "For Google Cloud users"
+    },
+    "tagYourKey": {
+        "message": "Your key"
+    },
+    "tagCloud": {
+        "message": "Google Cloud"
     },
     "tagNeedsKey": {
         "message": "Needs a key"
@@ -1112,9 +1094,6 @@
     "timingEarlierBy": {
         "message": "%s s earlier"
     },
-    "timingEarlierHelp": {
-        "message": "Each line shows up a little sooner."
-    },
     "timingExactHelp": {
         "message": "In seconds. Positive numbers show subtitles earlier (stored as %s)."
     },
@@ -1127,29 +1106,32 @@
     "timingLaterBy": {
         "message": "%s s later"
     },
-    "timingLaterHelp": {
-        "message": "Each line shows up a little later."
-    },
-    "timingLead": {
-        "message": "If the words don't match what you hear, nudge the subtitles. Most videos need nothing here."
-    },
     "timingOnTime": {
         "message": "On time"
-    },
-    "timingOnTimeHelp": {
-        "message": "Subtitles follow the video exactly."
     },
     "timingReset": {
         "message": "Back to on time"
     },
     "timingTipHelp": {
-        "message": "The DualSub button in your browser's toolbar has the same two buttons, so you can match the subtitles to what you hear without leaving the video."
-    },
-    "timingTipTitle": {
-        "message": "Fix it while you watch"
+        "message": "The same two buttons are in DualSub's toolbar button, so you can fix it while you watch."
     },
     "timingTitle": {
         "message": "Subtitle timing"
+    },
+    "timingVoice": {
+        "message": "Voice"
+    },
+    "timingSubtitles": {
+        "message": "Subtitles"
+    },
+    "timingTimelineOnTime": {
+        "message": "Each subtitle appears with the voice."
+    },
+    "timingTimelineEarlier": {
+        "message": "Each subtitle appears %s seconds before the voice."
+    },
+    "timingTimelineLater": {
+        "message": "Each subtitle appears %s seconds after the voice."
     },
     "toastCopied": {
         "message": "Copied"
@@ -1193,6 +1175,15 @@
     "toastMovedUp": {
         "message": "Subtitles moved up"
     },
+    "toastMoved": {
+        "message": "Subtitles moved"
+    },
+    "toastLinesStacked": {
+        "message": "Lines: stacked"
+    },
+    "toastLinesSideBySide": {
+        "message": "Lines: side by side"
+    },
     "toastOfficialOff": {
         "message": "DualSub always translates"
     },
@@ -1235,11 +1226,8 @@
     "toastSpeak": {
         "message": "I speak: %s"
     },
-    "toastStyleCustom": {
-        "message": "Style: my own"
-    },
     "toastStylePlatform": {
-        "message": "Style: like the site"
+        "message": "Look: like the site"
     },
     "toastSubtitlesOff": {
         "message": "Dual subtitles are off"
@@ -1281,10 +1269,10 @@
         "message": "official native subtitles human netflix disney"
     },
     "searchWordsSize": {
-        "message": "font size bigger smaller large small zoom text"
+        "message": "font size bigger smaller large small zoom text exact"
     },
     "searchWordsPosition": {
-        "message": "vertical position height move up down higher lower"
+        "message": "vertical position height move up down higher lower drag exact"
     },
     "searchWordsStyle": {
         "message": "style preset look custom match platform ready"
@@ -1301,8 +1289,11 @@
     "searchWordsArrangement": {
         "message": "layout orientation side by side stacked row column"
     },
-    "searchWordsFineTune": {
-        "message": "gap spacing space between lines exact size height"
+    "searchWordsGap": {
+        "message": "gap spacing space between lines"
+    },
+    "searchWordsFullScreen": {
+        "message": "full screen real size check preview big"
     },
     "searchWordsTiming": {
         "message": "timing offset sync delay early late out of sync match hear voice"
@@ -1423,9 +1414,6 @@
     },
     "translationFallbackTitle": {
         "message": "Keep translating if this service fails"
-    },
-    "translationLead": {
-        "message": "Who translates the bottom line when the show has no translation of its own."
     },
     "translationServiceTitle": {
         "message": "Translation service"
@@ -1592,7 +1580,7 @@
     "popupPosition": {
         "message": "Position"
     },
-    "popupExactSize": {
+    "sizeExact": {
         "message": "%s×"
     },
     "positionLowest": {
@@ -1607,10 +1595,10 @@
     "positionMiddle": {
         "message": "Middle"
     },
-    "popupSmaller": {
+    "sizeSmaller": {
         "message": "Smaller text"
     },
-    "popupBigger": {
+    "sizeBigger": {
         "message": "Bigger text"
     },
     "popupElsewhereTitle": {

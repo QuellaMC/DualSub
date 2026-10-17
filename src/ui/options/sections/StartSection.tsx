@@ -1,8 +1,5 @@
-import { KEYLESS_PROVIDERS } from '@/shared/providers';
-import {
-    AUTO_LANGUAGE,
-    browserTargetLanguage,
-} from '@/shared/subtitleLanguages';
+import { KEYLESS_PROVIDERS, type ProviderId } from '@/shared/providers';
+import { namedSize, nextSize } from '../../adjustments';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { HealthNotice } from '../../HealthNotice';
@@ -17,21 +14,29 @@ import {
     useSiteViews,
 } from '../../hooks/useSitesOn';
 import { languageName } from '../../languageLabels';
+import { sampleVideoLanguage } from '../../preview/sample';
 import { SiteLinks } from '../../SiteLinks';
 import { LanguageSelect } from '../../design/LanguageSelect';
 import { PROVIDER_NAME_KEYS } from '../../providerNames';
-import { SizePicker } from '../controls/SizePicker';
+import { FromBrowserTag } from '../controls/FromBrowserTag';
+import { Specimen } from '../preview/Specimen';
 import type { SectionId } from '../sections';
-import { SharedTag, SiteTag } from '../shell/scopeContext';
+import {
+    SharedTag,
+    SiteTag,
+    useScope,
+    useSiteDraft,
+} from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
-const PROVIDER_SUMMARIES = {
-    microsoft_edge: 'startProviderMicrosoft',
-    google: 'startProviderGoogle',
-    deepl: 'startProviderDeepL',
-    openai_compatible: 'startProviderAi',
-    vertex_gemini: 'startProviderVertex',
-} as const;
+/** What a service asks of the viewer, in a word. */
+const PROVIDER_TAGS: Record<ProviderId, { textKey: string; tone: string }> = {
+    microsoft_edge: { textKey: 'tagFree', tone: 'ok' },
+    google: { textKey: 'tagFree', tone: 'ok' },
+    deepl: { textKey: 'tagYourKey', tone: 'muted' },
+    openai_compatible: { textKey: 'tagYourKey', tone: 'muted' },
+    vertex_gemini: { textKey: 'tagCloud', tone: 'advanced' },
+};
 
 export function StartSection({
     t,
@@ -39,13 +44,13 @@ export function StartSection({
     save,
     go,
 }: SectionProps & { go: (section: SectionId) => void }) {
+    const scope = useScope();
     // Start shows one site's view under its scope, so every site's is read
     // from the shared settings.
     const { settings: shared, unreadable } = useSiteViews();
     const sites = shared ? sitesOn(shared) : null;
     const working = sites ? sites.on.length > 0 : settings.subtitlesEnabled;
     const translating = shared ? callsForTranslation(shared) : working;
-    const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const provider = settings.selectedProvider;
     const providerName = t(PROVIDER_NAME_KEYS[provider]);
     const unset = useServiceUnset(settings);
@@ -55,6 +60,15 @@ export function StartSection({
         fallback: settings.translationFallback,
     });
     const covered = translating && unset && settings.translationFallback;
+    // Presses build on the size last shown, saved or not.
+    const scale = useSiteDraft(
+        'subtitleFontScale',
+        settings.subtitleFontScale,
+        (value, notice) => save({ subtitleFontScale: value }, notice)
+    );
+    const size = namedSize(scale.value);
+    const smaller = nextSize(scale.value, -1);
+    const bigger = nextSize(scale.value, 1);
     const toTranslation = (
         <button
             type="button"
@@ -73,10 +87,9 @@ export function StartSection({
 
     return (
         <section className="section" aria-labelledby="start-title">
-            <h1 id="start-title" tabIndex={-1}>
-                {t('startTitle')}
+            <h1 id="start-title" className="sr-only" tabIndex={-1}>
+                {t('navStart')}
             </h1>
-            <p className="lead">{t('startLead')}</p>
 
             <div className="card">
                 <div className="row">
@@ -98,22 +111,13 @@ export function StartSection({
                                 {toTranslation}
                             </div>
                         ) : (
-                            <div>
-                                <div className="label">
-                                    {sitesOnTitle(
-                                        t,
-                                        settings.uiLanguage,
-                                        settings.subtitlesEnabled,
-                                        sites
-                                    )}
-                                </div>
-                                <div className="help">
-                                    {t(
-                                        working
-                                            ? 'startStatusReadyHelp'
-                                            : 'startStatusOffHelp'
-                                    )}
-                                </div>
+                            <div className="label">
+                                {sitesOnTitle(
+                                    t,
+                                    settings.uiLanguage,
+                                    settings.subtitlesEnabled,
+                                    sites
+                                )}
                             </div>
                         )}
                     </div>
@@ -171,25 +175,34 @@ export function StartSection({
                 {toTranslation}
             </HealthNotice>
 
-            <h2>{t('startSetUpTitle')}</h2>
-            <div className="card list">
-                <div className="list-row">
-                    <div className="grow">
-                        <div className="label" id="start-speak">
-                            {t('languagesSpeakTitle')}
-                        </div>
-                        <div className="help">{t('languagesSpeakHelp')}</div>
-                        {fromBrowser && (
-                            <span className="tag ok">
-                                {t('startFromBrowser')}
-                            </span>
-                        )}
-                        <SharedTag />
-                    </div>
+            <Specimen
+                t={t}
+                settings={{ ...settings, subtitleFontScale: scale.value }}
+                scope={scope}
+                spoken={sampleVideoLanguage(settings.targetLanguage)}
+                corner={
+                    <button
+                        type="button"
+                        className="corner-button"
+                        onClick={() => go('look')}
+                    >
+                        {t('startChangeStyle')}
+                        <Icon name="chevron" />
+                    </button>
+                }
+            />
+
+            <div className="basics">
+                <div className="card tile">
+                    <label
+                        className="tile-label"
+                        htmlFor="start-target-language"
+                    >
+                        {t('languagesSpeakTitle')}
+                    </label>
                     <LanguageSelect
                         t={t}
                         id="start-target-language"
-                        labelledBy="start-speak"
                         value={settings.targetLanguage}
                         onChange={(language) =>
                             void save(
@@ -203,57 +216,73 @@ export function StartSection({
                             )
                         }
                     />
+                    <FromBrowserTag t={t} language={settings.targetLanguage} />
+                    <SharedTag />
                 </div>
-                <div className="list-row">
-                    <div className="grow">
-                        <div className="label">{t('startTopTitle')}</div>
-                        <div className="help">
-                            {settings.originalLanguage === AUTO_LANGUAGE
-                                ? t('startTopAuto')
+                <div className="card tile">
+                    <span className="tile-label" id="start-size">
+                        {t('lookSizeTitle')}
+                    </span>
+                    <div
+                        className="size-stepper"
+                        role="group"
+                        aria-labelledby="start-size"
+                    >
+                        <button
+                            type="button"
+                            aria-label={t('sizeSmaller')}
+                            disabled={!smaller}
+                            onClick={() =>
+                                smaller &&
+                                scale.set(smaller.scale, {
+                                    message: t(
+                                        'toastSize',
+                                        t(smaller.labelKey)
+                                    ),
+                                })
+                            }
+                        >
+                            <span className="glyph-small">A</span>−
+                        </button>
+                        <span className="size-stepper-value" aria-live="polite">
+                            {size
+                                ? t(size.labelKey)
                                 : t(
-                                      'startTopFixed',
-                                      languageName(t, settings.originalLanguage)
+                                      'sizeExact',
+                                      Math.round(scale.value * 100) / 100
                                   )}
-                        </div>
+                        </span>
+                        <button
+                            type="button"
+                            aria-label={t('sizeBigger')}
+                            disabled={!bigger}
+                            onClick={() =>
+                                bigger &&
+                                scale.set(bigger.scale, {
+                                    message: t('toastSize', t(bigger.labelKey)),
+                                })
+                            }
+                        >
+                            <span className="glyph-large">A</span>+
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        className="button"
-                        onClick={() => go('languages')}
-                    >
-                        {t('commonChange')}
-                    </button>
+                    <SiteTag keys={['subtitleFontScale']} />
                 </div>
-                <div className="list-row">
-                    <div className="grow">
-                        <div className="label">{t('navTranslation')}</div>
-                        <div className="help">
-                            {t(PROVIDER_SUMMARIES[settings.selectedProvider])}
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        className="button"
-                        onClick={() => go('translation')}
-                    >
-                        {t('commonChange')}
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    className="card tile tile-link"
+                    onClick={() => go('translation')}
+                >
+                    <span className="tile-label">{t('navTranslation')}</span>
+                    <span className="tile-value">{providerName}</span>
+                    <span>
+                        <span className={`tag ${PROVIDER_TAGS[provider].tone}`}>
+                            {t(PROVIDER_TAGS[provider].textKey)}
+                        </span>
+                    </span>
+                    <Icon name="chevron" />
+                </button>
             </div>
-
-            <h2 id="start-size">{t('lookSizeTitle')}</h2>
-            <SizePicker
-                t={t}
-                scale={settings.subtitleFontScale}
-                labelledBy="start-size"
-                onPick={(scale, label) =>
-                    void save(
-                        { subtitleFontScale: scale },
-                        { message: t('toastSize', label) }
-                    )
-                }
-            />
-            <SiteTag keys={['subtitleFontScale']} />
 
             <h2>{t('startProblemsTitle')}</h2>
             <div className="fixes">

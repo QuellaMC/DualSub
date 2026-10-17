@@ -285,25 +285,22 @@
         "message": "복사가 차단됐어요. 내용을 선택해서 직접 복사하세요."
     },
     "advancedDownload": {
-        "message": "설정 다운로드"
+        "message": "다운로드"
     },
     "advancedJsonHelp": {
-        "message": "DualSub에 저장된 내용이에요. 키는 빠져 있어요. 사이트마다 다른 값만 저장돼요."
+        "message": "키는 빠져 있어요. 사이트마다 다른 값만 저장돼요."
     },
     "advancedJsonTitle": {
         "message": "JSON 형식의 전체 설정"
-    },
-    "advancedLead": {
-        "message": "백업, 설정 원본, 문제 해결 도구가 있어요."
     },
     "advancedLoadApply": {
         "message": "이대로 바꾸기"
     },
     "advancedLoadFile": {
-        "message": "파일에서 설정 불러오기"
+        "message": "파일에서 불러오기"
     },
     "advancedLoadFileHelp": {
-        "message": "바꾸기 전에 설정이 몇 개 바뀌는지 먼저 보여 드려요."
+        "message": "바꾸기 전에 무엇이 달라지는지 보여 드려요."
     },
     "advancedLoadNothing": {
         "message": "이 파일로 바뀌는 설정은 없어요."
@@ -336,7 +333,7 @@
         "message": "보고서 복사"
     },
     "advancedReportHelp": {
-        "message": "버전, 브라우저, 설정(키 제외)이 담겨 있어요. 버그 신고에 바로 붙여넣을 수 있어요."
+        "message": "버그 신고용이에요. 키는 빠져 있어요."
     },
     "advancedReportTitle": {
         "message": "진단 보고서"
@@ -351,16 +348,16 @@
         "message": "초기화"
     },
     "advancedResetHelp": {
-        "message": "모든 설정을 추천 설정으로 되돌리고, 사이트마다 따로 정한 설정을 지워요. 키와 각 키에 맞춘 설정(주소, 모델 등), 이 페이지의 언어는 그대로 남아요."
+        "message": "모든 설정을 추천 설정으로 되돌리고, 사이트별 설정도 지워요. 키는 남아요."
     },
     "advancedResetTitle": {
         "message": "처음부터 다시"
     },
     "advancedSaveFile": {
-        "message": "내 설정을 파일로 저장"
+        "message": "파일로 저장"
     },
     "advancedSaveFileHelp": {
-        "message": "사이트별로 따로 정한 설정도 모두 들어가요. API 키는 이 컴퓨터에만 남고 파일에는 절대 들어가지 않아요."
+        "message": "모든 사이트의 설정이에요. 키는 이 컴퓨터에만 남아요."
     },
     "advancedTroubleshootingTitle": {
         "message": "문제 해결"
@@ -394,9 +391,6 @@
     },
     "explainAllowHost": {
         "message": "단어를 설명하려면 DualSub가 이 주소에 연결하도록 허용해 주세요."
-    },
-    "explainLead": {
-        "message": "자막에서 아무 단어나 클릭하면 뜻과 쓰임새, 그 말에 얽힌 이야기를 볼 수 있어요."
     },
     "explainLimitsTitle": {
         "message": "모델과 한도"
@@ -515,29 +509,26 @@
     "helpGoTranslation": {
         "message": "번역 설정으로 가기"
     },
-    "helpLead": {
-        "message": "자주 생기는 문제와 해결 방법을 모았어요."
-    },
     "helpNoSubtitlesPlaying": {
-        "message": "영상이 제목 화면에서 멈춰 있지 않고 재생 중인지 확인하세요."
+        "message": "영상을 재생하세요. 멈춘 제목 화면에는 자막이 안 나와요."
     },
     "helpNoSubtitlesReload": {
         "message": "페이지를 새로고침하세요."
     },
     "helpNoSubtitlesSite": {
-        "message": "사이트에서 DualSub이 켜져 있는지 ‘%s’에서 확인하세요."
+        "message": "‘%s’에서 DualSub이 켜져 있는지 확인하세요."
     },
     "helpNoSubtitlesTitle": {
         "message": "자막이 안 나와요"
     },
     "helpNoSubtitlesTracks": {
-        "message": "영상에 자막이 있는지 확인하세요. 사이트 자체 자막 메뉴를 열어 보면 알 수 있어요."
+        "message": "사이트 자막 메뉴에 자막이 있는지 확인하세요."
     },
     "helpPrivacy": {
-        "message": "자막 내용은 내가 고른 번역 서비스로만 보내요. 사용 기록을 추적하지 않고, 저희에게는 아무것도 보내지 않아요."
+        "message": "자막 내용은 내가 고른 번역 서비스로만 보내요. 저희에게는 아무것도 보내지 않아요."
     },
     "helpPrivacyFallback": {
-        "message": "자막 내용은 내가 고른 번역 서비스와, 그 서비스가 안 될 때 대신 번역하는 무료 서비스로만 보내요. 사용 기록을 추적하지 않고, 저희에게는 아무것도 보내지 않아요."
+        "message": "자막 내용은 내가 고른 번역 서비스와, 대신 번역하는 무료 서비스로만 보내요. 저희에게는 아무것도 보내지 않아요."
     },
     "helpSource": {
         "message": "소스 코드"
@@ -545,20 +536,11 @@
     "helpMadeBy": {
         "message": "만든 사람: QuellaMC, 1jifang"
     },
-    "helpTimingHelp": {
-        "message": "자막을 조금 앞당기거나 늦춰 보세요."
-    },
     "helpTimingTitle": {
         "message": "들리는 말과 자막이 안 맞아요"
     },
-    "helpTranslationHelp": {
-        "message": "다른 번역 서비스를 써 보거나, 작품의 공식 자막을 사용해 보세요."
-    },
     "helpTranslationTitle": {
         "message": "번역이 어색해요"
-    },
-    "helpTwiceHelp": {
-        "message": "사이트 자체 자막이 DualSub 자막 아래에 함께 나오고 있어요."
     },
     "helpTwiceTitle": {
         "message": "자막이 두 번 보여요"
@@ -566,56 +548,50 @@
     "helpVersion": {
         "message": "버전 %s"
     },
-    "languagesLead": {
-        "message": "자막 줄마다 어떤 언어를 보여 줄지 정해요."
-    },
     "languagesOfficialHelp": {
-        "message": "Netflix와 Disney+에는 사람이 직접 만든 내 언어 자막이 있는 경우가 많아요. 기계 번역보다 읽기 좋아요. 공식 자막이 없는 작품은 DualSub에서 번역해요."
+        "message": "있을 때만요. 사람이 만들어서 읽기 더 좋아요."
     },
     "languagesOfficialTitle": {
-        "message": "공식 자막이 있으면 먼저 사용"
-    },
-    "languagesSpeakHelp": {
-        "message": "아래 줄이 이 언어로 번역돼요."
+        "message": "공식 자막 사용"
     },
     "languagesSpeakTitle": {
         "message": "내 언어"
     },
     "languagesTopAuto": {
-        "message": "영상에서 말하는 언어"
+        "message": "영상의 언어"
     },
     "languagesTopAutoHelp": {
-        "message": "DualSub에서 영상마다 자동으로 맞춰요. 한국 드라마는 위에 한국어가, 영어 영화는 영어가 나와요."
+        "message": "영상마다 맞춰요."
     },
     "languagesTopFixed": {
-        "message": "항상 같은 언어"
+        "message": "항상 한 언어"
     },
     "languagesTopFixedHelp": {
-        "message": "어떤 영상을 보든 한 언어를 배우고 싶을 때 좋아요. 사이트에 그 언어 자막이 있을 때만 돼요."
+        "message": "한 언어를 배울 때 좋아요."
     },
     "languagesTopFixedMenu": {
         "message": "위 줄 언어"
     },
     "languagesTopTitle": {
-        "message": "위 줄에 보일 언어"
+        "message": "위 줄"
     },
     "lookArrangementSideBySide": {
-        "message": "옆으로 나란히"
+        "message": "나란히"
     },
     "lookArrangementStacked": {
-        "message": "위아래로"
+        "message": "위아래"
     },
     "lookArrangementTitle": {
         "message": "두 줄 배치"
     },
     "lookBoldLabel": {
-        "message": "굵은 글씨"
+        "message": "굵게"
     },
     "lookBoxColorLabel": {
-        "message": "글자 뒤 박스 색"
+        "message": "박스"
     },
     "lookBoxOpacityLabel": {
-        "message": "박스 진하기: %d%"
+        "message": "박스 진하기"
     },
     "lookColorCyan": {
         "message": "청록색"
@@ -636,13 +612,13 @@
         "message": "노란색"
     },
     "lookCustomizeButton": {
-        "message": "색과 글꼴 바꾸기"
+        "message": "색과 글꼴"
     },
     "lookEdgeDepressed": {
         "message": "오목 효과"
     },
     "lookEdgeLabel": {
-        "message": "글자 테두리"
+        "message": "테두리"
     },
     "lookEdgeNone": {
         "message": "없음"
@@ -657,13 +633,10 @@
         "message": "부드러운 그림자"
     },
     "lookExactPosition": {
-        "message": "정확한 높이: %s (맨 아래 0.1부터 가운데 9.9까지)"
+        "message": "높이 세밀하게"
     },
     "lookExactSize": {
-        "message": "정확한 글자 크기: %s배"
-    },
-    "lookFineTuneButton": {
-        "message": "크기, 높이, 간격 세밀하게 맞추기"
+        "message": "글자 크기 세밀하게"
     },
     "lookFontCasual": {
         "message": "캐주얼"
@@ -686,44 +659,38 @@
     "lookFontSmallCaps": {
         "message": "작은 대문자"
     },
-    "lookGap": {
-        "message": "줄 사이 간격: 줄 높이의 %s배"
-    },
     "lookGapTitle": {
         "message": "줄 사이 간격"
     },
-    "lookLead": {
-        "message": "바꾸는 대로 미리보기에 바로 보이고, 보고 있는 영상에도 1초 안에 적용돼요."
-    },
     "lookMoveDown": {
-        "message": "아래로 내리기"
+        "message": "아래로"
     },
     "lookMoveUp": {
-        "message": "위로 올리기"
+        "message": "위로"
     },
     "lookOrderMineFirst": {
-        "message": "내 언어를 위로"
+        "message": "내 언어가 위"
     },
     "lookOrderTitle": {
         "message": "위에 올 줄"
     },
     "lookOrderVideoFirst": {
-        "message": "영상 언어를 위로"
+        "message": "영상 언어가 위"
     },
     "lookPositionBottom": {
-        "message": "화면 맨 아래 가까이"
+        "message": "맨 아래"
     },
     "lookPositionLower": {
-        "message": "화면 아래쪽"
+        "message": "조금 위"
     },
     "lookPositionMiddle": {
-        "message": "화면 가운데쯤"
+        "message": "가운데"
     },
     "lookPositionTitle": {
         "message": "화면 위치"
     },
     "lookPositionUsual": {
-        "message": "맨 아래에서 조금 위, 많은 사람이 좋아하는 위치"
+        "message": "보통 높이"
     },
     "lookPresetBoxed": {
         "message": "박스형"
@@ -740,47 +707,101 @@
     "lookPresetsLabel": {
         "message": "미리 만든 모양"
     },
-    "lookPresetSample": {
-        "message": "안녕하세요"
-    },
     "lookSizeTitle": {
         "message": "글자 크기"
     },
-    "lookStyleCustom": {
-        "message": "나만의 스타일"
-    },
-    "lookStyleCustomHelp": {
-        "message": "미리 만든 모양에서 시작해서, 원하면 색과 글꼴을 바꿔 보세요."
-    },
     "lookStylePlatform": {
-        "message": "지금 보는 사이트와 같은 모양"
+        "message": "사이트와 같게"
     },
     "lookStylePlatformSite": {
-        "message": "%s와 같은 모양"
+        "message": "%s와 같게"
     },
     "lookStylePlatformHelp": {
-        "message": "Netflix나 Disney+ 프로필의 자막 설정을 따라요."
+        "message": "Netflix나 Disney+의 자막 설정을 따라요."
     },
     "lookStyleTitle": {
-        "message": "스타일"
+        "message": "모양과 미리 만든 스타일"
     },
     "lookTopColorLabel": {
-        "message": "위 줄 색"
-    },
-    "lookTranslationColorHelp": {
-        "message": "두 스타일 모두에 쓰여서 두 줄을 쉽게 구별할 수 있어요."
+        "message": "위 줄"
     },
     "lookTranslationColorTitle": {
-        "message": "번역 줄 색"
+        "message": "번역 색"
+    },
+    "lookScene": {
+        "message": "장면"
+    },
+    "lookNight": {
+        "message": "밤"
+    },
+    "lookDay": {
+        "message": "낮"
+    },
+    "lookFullScreen": {
+        "message": "전체 화면"
+    },
+    "lookFullScreenTitle": {
+        "message": "실제 크기로 보기"
+    },
+    "lookStageHint": {
+        "message": "줄을 클릭하면 모양을 바꿀 수 있어요. 자막을 끌어서 옮기세요."
+    },
+    "lookLineTop": {
+        "message": "위 줄: 모양 바꾸기"
+    },
+    "lookLineYours": {
+        "message": "내 언어 줄: 색 바꾸기"
+    },
+    "lookUsualHeight": {
+        "message": "보통 높이"
+    },
+    "lookPaneLabel": {
+        "message": "자막 스타일"
+    },
+    "lookRowSize": {
+        "message": "크기"
+    },
+    "lookRowPosition": {
+        "message": "위치"
+    },
+    "lookRowLook": {
+        "message": "모양"
+    },
+    "lookRowLines": {
+        "message": "줄"
+    },
+    "lookExact": {
+        "message": "세밀하게"
+    },
+    "lookCustom": {
+        "message": "직접 설정"
+    },
+    "lookOnTop": {
+        "message": "위에"
+    },
+    "lookOrderVideoShort": {
+        "message": "영상 언어"
+    },
+    "lookOrderMineShort": {
+        "message": "내 언어"
+    },
+    "lookLayout": {
+        "message": "배치"
+    },
+    "lookSpacing": {
+        "message": "간격"
     },
     "navAdvancedSwitch": {
-        "message": "고급 설정 보기"
+        "message": "고급 설정"
     },
-    "navAdvancedSwitchHelp": {
-        "message": "사이트별 설정, API 세부 정보, 한도, 백업을 보여 줘요."
+    "toastAdvancedOn": {
+        "message": "고급 설정을 보여 드려요"
+    },
+    "toastAdvancedOff": {
+        "message": "고급 설정을 숨겼어요"
     },
     "navExplanations": {
-        "message": "단어 설명"
+        "message": "뜻풀이"
     },
     "navHelp": {
         "message": "도움말"
@@ -792,7 +813,7 @@
         "message": "언어"
     },
     "navLook": {
-        "message": "자막 모양"
+        "message": "스타일"
     },
     "navSites": {
         "message": "사이트"
@@ -803,24 +824,6 @@
     "navTiming": {
         "message": "타이밍"
     },
-    "previewCaptionAuto": {
-        "message": "영상 줄: %s (이 영상에서 말하는 언어). 내 줄: %s, 작품에 공식 번역이 있으면 그걸 써요."
-    },
-    "previewCaptionFixed": {
-        "message": "영상 줄: %s. 내 줄: %s, 작품에 공식 번역이 있으면 그걸 써요."
-    },
-    "previewCaptionAutoTranslated": {
-        "message": "영상 줄: %s (이 영상에서 말하는 언어). 내 줄: %s, DualSub이 번역해요."
-    },
-    "previewCaptionAutoOne": {
-        "message": "영상 줄: %s (이 영상에서 말하는 언어)."
-    },
-    "previewCaptionFixedTranslated": {
-        "message": "영상 줄: %s. 내 줄: %s, DualSub이 번역해요."
-    },
-    "previewCaptionFixedOne": {
-        "message": "영상 줄: %s."
-    },
     "previewEnglishFilm": {
         "message": "영어 영화"
     },
@@ -830,11 +833,23 @@
     "previewLabel": {
         "message": "자막 미리보기"
     },
+    "previewLegendSpoken": {
+        "message": "%s · 영상에서 말하는 언어"
+    },
+    "previewLegendChosen": {
+        "message": "%s · 내가 고른 언어"
+    },
+    "previewLegendYours": {
+        "message": "%s · 내 언어"
+    },
+    "previewLegendOneLine": {
+        "message": "%s · 이미 내 언어라서 한 줄만"
+    },
+    "previewLinesLabel": {
+        "message": "예시 자막: %s"
+    },
     "previewOff": {
         "message": "이중 자막이 꺼져 있어요"
-    },
-    "previewOneLine": {
-        "message": "이 영상은 이미 내 언어라서 DualSub에서 한 줄만 보여 줘요."
     },
     "previewSampleVideo": {
         "message": "예시 영상"
@@ -842,11 +857,8 @@
     "previewStandIn": {
         "message": "여기에는 %s 예시가 없어서 영어로 대신 보여 줘요."
     },
-    "previewShownOn": {
-        "message": "보는 사이트"
-    },
-    "previewTitle": {
-        "message": "실시간 미리보기"
+    "lookPreviewSite": {
+        "message": "사이트 모양"
     },
     "providerAi": {
         "message": "AI 번역"
@@ -885,22 +897,16 @@
         "message": "‘모든 사이트’로 돌아가기"
     },
     "scopeEditingSite": {
-        "message": "%s 설정만 바꾸고 있어요."
+        "message": "%s 전용."
     },
     "scopeEditingSiteHelp": {
-        "message": "여기서 바꾸는 설정에는 “%s 전용” 표시가 붙어요. 나머지는 ‘모든 사이트’ 설정을 따라요."
-    },
-    "scopeHelp": {
-        "message": "따로 정한 설정이 없는 사이트는 ‘모든 사이트’ 설정을 써요."
+        "message": "나머지는 ‘모든 사이트’ 설정을 따라요."
     },
     "scopeLabel": {
         "message": "설정 대상"
     },
     "scopeOwnCount": {
         "message": "따로 정한 설정 %d개"
-    },
-    "scopeSameAsAll": {
-        "message": "‘모든 사이트’와 같음"
     },
     "scopeSharedSetting": {
         "message": "모든 사이트 공통"
@@ -909,7 +915,7 @@
         "message": "%s 전용"
     },
     "scopeUseShared": {
-        "message": "‘모든 사이트’ 값 사용"
+        "message": "‘모든 사이트’ 따르기"
     },
     "setupAddress": {
         "message": "서비스 주소"
@@ -983,9 +989,6 @@
     "sitesHideTitle": {
         "message": "사이트 자체 자막 숨기기"
     },
-    "sitesLead": {
-        "message": "이 사이트들에서는 DualSub 사용이 자동으로 켜져요. 사이트마다 끌 수도 있고, 설정을 따로 정할 수도 있어요."
-    },
     "sitesMoreHelp": {
         "message": "DualSub에서 새 사이트를 지원하게 되면, 처음부터 켜진 채로 여기에 나타나고 ‘모든 사이트’ 설정이 적용돼요."
     },
@@ -1034,32 +1037,14 @@
     "startFromBrowser": {
         "message": "브라우저에서 골랐어요"
     },
-    "startLead": {
-        "message": "Netflix나 Disney+를 열고 아무 영상이나 재생해 보세요. 자막이 두 줄로 나와요. 위에는 영상의 언어, 아래에는 내 언어가 보여요."
+    "startChangeStyle": {
+        "message": "스타일 바꾸기"
     },
     "startOpenSite": {
         "message": "%s 열기"
     },
     "startProblemsTitle": {
         "message": "문제가 있나요?"
-    },
-    "startProviderAi": {
-        "message": "AI 번역 (내 키 사용)"
-    },
-    "startProviderDeepL": {
-        "message": "DeepL (내 키 사용)"
-    },
-    "startProviderGoogle": {
-        "message": "Google 번역, 무료, 설정 필요 없음"
-    },
-    "startProviderMicrosoft": {
-        "message": "Microsoft 번역, 무료, 설정 필요 없음"
-    },
-    "startProviderVertex": {
-        "message": "Google Vertex AI"
-    },
-    "startSetUpTitle": {
-        "message": "이렇게 미리 설정해 두었어요"
     },
     "startTopTitle": {
         "message": "위 줄"
@@ -1085,20 +1070,17 @@
     "startStatusReadyHelp": {
         "message": "따로 설정할 건 없어요. 영상을 재생하기만 하면 돼요."
     },
-    "startTitle": {
-        "message": "안녕하세요! DualSub 준비가 끝났어요."
-    },
-    "startTopAuto": {
-        "message": "각 영상에서 말하는 언어"
-    },
-    "startTopFixed": {
-        "message": "항상 %s"
-    },
     "tagFree": {
         "message": "무료"
     },
     "tagGoogleCloud": {
         "message": "Google Cloud 사용자용"
+    },
+    "tagYourKey": {
+        "message": "내 키"
+    },
+    "tagCloud": {
+        "message": "Google Cloud"
     },
     "tagNeedsKey": {
         "message": "키 필요"
@@ -1112,9 +1094,6 @@
     "timingEarlierBy": {
         "message": "%s초 일찍"
     },
-    "timingEarlierHelp": {
-        "message": "자막이 조금 더 일찍 나와요."
-    },
     "timingExactHelp": {
         "message": "초 단위예요. 0보다 큰 값을 넣으면 자막이 일찍 나와요 (%s(으)로 저장)."
     },
@@ -1127,29 +1106,32 @@
     "timingLaterBy": {
         "message": "%s초 늦게"
     },
-    "timingLaterHelp": {
-        "message": "자막이 조금 더 늦게 나와요."
-    },
-    "timingLead": {
-        "message": "들리는 말과 자막이 맞지 않으면 자막 시간을 조금씩 옮겨 보세요. 대부분의 영상은 그대로 두면 돼요."
-    },
     "timingOnTime": {
         "message": "원래 시간"
-    },
-    "timingOnTimeHelp": {
-        "message": "자막이 영상 시간에 그대로 맞춰 나와요."
     },
     "timingReset": {
         "message": "원래 시간으로 되돌리기"
     },
     "timingTipHelp": {
-        "message": "브라우저 툴바에 있는 DualSub 버튼에도 같은 두 버튼이 있어서, 영상을 보면서 바로 자막을 들리는 소리에 맞출 수 있어요."
-    },
-    "timingTipTitle": {
-        "message": "보면서 바로 맞추기"
+        "message": "툴바의 DualSub 버튼에도 같은 두 버튼이 있어서, 보면서 바로 고칠 수 있어요."
     },
     "timingTitle": {
         "message": "자막 타이밍"
+    },
+    "timingVoice": {
+        "message": "목소리"
+    },
+    "timingSubtitles": {
+        "message": "자막"
+    },
+    "timingTimelineOnTime": {
+        "message": "자막이 목소리와 함께 나와요."
+    },
+    "timingTimelineEarlier": {
+        "message": "자막이 목소리보다 %s초 먼저 나와요."
+    },
+    "timingTimelineLater": {
+        "message": "자막이 목소리보다 %s초 늦게 나와요."
     },
     "toastCopied": {
         "message": "복사했어요"
@@ -1193,6 +1175,15 @@
     "toastMovedUp": {
         "message": "자막을 위로 올렸어요"
     },
+    "toastMoved": {
+        "message": "자막을 옮겼어요"
+    },
+    "toastLinesStacked": {
+        "message": "줄: 위아래"
+    },
+    "toastLinesSideBySide": {
+        "message": "줄: 나란히"
+    },
     "toastOfficialOff": {
         "message": "항상 DualSub에서 번역해요"
     },
@@ -1235,11 +1226,8 @@
     "toastSpeak": {
         "message": "내 언어: %s"
     },
-    "toastStyleCustom": {
-        "message": "스타일: 나만의 스타일"
-    },
     "toastStylePlatform": {
-        "message": "스타일: 사이트와 같은 모양"
+        "message": "모양: 사이트와 같게"
     },
     "toastSubtitlesOff": {
         "message": "이중 자막을 껐어요"
@@ -1281,10 +1269,10 @@
         "message": "공식자막 정식자막 정식 사람번역 사람 번역가 기계번역 netflix disney 넷플릭스 넷플 디즈니"
     },
     "searchWordsSize": {
-        "message": "자막크기 글자크기 글씨크기 폰트크기 텍스트 사이즈 크게 작게 확대 축소 큰글씨 작은글씨 조절 변경"
+        "message": "자막크기 글자크기 글씨크기 폰트크기 텍스트 사이즈 크게 작게 확대 축소 큰글씨 작은글씨 조절 변경 세밀 정확"
     },
     "searchWordsPosition": {
-        "message": "자막위치 위치조절 높이 세로 이동 옮기기 올리기 내리기 위로 아래로 위쪽 아래쪽 높게 낮게 조절 변경"
+        "message": "자막위치 위치조절 높이 세로 이동 옮기기 올리기 내리기 위로 아래로 위쪽 아래쪽 높게 낮게 조절 변경 끌기 세밀"
     },
     "searchWordsStyle": {
         "message": "자막스타일 모양 자막모양 디자인 꾸미기 사용자지정 사용자 지정 미리만든 플랫폼 나만의 클래식 영화관 박스형 고대비 변경"
@@ -1301,8 +1289,11 @@
     "searchWordsArrangement": {
         "message": "레이아웃 방향 나란히 옆으로 좌우 가로 세로 위아래 두줄 변경"
     },
-    "searchWordsFineTune": {
-        "message": "줄간격 자막간격 줄사이 여백 미세조정 세부 정확 정밀 배율 조절"
+    "searchWordsGap": {
+        "message": "줄간격 자막간격 줄사이 여백"
+    },
+    "searchWordsFullScreen": {
+        "message": "전체화면 전체 화면 실제 크기 확인 미리보기"
     },
     "searchWordsTiming": {
         "message": "자막싱크 싱크조절 싱크맞추기 시간조절 밀림 밀려요 늦게 늦음 늦어요 느림 느려요 빠르게 빠름 빨라요 일찍 앞당기기 늦추기 속도 오프셋 딜레이 어긋남 안맞음 안맞아요 목소리 대사"
@@ -1423,9 +1414,6 @@
     },
     "translationFallbackTitle": {
         "message": "이 서비스가 안 될 때도 번역 계속하기"
-    },
-    "translationLead": {
-        "message": "공식 자막이 없을 때 아래 줄을 누가 번역할지 정해요."
     },
     "translationServiceTitle": {
         "message": "번역 서비스"
@@ -1592,7 +1580,7 @@
     "popupPosition": {
         "message": "위치"
     },
-    "popupExactSize": {
+    "sizeExact": {
         "message": "%s×"
     },
     "positionLowest": {
@@ -1607,10 +1595,10 @@
     "positionMiddle": {
         "message": "가운데"
     },
-    "popupSmaller": {
+    "sizeSmaller": {
         "message": "글자 작게"
     },
-    "popupBigger": {
+    "sizeBigger": {
         "message": "글자 크게"
     },
     "popupElsewhereTitle": {

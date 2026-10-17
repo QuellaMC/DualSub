@@ -348,6 +348,26 @@ input[type='checkbox'] {
     cursor: default;
 }
 
+.switch.small {
+    width: 48px;
+    height: 28px;
+}
+
+.switch.small::before {
+    inset: -8px 0;
+}
+
+.switch.small::after {
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+}
+
+.switch.small[aria-checked='true']::after {
+    left: 23px;
+}
+
 .segmented {
     display: inline-flex;
     flex-wrap: wrap;
@@ -358,6 +378,9 @@ input[type='checkbox'] {
 }
 
 .segmented button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     min-height: 40px;
     padding: 0 14px;
     border: 0;
@@ -366,6 +389,9 @@ input[type='checkbox'] {
     color: var(--ink-lead);
     font-weight: 700;
     cursor: pointer;
+    transition:
+        background-color 0.15s,
+        color 0.15s;
 }
 
 .segmented.small button {
@@ -378,6 +404,29 @@ input[type='checkbox'] {
     background: var(--surface);
     color: var(--ink);
     box-shadow: 0 1px 3px rgba(20, 24, 33, 0.2);
+}
+
+.segmented button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* Over a picture. */
+.segmented.dark {
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(6px);
+}
+
+.segmented.dark button {
+    min-height: 34px;
+    padding: 0 12px;
+    color: #eef0f4;
+    font-size: 15px;
+}
+
+.segmented.dark button[aria-pressed='true'] {
+    background: var(--surface);
+    color: var(--ink);
 }
 
 .choices {
@@ -455,31 +504,42 @@ input[type='checkbox'] {
     color: var(--danger);
 }
 
-/* A night scene: a moon, drawn as a circle in the 16:9 frame, and two
-   hills. */
+/* A frame for sample subtitles at a video's proportions. The overlay's
+   block stacks high; isolated, it stays under the page's menus. */
 .screen {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
     overflow: hidden;
     border-radius: 10px;
-    background:
-        radial-gradient(
-            ellipse 6% 10.67% at 82% 22.67%,
-            #2b3344 98%,
-            transparent 100%
-        ),
-        var(--screen);
+    isolation: isolate;
 }
 
-.screen::before,
-.screen::after {
-    content: '';
+/* The picture behind sample subtitles: a moon over two hills by night, a
+   sun over green hills by day. */
+.scene {
+    position: absolute;
+    inset: 0;
+    background: var(--screen);
+    transition: background-color 0.4s;
+}
+
+.scene-orb,
+.scene-hill {
     position: absolute;
     border-radius: 50%;
+    transition: background-color 0.4s;
 }
 
-.screen::before {
+.scene-orb {
+    top: 13%;
+    right: 12%;
+    width: 9%;
+    aspect-ratio: 1;
+    background: #2b3344;
+}
+
+.scene-hill {
     left: -12%;
     bottom: -34%;
     width: 75%;
@@ -487,12 +547,29 @@ input[type='checkbox'] {
     background: #1a202b;
 }
 
-.screen::after {
+.scene-hill.far {
+    left: auto;
     right: -18%;
     bottom: -40%;
     width: 70%;
     height: 64%;
     background: #1f2633;
+}
+
+.scene.day {
+    background: #9fcdee;
+}
+
+.scene.day .scene-orb {
+    background: #fff0b3;
+}
+
+.scene.day .scene-hill {
+    background: #79a85e;
+}
+
+.scene.day .scene-hill.far {
+    background: #5d8a4a;
 }
 
 .card h2 {

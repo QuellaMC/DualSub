@@ -92,10 +92,31 @@ export function applySlotVisibility(elements: BlockElements): void {
 }
 
 /** The user's 0.1–9.9 slider maps to a 5%–50% `bottom` offset. */
-function verticalPositionToBottomPercent(verticalPosition: number): number {
-    const clamped = Math.max(0.1, Math.min(9.9, verticalPosition));
-    const normalized = (clamped - 0.1) / (9.9 - 0.1);
-    return 5 + normalized * 45;
+const POSITION_RANGE = { min: 0.1, max: 9.9 } as const;
+const BOTTOM_PERCENT_RANGE = { min: 5, max: 50 } as const;
+
+function mapRange(
+    value: number,
+    from: { readonly min: number; readonly max: number },
+    to: { readonly min: number; readonly max: number }
+): number {
+    const clamped = Math.max(from.min, Math.min(from.max, value));
+    return (
+        to.min +
+        ((clamped - from.min) / (from.max - from.min)) * (to.max - to.min)
+    );
+}
+
+export function verticalPositionToBottomPercent(
+    verticalPosition: number
+): number {
+    return mapRange(verticalPosition, POSITION_RANGE, BOTTOM_PERCENT_RANGE);
+}
+
+/** The position that puts a block's bottom edge `bottomPercent` up the
+ *  picture, as dragging it there does. */
+export function bottomPercentToVerticalPosition(bottomPercent: number): number {
+    return mapRange(bottomPercent, BOTTOM_PERCENT_RANGE, POSITION_RANGE);
 }
 
 /** Font size in pixels for a picture of the given rendered height. */

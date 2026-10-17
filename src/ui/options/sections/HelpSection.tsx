@@ -33,10 +33,9 @@ export function HelpSection({
 
     return (
         <section className="section" aria-labelledby="help-title">
-            <h1 id="help-title" tabIndex={-1}>
+            <h1 id="help-title" className="sr-only" tabIndex={-1}>
                 {t('navHelp')}
             </h1>
-            <p className="lead">{t('helpLead')}</p>
 
             <div className="card" id="help-none">
                 <h2 className="label">{t('helpNoSubtitlesTitle')}</h2>
@@ -60,10 +59,7 @@ export function HelpSection({
 
             <div className="card">
                 <div className="row">
-                    <div className="grow">
-                        <h2 className="label">{t('helpTwiceTitle')}</h2>
-                        <p className="help">{t('helpTwiceHelp')}</p>
-                    </div>
+                    <h2 className="label grow">{t('helpTwiceTitle')}</h2>
                     <button
                         type="button"
                         className="button primary"
@@ -76,10 +72,7 @@ export function HelpSection({
 
             <div className="card">
                 <div className="row">
-                    <div className="grow">
-                        <h2 className="label">{t('helpTimingTitle')}</h2>
-                        <p className="help">{t('helpTimingHelp')}</p>
-                    </div>
+                    <h2 className="label grow">{t('helpTimingTitle')}</h2>
                     <button
                         type="button"
                         className="button"
@@ -92,10 +85,7 @@ export function HelpSection({
 
             <div className="card">
                 <div className="row">
-                    <div className="grow">
-                        <h2 className="label">{t('helpTranslationTitle')}</h2>
-                        <p className="help">{t('helpTranslationHelp')}</p>
-                    </div>
+                    <h2 className="label grow">{t('helpTranslationTitle')}</h2>
                     <button
                         type="button"
                         className="button"

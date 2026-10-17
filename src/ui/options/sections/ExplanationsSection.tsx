@@ -166,10 +166,9 @@ export function ExplanationsSection({
 
     return (
         <section className="section" aria-labelledby="explain-title">
-            <h1 id="explain-title" tabIndex={-1}>
+            <h1 id="explain-title" className="sr-only" tabIndex={-1}>
                 {t('navExplanations')}
             </h1>
-            <p className="lead">{t('explainLead')}</p>
             <SharedTag />
 
             <div className="card" id="explanations">

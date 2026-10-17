@@ -291,7 +291,7 @@ function SiteControls({
                         size
                             ? t(size.labelKey)
                             : t(
-                                  'popupExactSize',
+                                  'sizeExact',
                                   Math.round(scale.value * 100) / 100
                               )
                     }
@@ -299,7 +299,7 @@ function SiteControls({
                         <button
                             type="button"
                             className="button step"
-                            aria-label={t('popupSmaller')}
+                            aria-label={t('sizeSmaller')}
                             disabled={!smaller}
                             onClick={() =>
                                 smaller && scale.set(smaller.scale, 'quiet')
@@ -312,7 +312,7 @@ function SiteControls({
                         <button
                             type="button"
                             className="button step"
-                            aria-label={t('popupBigger')}
+                            aria-label={t('sizeBigger')}
                             disabled={!bigger}
                             onClick={() =>
                                 bigger && scale.set(bigger.scale, 'quiet')

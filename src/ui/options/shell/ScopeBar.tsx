@@ -52,7 +52,6 @@ export function ScopeBar({
                         </button>
                     ))}
                 </div>
-                <span className="help">{t('scopeHelp')}</span>
             </div>
             {scope !== 'all' && (
                 <div className="notice scope-banner">
@@ -60,7 +59,7 @@ export function ScopeBar({
                         <strong>
                             {t('scopeEditingSite', PLATFORM_NAMES[scope])}
                         </strong>{' '}
-                        {t('scopeEditingSiteHelp', PLATFORM_NAMES[scope])}
+                        {t('scopeEditingSiteHelp')}
                     </div>
                     <button
                         type="button"

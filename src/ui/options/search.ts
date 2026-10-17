@@ -16,13 +16,6 @@ export interface SearchEntry {
     readonly anchors?: readonly string[];
 }
 
-/** Where the custom look's editor is: its disclosure when the custom look
- *  is chosen, else the choice of it. */
-const LOOK_EDITOR_ANCHORS: readonly string[] = [
-    'look-customize',
-    'look-style-custom',
-];
-
 const ENTRIES: readonly SearchEntry[] = [
     {
         labelKey: 'startEnabled',
@@ -52,49 +45,55 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'lookSizeTitle',
         wordsKey: 'searchWordsSize',
         section: 'look',
-        anchors: ['text-size'],
+        anchors: ['format-size'],
     },
     {
         labelKey: 'lookPositionTitle',
         wordsKey: 'searchWordsPosition',
         section: 'look',
-        anchors: ['position'],
+        anchors: ['format-position'],
     },
     {
         labelKey: 'lookStyleTitle',
         wordsKey: 'searchWordsStyle',
         section: 'look',
-        anchors: ['style'],
+        anchors: ['format-look'],
     },
     {
         labelKey: 'lookCustomizeButton',
         wordsKey: 'searchWordsCustomLook',
         section: 'look',
-        anchors: LOOK_EDITOR_ANCHORS,
+        anchors: ['look-font', 'format-look'],
     },
     {
         labelKey: 'lookTranslationColorTitle',
         wordsKey: 'searchWordsTranslationColor',
         section: 'look',
-        anchors: ['translation-color'],
+        anchors: ['format-color'],
     },
     {
         labelKey: 'lookOrderTitle',
         wordsKey: 'searchWordsOrder',
         section: 'look',
-        anchors: ['layout'],
+        anchors: ['format-lines'],
     },
     {
         labelKey: 'lookArrangementTitle',
         wordsKey: 'searchWordsArrangement',
         section: 'look',
-        anchors: ['layout'],
+        anchors: ['format-lines'],
     },
     {
-        labelKey: 'lookFineTuneButton',
-        wordsKey: 'searchWordsFineTune',
+        labelKey: 'lookGapTitle',
+        wordsKey: 'searchWordsGap',
         section: 'look',
-        anchors: ['fine-tune'],
+        anchors: ['look-gap', 'format-lines'],
+    },
+    {
+        labelKey: 'lookFullScreenTitle',
+        wordsKey: 'searchWordsFullScreen',
+        section: 'look',
+        anchors: ['look-full-screen'],
     },
     {
         labelKey: 'timingTitle',

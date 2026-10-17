@@ -285,25 +285,22 @@
         "message": "Se bloqueó la copia. Selecciona el texto y cópialo tú."
     },
     "advancedDownload": {
-        "message": "Descargar ajustes"
+        "message": "Descargar"
     },
     "advancedJsonHelp": {
-        "message": "Lo que guarda DualSub, sin tus claves. Cada sitio guarda solo lo que es distinto."
+        "message": "Sin tus claves. Cada sitio guarda solo lo que es distinto."
     },
     "advancedJsonTitle": {
         "message": "Todos los ajustes en JSON"
-    },
-    "advancedLead": {
-        "message": "Copias de seguridad, los ajustes en bruto y herramientas para resolver problemas."
     },
     "advancedLoadApply": {
         "message": "Reemplazarlos"
     },
     "advancedLoadFile": {
-        "message": "Cargar ajustes desde un archivo"
+        "message": "Cargar desde un archivo"
     },
     "advancedLoadFileHelp": {
-        "message": "Antes de reemplazar nada, verás cuántos ajustes van a cambiar."
+        "message": "Verás qué cambia antes de que se reemplace nada."
     },
     "advancedLoadNothing": {
         "message": "Ese archivo no cambia nada."
@@ -336,7 +333,7 @@
         "message": "Copiar informe"
     },
     "advancedReportHelp": {
-        "message": "Versión, navegador y ajustes sin claves, listos para pegar en un informe de error."
+        "message": "Para un informe de error. Sin claves."
     },
     "advancedReportTitle": {
         "message": "Informe de diagnóstico"
@@ -351,16 +348,16 @@
         "message": "Restablecer"
     },
     "advancedResetHelp": {
-        "message": "Devuelve todos los ajustes a los recomendados y quita los ajustes propios de cada sitio. Tus claves se mantienen, junto con lo que configuraste para cada una, como su dirección y su modelo, y también el idioma de estas páginas."
+        "message": "Todos los ajustes vuelven a los recomendados y ningún sitio conserva los suyos. Las claves se quedan."
     },
     "advancedResetTitle": {
         "message": "Empezar de cero"
     },
     "advancedSaveFile": {
-        "message": "Guardar mis ajustes en un archivo"
+        "message": "Guardar en un archivo"
     },
     "advancedSaveFileHelp": {
-        "message": "Incluye los ajustes propios de cada sitio. Las claves API se quedan en este equipo y nunca se guardan en el archivo."
+        "message": "Los ajustes de todos los sitios. Las claves se quedan en este equipo."
     },
     "advancedTroubleshootingTitle": {
         "message": "Solución de problemas"
@@ -394,9 +391,6 @@
     },
     "explainAllowHost": {
         "message": "DualSub necesita tu permiso para conectarse a esta dirección antes de poder explicar palabras."
-    },
-    "explainLead": {
-        "message": "Haz clic en cualquier palabra de los subtítulos para ver qué significa, cómo se usa y la historia que hay detrás."
     },
     "explainLimitsTitle": {
         "message": "Modelo y límites"
@@ -515,29 +509,26 @@
     "helpGoTranslation": {
         "message": "Ir a Traducción"
     },
-    "helpLead": {
-        "message": "Problemas comunes y cómo resolver cada uno."
-    },
     "helpNoSubtitlesPlaying": {
-        "message": "Asegúrate de que el video se esté reproduciendo y no esté detenido en la pantalla del título."
+        "message": "Reproduce el video; en la pantalla del título en pausa no se ven."
     },
     "helpNoSubtitlesReload": {
         "message": "Recarga la página."
     },
     "helpNoSubtitlesSite": {
-        "message": "Comprueba que DualSub esté activado en el sitio, en %s."
+        "message": "Comprueba que DualSub esté activado en %s."
     },
     "helpNoSubtitlesTitle": {
         "message": "No aparecen subtítulos"
     },
     "helpNoSubtitlesTracks": {
-        "message": "Comprueba que el video tenga subtítulos: abre el menú de subtítulos del propio sitio."
+        "message": "Comprueba que el menú de subtítulos del sitio tenga subtítulos."
     },
     "helpPrivacy": {
-        "message": "El texto de los subtítulos solo va al servicio de traducción que elijas. No hay rastreo y no se nos envía nada."
+        "message": "El texto de los subtítulos solo va al servicio de traducción que elijas. No se nos envía nada."
     },
     "helpPrivacyFallback": {
-        "message": "El texto de los subtítulos solo va al servicio de traducción que elijas y a los gratuitos que lo cubren cuando falla. No hay rastreo y no se nos envía nada."
+        "message": "El texto de los subtítulos solo va al servicio de traducción que elijas y a los gratuitos que lo cubren. No se nos envía nada."
     },
     "helpSource": {
         "message": "Código fuente"
@@ -545,20 +536,11 @@
     "helpMadeBy": {
         "message": "Hecho por QuellaMC y 1jifang"
     },
-    "helpTimingHelp": {
-        "message": "Adelanta o atrasa un poco los subtítulos."
-    },
     "helpTimingTitle": {
         "message": "Las palabras no coinciden con lo que oigo"
     },
-    "helpTranslationHelp": {
-        "message": "Prueba otro servicio de traducción o usa la traducción oficial."
-    },
     "helpTranslationTitle": {
         "message": "La traducción no suena bien"
-    },
-    "helpTwiceHelp": {
-        "message": "Los subtítulos propios del sitio se muestran debajo de los de DualSub."
     },
     "helpTwiceTitle": {
         "message": "Veo los subtítulos dos veces"
@@ -566,56 +548,50 @@
     "helpVersion": {
         "message": "Versión %s"
     },
-    "languagesLead": {
-        "message": "Qué idioma muestra cada línea de subtítulos."
-    },
     "languagesOfficialHelp": {
-        "message": "Netflix y Disney+ suelen tener subtítulos en tu idioma hechos por personas. Se leen mejor que una traducción automática. Cuando una serie o película no los tiene, DualSub traduce."
+        "message": "Cuando la haya. La escribieron personas, así que se lee mejor."
     },
     "languagesOfficialTitle": {
-        "message": "Usar la traducción oficial cuando la haya"
-    },
-    "languagesSpeakHelp": {
-        "message": "La línea de abajo se traduce a este idioma."
+        "message": "Usar la traducción oficial"
     },
     "languagesSpeakTitle": {
         "message": "Hablo"
     },
     "languagesTopAuto": {
-        "message": "El idioma que se habla en el video"
+        "message": "El idioma del video"
     },
     "languagesTopAutoHelp": {
-        "message": "DualSub se adapta a cada video. Una serie coreana muestra coreano arriba; una película en inglés, inglés."
+        "message": "Se adapta a cada video."
     },
     "languagesTopFixed": {
-        "message": "Siempre el mismo idioma"
+        "message": "Siempre un idioma"
     },
     "languagesTopFixedHelp": {
-        "message": "Para aprender un idioma con todos los videos. Funciona cuando el sitio tiene subtítulos en ese idioma."
+        "message": "Para aprender un idioma."
     },
     "languagesTopFixedMenu": {
         "message": "Idioma de la línea de arriba"
     },
     "languagesTopTitle": {
-        "message": "La línea de arriba muestra"
+        "message": "Línea de arriba"
     },
     "lookArrangementSideBySide": {
-        "message": "Una al lado de la otra"
+        "message": "Lado a lado"
     },
     "lookArrangementStacked": {
-        "message": "Una encima de la otra"
+        "message": "Apiladas"
     },
     "lookArrangementTitle": {
         "message": "Cómo se colocan las dos líneas"
     },
     "lookBoldLabel": {
-        "message": "Letras en negrita"
+        "message": "Negrita"
     },
     "lookBoxColorLabel": {
-        "message": "Color del recuadro detrás del texto"
+        "message": "Recuadro"
     },
     "lookBoxOpacityLabel": {
-        "message": "Cuánto se ve el recuadro: %d %"
+        "message": "Cuánto se ve el recuadro"
     },
     "lookColorCyan": {
         "message": "Cian"
@@ -636,13 +612,13 @@
         "message": "Amarillo"
     },
     "lookCustomizeButton": {
-        "message": "Cambiar colores y tipo de letra"
+        "message": "Colores y fuente"
     },
     "lookEdgeDepressed": {
         "message": "Hundido"
     },
     "lookEdgeLabel": {
-        "message": "Borde alrededor de las letras"
+        "message": "Borde"
     },
     "lookEdgeNone": {
         "message": "Ninguno"
@@ -657,13 +633,10 @@
         "message": "Sombra suave"
     },
     "lookExactPosition": {
-        "message": "Altura exacta: %s (de 0.1, lo más abajo, a 9.9, el centro)"
+        "message": "Altura exacta"
     },
     "lookExactSize": {
-        "message": "Tamaño exacto del texto: %s×"
-    },
-    "lookFineTuneButton": {
-        "message": "Afinar tamaño, altura y espaciado"
+        "message": "Tamaño exacto del texto"
     },
     "lookFontCasual": {
         "message": "Informal"
@@ -686,14 +659,8 @@
     "lookFontSmallCaps": {
         "message": "Mayúsculas pequeñas"
     },
-    "lookGap": {
-        "message": "Espacio entre las líneas: %s de una línea"
-    },
     "lookGapTitle": {
         "message": "Espacio entre las líneas"
-    },
-    "lookLead": {
-        "message": "La vista previa cambia al instante y tu video se actualiza en menos de un segundo."
     },
     "lookMoveDown": {
         "message": "Bajar"
@@ -702,28 +669,28 @@
         "message": "Subir"
     },
     "lookOrderMineFirst": {
-        "message": "Mi idioma arriba"
+        "message": "La mía arriba"
     },
     "lookOrderTitle": {
         "message": "Qué línea va arriba"
     },
     "lookOrderVideoFirst": {
-        "message": "El idioma del video arriba"
+        "message": "El del video arriba"
     },
     "lookPositionBottom": {
-        "message": "Cerca del borde de abajo"
+        "message": "Borde de abajo"
     },
     "lookPositionLower": {
-        "message": "En la parte baja de la imagen"
+        "message": "Más arriba"
     },
     "lookPositionMiddle": {
-        "message": "Cerca del centro de la imagen"
+        "message": "En el medio"
     },
     "lookPositionTitle": {
         "message": "Posición en la pantalla"
     },
     "lookPositionUsual": {
-        "message": "Un poco por encima del borde de abajo, donde los prefiere la mayoría"
+        "message": "Altura habitual"
     },
     "lookPresetBoxed": {
         "message": "En recuadro"
@@ -740,47 +707,101 @@
     "lookPresetsLabel": {
         "message": "Diseños listos para usar"
     },
-    "lookPresetSample": {
-        "message": "Hola"
-    },
     "lookSizeTitle": {
         "message": "Tamaño del texto"
     },
-    "lookStyleCustom": {
-        "message": "Mi propio estilo"
-    },
-    "lookStyleCustomHelp": {
-        "message": "Empieza con un diseño listo para usar y, si quieres, cambia los colores y el tipo de letra."
-    },
     "lookStylePlatform": {
-        "message": "Igual que el sitio donde estás"
+        "message": "Como el sitio"
     },
     "lookStylePlatformSite": {
-        "message": "Igual que %s"
+        "message": "Como %s"
     },
     "lookStylePlatformHelp": {
-        "message": "Sigue los ajustes de subtítulos de tu perfil de Netflix o Disney+."
+        "message": "Lo deciden tus ajustes de subtítulos de Netflix o Disney+."
     },
     "lookStyleTitle": {
-        "message": "Estilo"
+        "message": "Diseño y estilos listos para usar"
     },
     "lookTopColorLabel": {
-        "message": "Color de la línea de arriba"
-    },
-    "lookTranslationColorHelp": {
-        "message": "Se usa con los dos estilos, para que las dos líneas se distingan fácilmente."
+        "message": "Arriba"
     },
     "lookTranslationColorTitle": {
-        "message": "Color de la línea traducida"
+        "message": "Color de la traducción"
+    },
+    "lookScene": {
+        "message": "Escena"
+    },
+    "lookNight": {
+        "message": "Noche"
+    },
+    "lookDay": {
+        "message": "Día"
+    },
+    "lookFullScreen": {
+        "message": "Pantalla completa"
+    },
+    "lookFullScreenTitle": {
+        "message": "Verlos a tamaño real"
+    },
+    "lookStageHint": {
+        "message": "Haz clic en una línea para cambiar su estilo. Arrastra los subtítulos para moverlos."
+    },
+    "lookLineTop": {
+        "message": "Línea de arriba: cambiar el diseño"
+    },
+    "lookLineYours": {
+        "message": "Tu línea: cambiar su color"
+    },
+    "lookUsualHeight": {
+        "message": "Altura habitual"
+    },
+    "lookPaneLabel": {
+        "message": "Estilo de los subtítulos"
+    },
+    "lookRowSize": {
+        "message": "Tamaño"
+    },
+    "lookRowPosition": {
+        "message": "Posición"
+    },
+    "lookRowLook": {
+        "message": "Diseño"
+    },
+    "lookRowLines": {
+        "message": "Líneas"
+    },
+    "lookExact": {
+        "message": "Exacto"
+    },
+    "lookCustom": {
+        "message": "Personalizado"
+    },
+    "lookOnTop": {
+        "message": "Arriba"
+    },
+    "lookOrderVideoShort": {
+        "message": "Del video"
+    },
+    "lookOrderMineShort": {
+        "message": "La mía"
+    },
+    "lookLayout": {
+        "message": "Disposición"
+    },
+    "lookSpacing": {
+        "message": "Espacio"
     },
     "navAdvancedSwitch": {
-        "message": "Mostrar opciones avanzadas"
+        "message": "Opciones avanzadas"
     },
-    "navAdvancedSwitchHelp": {
-        "message": "Perfiles por sitio, detalles de la API, límites y copias de seguridad."
+    "toastAdvancedOn": {
+        "message": "Se muestran las opciones avanzadas"
+    },
+    "toastAdvancedOff": {
+        "message": "Las opciones avanzadas están ocultas"
     },
     "navExplanations": {
-        "message": "Explicaciones de palabras"
+        "message": "Significados"
     },
     "navHelp": {
         "message": "Ayuda"
@@ -792,7 +813,7 @@
         "message": "Idiomas"
     },
     "navLook": {
-        "message": "Cómo se ven los subtítulos"
+        "message": "Estilo"
     },
     "navSites": {
         "message": "Sitios"
@@ -803,24 +824,6 @@
     "navTiming": {
         "message": "Sincronización"
     },
-    "previewCaptionAuto": {
-        "message": "Línea del video: %s, el idioma que se habla en este video. Tu línea: %s, la de la propia serie o película cuando tiene traducción."
-    },
-    "previewCaptionFixed": {
-        "message": "Línea del video: %s. Tu línea: %s, la de la propia serie o película cuando tiene traducción."
-    },
-    "previewCaptionAutoTranslated": {
-        "message": "Línea del video: %s, el idioma que se habla en este video. Tu línea: %s, traducida por DualSub."
-    },
-    "previewCaptionAutoOne": {
-        "message": "Línea del video: %s, el idioma que se habla en este video."
-    },
-    "previewCaptionFixedTranslated": {
-        "message": "Línea del video: %s. Tu línea: %s, traducida por DualSub."
-    },
-    "previewCaptionFixedOne": {
-        "message": "Línea del video: %s."
-    },
     "previewEnglishFilm": {
         "message": "Película en inglés"
     },
@@ -830,11 +833,23 @@
     "previewLabel": {
         "message": "Vista previa de los subtítulos"
     },
+    "previewLegendSpoken": {
+        "message": "%s · lo que se habla en el video"
+    },
+    "previewLegendChosen": {
+        "message": "%s · el idioma que elegiste"
+    },
+    "previewLegendYours": {
+        "message": "%s · tu idioma"
+    },
+    "previewLegendOneLine": {
+        "message": "%s · ya es tu idioma, así que una sola línea"
+    },
+    "previewLinesLabel": {
+        "message": "Subtítulos de ejemplo: %s"
+    },
     "previewOff": {
         "message": "Los subtítulos duales están desactivados"
-    },
-    "previewOneLine": {
-        "message": "Este video ya está en tu idioma, así que DualSub muestra una sola línea."
     },
     "previewSampleVideo": {
         "message": "Video de ejemplo"
@@ -842,11 +857,8 @@
     "previewStandIn": {
         "message": "Aquí no hay una muestra en %s, así que el inglés ocupa su lugar."
     },
-    "previewShownOn": {
-        "message": "Como se ve en"
-    },
-    "previewTitle": {
-        "message": "Vista previa en vivo"
+    "lookPreviewSite": {
+        "message": "Aspecto del sitio"
     },
     "providerAi": {
         "message": "Traducción con IA"
@@ -885,22 +897,16 @@
         "message": "Volver a Todos los sitios"
     },
     "scopeEditingSite": {
-        "message": "Estás cambiando solo los ajustes de %s."
+        "message": "Solo en %s."
     },
     "scopeEditingSiteHelp": {
-        "message": "Lo que cambies aquí lleva la etiqueta «Solo en %s». Lo demás sigue a Todos los sitios."
-    },
-    "scopeHelp": {
-        "message": "Un sitio sin ajustes propios usa los de Todos los sitios."
+        "message": "Lo demás sigue a Todos los sitios."
     },
     "scopeLabel": {
         "message": "Ajustes para"
     },
     "scopeOwnCount": {
         "message": "%d ajustes propios"
-    },
-    "scopeSameAsAll": {
-        "message": "Igual que Todos los sitios"
     },
     "scopeSharedSetting": {
         "message": "Común a todos los sitios"
@@ -909,7 +915,7 @@
         "message": "Solo en %s"
     },
     "scopeUseShared": {
-        "message": "Usar el valor de Todos los sitios"
+        "message": "Usar Todos los sitios"
     },
     "setupAddress": {
         "message": "Dirección del servicio"
@@ -983,9 +989,6 @@
     "sitesHideTitle": {
         "message": "Ocultar los subtítulos propios del sitio"
     },
-    "sitesLead": {
-        "message": "DualSub se activa automáticamente en estos sitios. Puedes desactivarlo en uno o darle a uno sus propios ajustes."
-    },
     "sitesMoreHelp": {
         "message": "Cuando DualSub aprenda a funcionar en un sitio nuevo, aparecerá aquí ya activado y con tus ajustes de Todos los sitios."
     },
@@ -1034,32 +1037,14 @@
     "startFromBrowser": {
         "message": "Elegido según tu navegador"
     },
-    "startLead": {
-        "message": "Abre Netflix o Disney+ y pon lo que quieras. Verás dos líneas de subtítulos: el idioma del video arriba y el tuyo debajo."
+    "startChangeStyle": {
+        "message": "Cambiar el estilo"
     },
     "startOpenSite": {
         "message": "Abrir %s"
     },
     "startProblemsTitle": {
         "message": "¿Algo no va bien?"
-    },
-    "startProviderAi": {
-        "message": "Traducción con IA, con tu clave"
-    },
-    "startProviderDeepL": {
-        "message": "DeepL, con tu clave"
-    },
-    "startProviderGoogle": {
-        "message": "Google Translate, gratis y sin configurar nada"
-    },
-    "startProviderMicrosoft": {
-        "message": "Microsoft Translator, gratis y sin configurar nada"
-    },
-    "startProviderVertex": {
-        "message": "Google Vertex AI"
-    },
-    "startSetUpTitle": {
-        "message": "Ya lo configuramos por ti"
     },
     "startTopTitle": {
         "message": "Línea de arriba"
@@ -1085,20 +1070,17 @@
     "startStatusReadyHelp": {
         "message": "No hay que configurar nada. Solo pon un video."
     },
-    "startTitle": {
-        "message": "¡Hola! DualSub está listo."
-    },
-    "startTopAuto": {
-        "message": "El idioma que se habla en cada video"
-    },
-    "startTopFixed": {
-        "message": "Siempre en %s"
-    },
     "tagFree": {
         "message": "Gratis"
     },
     "tagGoogleCloud": {
         "message": "Para usuarios de Google Cloud"
+    },
+    "tagYourKey": {
+        "message": "Tu clave"
+    },
+    "tagCloud": {
+        "message": "Google Cloud"
     },
     "tagNeedsKey": {
         "message": "Necesita una clave"
@@ -1112,9 +1094,6 @@
     "timingEarlierBy": {
         "message": "%s s antes"
     },
-    "timingEarlierHelp": {
-        "message": "Cada línea aparece un poco antes."
-    },
     "timingExactHelp": {
         "message": "En segundos. Los números positivos muestran los subtítulos antes (se guarda como %s)."
     },
@@ -1127,29 +1106,32 @@
     "timingLaterBy": {
         "message": "%s s después"
     },
-    "timingLaterHelp": {
-        "message": "Cada línea aparece un poco después."
-    },
-    "timingLead": {
-        "message": "Si las palabras no coinciden con lo que oyes, mueve un poco los subtítulos. La mayoría de los videos no necesitan nada aquí."
-    },
     "timingOnTime": {
         "message": "A tiempo"
-    },
-    "timingOnTimeHelp": {
-        "message": "Los subtítulos siguen exactamente al video."
     },
     "timingReset": {
         "message": "Poner a tiempo"
     },
     "timingTipHelp": {
-        "message": "El botón de DualSub en la barra de herramientas de tu navegador tiene estos mismos dos botones, así que puedes ajustar los subtítulos a lo que oyes sin salir del video."
-    },
-    "timingTipTitle": {
-        "message": "Ajústalo mientras ves el video"
+        "message": "Los mismos dos botones están en el botón de DualSub de la barra de herramientas, así que puedes arreglarlo mientras ves."
     },
     "timingTitle": {
         "message": "Sincronización de los subtítulos"
+    },
+    "timingVoice": {
+        "message": "Voz"
+    },
+    "timingSubtitles": {
+        "message": "Subtítulos"
+    },
+    "timingTimelineOnTime": {
+        "message": "Cada subtítulo aparece junto con la voz."
+    },
+    "timingTimelineEarlier": {
+        "message": "Cada subtítulo aparece %s segundos antes que la voz."
+    },
+    "timingTimelineLater": {
+        "message": "Cada subtítulo aparece %s segundos después de la voz."
     },
     "toastCopied": {
         "message": "Copiado"
@@ -1193,6 +1175,15 @@
     "toastMovedUp": {
         "message": "Subtítulos más arriba"
     },
+    "toastMoved": {
+        "message": "Subtítulos movidos"
+    },
+    "toastLinesStacked": {
+        "message": "Líneas: apiladas"
+    },
+    "toastLinesSideBySide": {
+        "message": "Líneas: lado a lado"
+    },
     "toastOfficialOff": {
         "message": "DualSub siempre traduce"
     },
@@ -1235,11 +1226,8 @@
     "toastSpeak": {
         "message": "Hablo: %s"
     },
-    "toastStyleCustom": {
-        "message": "Estilo: el mío"
-    },
     "toastStylePlatform": {
-        "message": "Estilo: igual que el sitio"
+        "message": "Diseño: como el sitio"
     },
     "toastSubtitlesOff": {
         "message": "Subtítulos duales desactivados"
@@ -1281,10 +1269,10 @@
         "message": "subtítulos subtitulos oficiales traduccion humana humanos personas profesionales netflix disney"
     },
     "searchWordsSize": {
-        "message": "tamano subtítulos subtitulos letras fuente grandes más mas pequeños pequeñas pequenos pequenas chicos chicas agrandar ampliar aumentar achicar reducir zoom lupa leer no veo bien"
+        "message": "tamano subtítulos subtitulos letras fuente grandes más mas pequeños pequeñas pequenos pequenas chicos chicas agrandar ampliar aumentar achicar reducir zoom lupa leer no veo bien exacto preciso"
     },
     "searchWordsPosition": {
-        "message": "posicion ubicación ubicacion lugar altura vertical mover subir bajar arriba abajo alto bajo tapan subtítulos subtitulos"
+        "message": "posicion ubicación ubicacion lugar altura vertical mover subir bajar arriba abajo alto bajo tapan subtítulos subtitulos arrastrar exacto"
     },
     "searchWordsStyle": {
         "message": "estilos aspecto apariencia diseños disenos personalizado personalizar mi propio igual como sitio plataforma netflix disney perfil listos predefinidos subtítulos subtitulos"
@@ -1301,8 +1289,11 @@
     "searchWordsArrangement": {
         "message": "disposición disposicion orientación orientacion colocar una encima de otra al lado juntas apiladas horizontal filas columnas lineas subtítulos subtitulos"
     },
-    "searchWordsFineTune": {
-        "message": "espacio separación separacion distancia entre líneas lineas exacto exacta precisión precision ajuste fino tamano subtítulos subtitulos"
+    "searchWordsGap": {
+        "message": "espacio separación separacion distancia entre líneas lineas"
+    },
+    "searchWordsFullScreen": {
+        "message": "pantalla completa tamaño real comprobar vista previa grande"
     },
     "searchWordsTiming": {
         "message": "sincronizacion sincronizar desincronizados desfase desfasados retraso retrasados atrasados adelantados adelantar atrasar antes después despues tarde temprano tiempo no coinciden con lo que oigo oír oir escucho voz voces labios audio subtitulos"
@@ -1423,9 +1414,6 @@
     },
     "translationFallbackTitle": {
         "message": "Seguir traduciendo si este servicio falla"
-    },
-    "translationLead": {
-        "message": "Quién traduce la línea de abajo cuando no hay traducción oficial."
     },
     "translationServiceTitle": {
         "message": "Servicio de traducción"
@@ -1592,7 +1580,7 @@
     "popupPosition": {
         "message": "Posición"
     },
-    "popupExactSize": {
+    "sizeExact": {
         "message": "%s×"
     },
     "positionLowest": {
@@ -1607,10 +1595,10 @@
     "positionMiddle": {
         "message": "En medio"
     },
-    "popupSmaller": {
+    "sizeSmaller": {
         "message": "Texto más pequeño"
     },
-    "popupBigger": {
+    "sizeBigger": {
         "message": "Texto más grande"
     },
     "popupElsewhereTitle": {

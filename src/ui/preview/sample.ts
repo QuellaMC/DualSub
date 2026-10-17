@@ -8,8 +8,6 @@ import {
     SUBTITLE_LANGUAGES,
     type SubtitleLanguage,
 } from '@/shared/subtitleLanguages';
-import type { Translate } from '../hooks/useI18n';
-import { languageName } from '../languageLabels';
 
 /** One proverb in every subtitle language. */
 const SAMPLE_LINES: Record<SubtitleLanguage, string> = {
@@ -81,42 +79,4 @@ export function sampleSubtitles(
             (language) => closestLanguage(language, SUBTITLE_LANGUAGES) === null
         ),
     };
-}
-
-const CAPTIONS = {
-    auto: {
-        official: 'previewCaptionAuto',
-        translated: 'previewCaptionAutoTranslated',
-        none: 'previewCaptionAutoOne',
-    },
-    fixed: {
-        official: 'previewCaptionFixed',
-        translated: 'previewCaptionFixedTranslated',
-        none: 'previewCaptionFixedOne',
-    },
-} as const;
-
-/** What the sample's lines are, in words: the video's, and the viewer's,
- *  from the show or translated by DualSub. */
-export function sampleCaption(
-    t: Translate,
-    settings: Pick<
-        SettingsValues,
-        'originalLanguage' | 'useOfficialTranslations'
-    >,
-    sample: SampleSubtitles
-): string {
-    const lines =
-        CAPTIONS[
-            settings.originalLanguage === AUTO_LANGUAGE ? 'auto' : 'fixed'
-        ];
-    return t(
-        sample.translatedText === ''
-            ? lines.none
-            : settings.useOfficialTranslations
-              ? lines.official
-              : lines.translated,
-        languageName(t, sample.originalLanguage),
-        languageName(t, sample.targetLanguage)
-    );
 }
