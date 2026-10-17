@@ -50,8 +50,8 @@ See details in: [features.md](docs/en/features.md), [platforms.md](docs/en/platf
 ## 📦 Installation & Quick Start
 
 1. Install from the Chrome Web Store or load unpacked (see [installation.md](docs/en/installation.md)).
-2. Open Netflix or Disney+ and enable subtitles.
-3. Click the DualSub icon → enable dual subtitles and choose target language.
+2. A welcome page opens with your languages already picked; change the translation language there if you like.
+3. Open Netflix or Disney+ and play anything: two lines of subtitles appear, by default the video's language on top and yours underneath. A video already in your language shows one line.
 4. Optional: in the settings page, set up Word explanations with your own OpenAI or Gemini key.
 
 Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: [ai-context.md](docs/en/ai-context.md).

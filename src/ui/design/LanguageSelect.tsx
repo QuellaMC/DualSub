@@ -1,7 +1,10 @@
 import { SUBTITLE_LANGUAGES } from '@/shared/subtitleLanguages';
-import type { Translate } from '../../hooks/useI18n';
-import { languageLabelKey, languageName } from '../../languageLabels';
-import { NATIVE_LANGUAGE_NAMES } from './nativeLanguageNames';
+import type { Translate } from '../hooks/useI18n';
+import {
+    languageLabelKey,
+    languageName,
+    NATIVE_LANGUAGE_NAMES,
+} from '../languageLabels';
 
 /** A subtitle language menu naming each language in its own words and in
  *  the page's language. A language stored that the menu does not offer,

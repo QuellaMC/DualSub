@@ -485,6 +485,9 @@
     "commonChange": {
         "message": "바꾸기"
     },
+    "commonDone": {
+        "message": "완료"
+    },
     "commonLoading": {
         "message": "불러오는 중…"
     },
@@ -1543,6 +1546,123 @@
     },
     "translationVertexSetupTitle": {
         "message": "Google Vertex AI 설정하기"
+    },
+    "welcomePageTitle": {
+        "message": "DualSub에 오신 것을 환영해요"
+    },
+    "welcomeInstalled": {
+        "message": "설치됨"
+    },
+    "welcomeSitesOwn": {
+        "message": "%s에서는 따로 정한 설정을 따르기 때문에 자막이 이 예시와 다를 수 있어요."
+    },
+    "welcomePickedTitle": {
+        "message": "미리 골라 둔 설정"
+    },
+    "welcomeLanguage": {
+        "message": "내 언어: %s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "브라우저에서 가져왔어요. 내 줄은 항상 이 언어로 나와요."
+    },
+    "welcomeLanguageLabel": {
+        "message": "내 언어"
+    },
+    "welcomeTopAuto": {
+        "message": "영상 줄: 영상마다 말하는 언어"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "한국 드라마는 한국어, 영어 영화는 영어가 나와요."
+    },
+    "welcomeTopFixed": {
+        "message": "영상 줄: 항상 %s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "사이트에 그 언어 자막이 있으면 어떤 영상이든 보여 줘요."
+    },
+    "welcomeTranslation": {
+        "message": "번역: %s"
+    },
+    "welcomeTranslationFree": {
+        "message": "무료이고 계정이 필요 없어요."
+    },
+    "welcomeTranslationKeyed": {
+        "message": "내 계정으로 써요."
+    },
+    "welcomeTranslationOfficial": {
+        "message": "작품에 내 언어로 된 공식 번역이 있으면 DualSub이 그걸 대신 써요."
+    },
+    "welcomeTranslationNone": {
+        "message": "번역: 필요 없음"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "영상 줄이 이미 내 언어라서 번역할 게 없어요."
+    },
+    "welcomeOpenHelp": {
+        "message": "평소처럼 로그인하세요."
+    },
+    "welcomeEarlier": {
+        "message": "앞당기기"
+    },
+    "welcomeLater": {
+        "message": "늦추기"
+    },
+    "welcomeTitle": {
+        "message": "준비가 끝났어요."
+    },
+    "welcomeLeadFormat": {
+        "message": "%s %s"
+    },
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub은 Netflix와 Disney+에 자막을 두 줄로 보여 줘요. 위에는 영상 원래의 언어, 아래에는 내 언어가 나와요."
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub은 Netflix와 Disney+에 자막을 두 줄로 보여 줘요. 위에는 내 언어, 아래에는 영상 원래의 언어가 나와요."
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub은 Netflix와 Disney+에 자막 두 줄을 나란히 보여 줘요. 영상 원래의 언어와 내 언어예요."
+    },
+    "welcomeArrangeOneLine": {
+        "message": "DualSub은 Netflix와 Disney+에 내 언어로 자막을 보여 줘요. 영상 줄도 같은 언어로 정해져 있어서 한 줄만 나와요."
+    },
+    "welcomeStateReady": {
+        "message": "따로 설정할 건 없어요."
+    },
+    "welcomeStateOff": {
+        "message": "지금은 꺼져 있어요. 아래 스위치로 켤 수 있어요."
+    },
+    "welcomeStatePartial": {
+        "message": "지금은 %s에서 꺼져 있어요. 아래 스위치로 모든 사이트에서 켤 수 있어요."
+    },
+    "welcomeStateSetUp": {
+        "message": "내 언어 줄을 번역하려면 아래 번역 서비스 설정을 마치세요."
+    },
+    "welcomeLanguageHelp": {
+        "message": "내 줄은 항상 이 언어로 나와요."
+    },
+    "welcomeStepsTitle": {
+        "message": "세 단계로 바로 보기"
+    },
+    "welcomePinTitle": {
+        "message": "툴바에 DualSub 고정하기"
+    },
+    "welcomePinHelp": {
+        "message": "브라우저 오른쪽 위의 퍼즐 조각 모양 “확장 프로그램”을 클릭하고, DualSub 옆의 핀 모양 “고정”을 클릭하세요. 그러면 영상을 보는 동안 버튼이 계속 보여요."
+    },
+    "welcomeOpenTitle": {
+        "message": "Netflix나 Disney+ 열기"
+    },
+    "welcomePlayTitle": {
+        "message": "아무 영상이나 재생하기"
+    },
+    "welcomePlayHelp": {
+        "message": "두 줄이 저절로 나와요. 이미 내 언어인 영상은 한 줄만 나와요. 글자가 너무 작거나 목소리와 안 맞으면 DualSub 버튼을 클릭하세요."
+    },
+    "welcomeOpenSettings": {
+        "message": "모든 설정 보기"
+    },
+    "welcomeClose": {
+        "message": "이게 전부예요. 이 탭은 닫아도 돼요."
     },
     "startNeedsSetupTitle": {
         "message": "%s 설정이 아직 안 끝났어요"

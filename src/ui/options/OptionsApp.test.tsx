@@ -27,6 +27,7 @@ import { configService } from '@/config/service';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
 import { installPermissionEvents } from '@/test-utils/permissionEvents';
 import { resetCatalogsForTests } from '../hooks/useI18n';
+import { SITE_VIEW_KEYS } from '../hooks/useSitesOn';
 import { OptionsApp } from './OptionsApp';
 
 const EN = readFileSync(resolve('public/_locales/en/messages.json'), 'utf8');
@@ -643,9 +644,8 @@ describe('OptionsApp', () => {
         vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
             (keys, options) =>
                 options?.site === undefined &&
-                keys.length === 2 &&
-                keys.includes('subtitlesEnabled') &&
-                keys.includes('siteProfiles')
+                keys.length === SITE_VIEW_KEYS.length &&
+                SITE_VIEW_KEYS.every((key) => keys.includes(key))
                     ? Promise.reject(new Error('broken'))
                     : read(keys, options)
         );
@@ -2068,6 +2068,46 @@ describe('OptionsApp', () => {
         ).toBeInTheDocument();
         expect(
             screen.queryByText("DeepL isn't set up yet")
+        ).not.toBeInTheDocument();
+    });
+
+    it('asks for the service where a site keeps a top line to translate from', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            translationFallback: false,
+            originalLanguage: 'en',
+            targetLanguage: 'en',
+            siteProfiles: { netflix: { originalLanguage: 'ko' } },
+        });
+        await renderReady();
+        expect(
+            await screen.findByText("DeepL isn't set up yet")
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Until it is, subtitles aren't translated.")
+        ).toBeInTheDocument();
+    });
+
+    it('asks no service of a setup that shows one line', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            originalLanguage: 'en',
+            targetLanguage: 'en',
+        });
+        await renderReady();
+        expect(
+            await screen.findByText('Working on Netflix and Disney+')
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText("DeepL isn't set up yet")
+        ).not.toBeInTheDocument();
+
+        await fakeBrowser.storage.sync.set({ translationFallback: false });
+        await waitFor(async () =>
+            expect(await sync('translationFallback')).toBe(false)
+        );
+        expect(
+            screen.queryByText("Until it is, subtitles aren't translated.")
         ).not.toBeInTheDocument();
     });
 

@@ -14,7 +14,7 @@ import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { GEMINI_MODELS, OPENAI_MODELS } from '../explanations/models';
 import { OpenAIHostPermission } from '../explanations/OpenAIHostPermission';
-import { useHostPermission } from '../hooks/useHostPermission';
+import { useHostPermission } from '../../hooks/useHostPermission';
 import { addressChange } from '../providers/address';
 import { useFeedback } from '../shell/feedback';
 import { SharedTag } from '../shell/scopeContext';

@@ -485,6 +485,9 @@
     "commonChange": {
         "message": "Change"
     },
+    "commonDone": {
+        "message": "Done"
+    },
     "commonLoading": {
         "message": "Loading…"
     },
@@ -1543,6 +1546,123 @@
     },
     "translationVertexSetupTitle": {
         "message": "Set up Google Vertex AI"
+    },
+    "welcomePageTitle": {
+        "message": "Welcome to DualSub"
+    },
+    "welcomeInstalled": {
+        "message": "Installed"
+    },
+    "welcomeSitesOwn": {
+        "message": "On %s, subtitles follow settings of their own, so they can differ from this sample."
+    },
+    "welcomePickedTitle": {
+        "message": "What we picked for you"
+    },
+    "welcomeLanguage": {
+        "message": "Your language: %s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "Taken from your browser. Your line is always in this language."
+    },
+    "welcomeLanguageLabel": {
+        "message": "Your language"
+    },
+    "welcomeTopAuto": {
+        "message": "Video's line: the language spoken in each video"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "A Korean drama shows Korean, an English film shows English."
+    },
+    "welcomeTopFixed": {
+        "message": "Video's line: always %s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "Every video shows it, when the site has subtitles in it."
+    },
+    "welcomeTranslation": {
+        "message": "Translation: %s"
+    },
+    "welcomeTranslationFree": {
+        "message": "Free, no account needed."
+    },
+    "welcomeTranslationKeyed": {
+        "message": "Through your own account."
+    },
+    "welcomeTranslationOfficial": {
+        "message": "When a show has its own translation in your language, DualSub uses that instead."
+    },
+    "welcomeTranslationNone": {
+        "message": "Translation: none needed"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "The video's line is already in your language, so nothing is translated."
+    },
+    "welcomeOpenHelp": {
+        "message": "Sign in the way you always do."
+    },
+    "welcomeEarlier": {
+        "message": "Earlier"
+    },
+    "welcomeLater": {
+        "message": "Later"
+    },
+    "welcomeTitle": {
+        "message": "You're all set."
+    },
+    "welcomeLeadFormat": {
+        "message": "%s %s"
+    },
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: the video's own language on top, and yours underneath."
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: yours on top, and the video's own language underneath."
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub puts two lines of subtitles side by side on Netflix and Disney+: the video's own language, and yours."
+    },
+    "welcomeArrangeOneLine": {
+        "message": "DualSub puts subtitles on Netflix and Disney+ in your language. The video's line is set to it too, so one line shows."
+    },
+    "welcomeStateReady": {
+        "message": "There is nothing to set up."
+    },
+    "welcomeStateOff": {
+        "message": "It is off for now: the switch below turns it on."
+    },
+    "welcomeStatePartial": {
+        "message": "It is off on %s for now: the switch below turns it on everywhere."
+    },
+    "welcomeStateSetUp": {
+        "message": "To translate yours, finish setting up the translation service below."
+    },
+    "welcomeLanguageHelp": {
+        "message": "Your line is always in this language."
+    },
+    "welcomeStepsTitle": {
+        "message": "Start watching in three steps"
+    },
+    "welcomePinTitle": {
+        "message": "Pin DualSub to your toolbar"
+    },
+    "welcomePinHelp": {
+        "message": "Click the puzzle piece at the top right of your browser, then the pin next to DualSub. Its button then stays in view while you watch."
+    },
+    "welcomeOpenTitle": {
+        "message": "Open Netflix or Disney+"
+    },
+    "welcomePlayTitle": {
+        "message": "Play any video"
+    },
+    "welcomePlayHelp": {
+        "message": "The two lines appear by themselves; a video already in your language shows one. Too small, or out of step with the voices? Click the DualSub button."
+    },
+    "welcomeOpenSettings": {
+        "message": "See all settings"
+    },
+    "welcomeClose": {
+        "message": "That's all. You can close this tab."
     },
     "startNeedsSetupTitle": {
         "message": "%s isn't set up yet"

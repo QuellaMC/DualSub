@@ -485,6 +485,9 @@
     "commonChange": {
         "message": "変更"
     },
+    "commonDone": {
+        "message": "完了"
+    },
     "commonLoading": {
         "message": "読み込み中…"
     },
@@ -1543,6 +1546,123 @@
     },
     "translationVertexSetupTitle": {
         "message": "Google Vertex AIの設定"
+    },
+    "welcomePageTitle": {
+        "message": "DualSubへようこそ"
+    },
+    "welcomeInstalled": {
+        "message": "インストール済み"
+    },
+    "welcomeSitesOwn": {
+        "message": "%sでは独自の設定に従うため、字幕がこのサンプルと違うことがあります。"
+    },
+    "welcomePickedTitle": {
+        "message": "選んでおいたもの"
+    },
+    "welcomeLanguage": {
+        "message": "自分の言語：%s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "ブラウザの設定から選びました。自分の行はいつもこの言語です。"
+    },
+    "welcomeLanguageLabel": {
+        "message": "自分の言語"
+    },
+    "welcomeTopAuto": {
+        "message": "動画の行：それぞれの動画で話されている言語"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "韓国ドラマなら韓国語、英語の映画なら英語になります。"
+    },
+    "welcomeTopFixed": {
+        "message": "動画の行：常に%s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "サイトにその言語の字幕があれば、どの動画でも表示します。"
+    },
+    "welcomeTranslation": {
+        "message": "翻訳：%s"
+    },
+    "welcomeTranslationFree": {
+        "message": "無料で、アカウントは不要です。"
+    },
+    "welcomeTranslationKeyed": {
+        "message": "ご自分のアカウントを使います。"
+    },
+    "welcomeTranslationOfficial": {
+        "message": "作品に自分の言語の公式翻訳があれば、DualSubはそれを使います。"
+    },
+    "welcomeTranslationNone": {
+        "message": "翻訳：不要"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "動画の行がもともと自分の言語なので、何も翻訳しません。"
+    },
+    "welcomeOpenHelp": {
+        "message": "いつもどおりにログインします。"
+    },
+    "welcomeEarlier": {
+        "message": "早く"
+    },
+    "welcomeLater": {
+        "message": "遅く"
+    },
+    "welcomeTitle": {
+        "message": "準備ができました。"
+    },
+    "welcomeLeadFormat": {
+        "message": "%s%s"
+    },
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は動画そのものの言語、下は自分の言語です。"
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は自分の言語、下は動画そのものの言語です。"
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSubは、NetflixとDisney+に2つの字幕を横に並べて表示します。動画そのものの言語と、自分の言語です。"
+    },
+    "welcomeArrangeOneLine": {
+        "message": "DualSubは、NetflixとDisney+に自分の言語の字幕を表示します。動画の行も同じ言語に設定されているので、表示は1行です。"
+    },
+    "welcomeStateReady": {
+        "message": "設定は何もいりません。"
+    },
+    "welcomeStateOff": {
+        "message": "今はオフになっています。下のスイッチでオンにできます。"
+    },
+    "welcomeStatePartial": {
+        "message": "今は%sでオフになっています。下のスイッチで、すべてのサイトでオンにできます。"
+    },
+    "welcomeStateSetUp": {
+        "message": "自分の言語の行を翻訳するには、下の翻訳サービスの設定を済ませてください。"
+    },
+    "welcomeLanguageHelp": {
+        "message": "自分の行はいつもこの言語です。"
+    },
+    "welcomeStepsTitle": {
+        "message": "3つの手順で見始めましょう"
+    },
+    "welcomePinTitle": {
+        "message": "DualSubをツールバーに固定する"
+    },
+    "welcomePinHelp": {
+        "message": "ブラウザの右上にある、パズルのピースの形をした「拡張機能」をクリックし、DualSubの横にあるピンの「固定」をクリックします。これで動画を見ている間もボタンが見えたままになります。"
+    },
+    "welcomeOpenTitle": {
+        "message": "NetflixかDisney+を開く"
+    },
+    "welcomePlayTitle": {
+        "message": "好きな動画を再生する"
+    },
+    "welcomePlayHelp": {
+        "message": "2行の字幕は自動で表示されます（もともと自分の言語の動画なら1行です）。小さすぎたり、声とずれていたりしたら、DualSubのボタンをクリックしてください。"
+    },
+    "welcomeOpenSettings": {
+        "message": "すべての設定を見る"
+    },
+    "welcomeClose": {
+        "message": "以上です。このタブは閉じてかまいません。"
     },
     "startNeedsSetupTitle": {
         "message": "%sはまだ設定されていません"

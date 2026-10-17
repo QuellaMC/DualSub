@@ -485,6 +485,9 @@
     "commonChange": {
         "message": "Cambiar"
     },
+    "commonDone": {
+        "message": "Listo"
+    },
     "commonLoading": {
         "message": "Cargando…"
     },
@@ -1543,6 +1546,123 @@
     },
     "translationVertexSetupTitle": {
         "message": "Configurar Google Vertex AI"
+    },
+    "welcomePageTitle": {
+        "message": "Te damos la bienvenida a DualSub"
+    },
+    "welcomeInstalled": {
+        "message": "Instalado"
+    },
+    "welcomeSitesOwn": {
+        "message": "En %s, los subtítulos siguen sus propios ajustes, así que pueden verse distintos de este ejemplo."
+    },
+    "welcomePickedTitle": {
+        "message": "Lo que elegimos por ti"
+    },
+    "welcomeLanguage": {
+        "message": "Tu idioma: %s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "Tomado de tu navegador. Tu línea siempre está en este idioma."
+    },
+    "welcomeLanguageLabel": {
+        "message": "Tu idioma"
+    },
+    "welcomeTopAuto": {
+        "message": "Línea del video: el idioma que se habla en cada video"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "Una serie coreana muestra coreano; una película en inglés, inglés."
+    },
+    "welcomeTopFixed": {
+        "message": "Línea del video: siempre %s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "Todos los videos lo muestran, cuando el sitio tiene subtítulos en ese idioma."
+    },
+    "welcomeTranslation": {
+        "message": "Traducción: %s"
+    },
+    "welcomeTranslationFree": {
+        "message": "Gratis y sin cuenta."
+    },
+    "welcomeTranslationKeyed": {
+        "message": "A través de tu propia cuenta."
+    },
+    "welcomeTranslationOfficial": {
+        "message": "Cuando una serie o película tiene su propia traducción a tu idioma, DualSub usa esa."
+    },
+    "welcomeTranslationNone": {
+        "message": "Traducción: no hace falta"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "La línea del video ya está en tu idioma, así que no se traduce nada."
+    },
+    "welcomeOpenHelp": {
+        "message": "Inicia sesión como siempre."
+    },
+    "welcomeEarlier": {
+        "message": "Antes"
+    },
+    "welcomeLater": {
+        "message": "Después"
+    },
+    "welcomeTitle": {
+        "message": "Todo listo."
+    },
+    "welcomeLeadFormat": {
+        "message": "%s %s"
+    },
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el idioma del propio video, y debajo, el tuyo."
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el tuyo, y debajo, el idioma del propio video."
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub pone dos líneas de subtítulos una al lado de la otra en Netflix y Disney+: el idioma del propio video y el tuyo."
+    },
+    "welcomeArrangeOneLine": {
+        "message": "DualSub pone subtítulos en tu idioma en Netflix y Disney+. La línea del video también está en ese idioma, así que se ve una sola línea."
+    },
+    "welcomeStateReady": {
+        "message": "No hay nada que configurar."
+    },
+    "welcomeStateOff": {
+        "message": "Por ahora está desactivado: el interruptor de abajo lo activa."
+    },
+    "welcomeStatePartial": {
+        "message": "Por ahora está desactivado en %s: el interruptor de abajo lo activa en todas partes."
+    },
+    "welcomeStateSetUp": {
+        "message": "Para traducir el tuyo, termina de configurar el servicio de traducción de abajo."
+    },
+    "welcomeLanguageHelp": {
+        "message": "Tu línea siempre está en este idioma."
+    },
+    "welcomeStepsTitle": {
+        "message": "Empieza a ver en tres pasos"
+    },
+    "welcomePinTitle": {
+        "message": "Fija DualSub en tu barra de herramientas"
+    },
+    "welcomePinHelp": {
+        "message": "Arriba a la derecha del navegador, haz clic en «Extensiones» (la pieza de rompecabezas) y luego en «Fijar», junto a DualSub. Así su botón queda a la vista mientras ves algo."
+    },
+    "welcomeOpenTitle": {
+        "message": "Abre Netflix o Disney+"
+    },
+    "welcomePlayTitle": {
+        "message": "Pon cualquier video"
+    },
+    "welcomePlayHelp": {
+        "message": "Las dos líneas aparecen solas; un video que ya está en tu idioma muestra una sola. ¿Demasiado pequeñas, o desfasadas respecto a las voces? Haz clic en el botón de DualSub."
+    },
+    "welcomeOpenSettings": {
+        "message": "Ver todos los ajustes"
+    },
+    "welcomeClose": {
+        "message": "Eso es todo. Puedes cerrar esta pestaña."
     },
     "startNeedsSetupTitle": {
         "message": "Falta configurar %s"

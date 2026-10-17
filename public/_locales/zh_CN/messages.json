@@ -485,6 +485,9 @@
     "commonChange": {
         "message": "更改"
     },
+    "commonDone": {
+        "message": "完成"
+    },
     "commonLoading": {
         "message": "正在加载…"
     },
@@ -1543,6 +1546,123 @@
     },
     "translationVertexSetupTitle": {
         "message": "设置 Google Vertex AI"
+    },
+    "welcomePageTitle": {
+        "message": "欢迎使用 DualSub"
+    },
+    "welcomeInstalled": {
+        "message": "已安装"
+    },
+    "welcomeSitesOwn": {
+        "message": "在 %s 上，字幕按单独的设置显示，可能和这个示例不同。"
+    },
+    "welcomePickedTitle": {
+        "message": "我们为你选好的"
+    },
+    "welcomeLanguage": {
+        "message": "你的语言：%s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "按浏览器语言选的。你的那行始终是这种语言。"
+    },
+    "welcomeLanguageLabel": {
+        "message": "你的语言"
+    },
+    "welcomeTopAuto": {
+        "message": "视频的那行：每个视频里说的语言"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "韩剧显示韩语，英语电影显示英语。"
+    },
+    "welcomeTopFixed": {
+        "message": "视频的那行：始终是%s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "只要网站有这种语言的字幕，每个视频都会显示它。"
+    },
+    "welcomeTranslation": {
+        "message": "翻译：%s"
+    },
+    "welcomeTranslationFree": {
+        "message": "免费，不用账户。"
+    },
+    "welcomeTranslationKeyed": {
+        "message": "使用你自己的账户。"
+    },
+    "welcomeTranslationOfficial": {
+        "message": "节目有你的语言的自带翻译时，DualSub 会改用它。"
+    },
+    "welcomeTranslationNone": {
+        "message": "翻译：不需要"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "视频的那行本来就是你的语言，所以不用翻译。"
+    },
+    "welcomeOpenHelp": {
+        "message": "像平常一样登录。"
+    },
+    "welcomeEarlier": {
+        "message": "提前"
+    },
+    "welcomeLater": {
+        "message": "推迟"
+    },
+    "welcomeTitle": {
+        "message": "一切就绪。"
+    },
+    "welcomeLeadFormat": {
+        "message": "%s%s"
+    },
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub 会在 Netflix 和 Disney+ 上显示两行字幕：上面是视频本身的语言，下面是你的语言。"
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub 会在 Netflix 和 Disney+ 上显示两行字幕：上面是你的语言，下面是视频本身的语言。"
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub 会在 Netflix 和 Disney+ 上并排显示两行字幕：视频本身的语言，和你的语言。"
+    },
+    "welcomeArrangeOneLine": {
+        "message": "DualSub 会在 Netflix 和 Disney+ 上显示你的语言的字幕。视频的那行也设成了这种语言，所以只显示一行。"
+    },
+    "welcomeStateReady": {
+        "message": "什么都不用设置。"
+    },
+    "welcomeStateOff": {
+        "message": "现在是关闭的，用下面的开关就能打开。"
+    },
+    "welcomeStatePartial": {
+        "message": "现在在 %s 上是关闭的，用下面的开关就能在所有网站上打开。"
+    },
+    "welcomeStateSetUp": {
+        "message": "要翻译你的那行，请先设置好下面的翻译服务。"
+    },
+    "welcomeLanguageHelp": {
+        "message": "你的那行始终是这种语言。"
+    },
+    "welcomeStepsTitle": {
+        "message": "三步开始观看"
+    },
+    "welcomePinTitle": {
+        "message": "把 DualSub 固定到工具栏"
+    },
+    "welcomePinHelp": {
+        "message": "点击浏览器右上角拼图形状的“扩展程序”，再点 DualSub 旁边的“固定”图钉。之后看视频时，它的按钮就一直在那里。"
+    },
+    "welcomeOpenTitle": {
+        "message": "打开 Netflix 或 Disney+"
+    },
+    "welcomePlayTitle": {
+        "message": "随便播放一个视频"
+    },
+    "welcomePlayHelp": {
+        "message": "两行字幕会自动出现；视频本来就是你的语言时，只显示一行。字太小，或者和说话声对不上？点一下 DualSub 按钮。"
+    },
+    "welcomeOpenSettings": {
+        "message": "查看所有设置"
+    },
+    "welcomeClose": {
+        "message": "就这些。你可以关掉这个标签页了。"
     },
     "startNeedsSetupTitle": {
         "message": "%s：还没设置好"

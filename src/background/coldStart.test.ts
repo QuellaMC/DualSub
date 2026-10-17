@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { resetConfigurationMigrationForTests } from '@/config/migrations';
+import { configService } from '@/config/service';
 import {
     TEST_EXTENSION_ID,
     TEST_EXTENSION_ORIGIN,
@@ -104,5 +106,36 @@ describe('background cold start', () => {
         };
         onConnect.trigger(port);
         expect(port.disconnect).toHaveBeenCalledOnce();
+    });
+
+    it('repairs the settings once on install, then opens the welcome page', async () => {
+        const repair = vi.spyOn(configService, 'setDefaultsForMissingKeys');
+        const openTab = vi.spyOn(fakeBrowser.tabs, 'create');
+        background.main();
+        await fakeBrowser.runtime.onInstalled.trigger({
+            reason: 'install',
+        } as never);
+        await vi.waitFor(() => expect(openTab).toHaveBeenCalledOnce());
+        expect(repair).toHaveBeenCalledOnce();
+        expect(repair.mock.invocationCallOrder[0]).toBeLessThan(
+            openTab.mock.invocationCallOrder[0]!
+        );
+    });
+
+    it('writes no defaults when the migration fails, so old values can still seed them', async () => {
+        resetConfigurationMigrationForTests();
+        const repair = vi.spyOn(configService, 'setDefaultsForMissingKeys');
+        const openTab = vi.spyOn(fakeBrowser.tabs, 'create');
+        repair.mockClear();
+        openTab.mockClear();
+        vi.spyOn(fakeBrowser.storage.sync, 'get').mockRejectedValueOnce(
+            new Error('sync unavailable')
+        );
+        background.main();
+        await fakeBrowser.runtime.onInstalled.trigger({
+            reason: 'install',
+        } as never);
+        await vi.waitFor(() => expect(openTab).toHaveBeenCalledOnce());
+        expect(repair).not.toHaveBeenCalled();
     });
 });

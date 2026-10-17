@@ -3,7 +3,7 @@
 ### Prerequisites
 
 - Google Chrome or Chromium-based browser (latest version recommended)
-- Internet connection (for translation providers and AI Context)
+- Internet connection (for translation providers and word explanations)
 - For development only: Node.js 24 LTS and npm 11+
 
 ---
@@ -12,13 +12,14 @@
 
 1. Open the listing: [Chrome Web Store](https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 2. Click Add to Chrome → Add extension
-3. Pin DualSub (optional): click the puzzle icon in Chrome’s toolbar and pin DualSub for quick access
+3. A welcome page opens with your languages already picked; change the language your subtitles are translated into there if you like
+4. Pin DualSub (optional): click the puzzle icon in Chrome’s toolbar and pin DualSub for quick access
 
 ### Verify
 
 1. Visit Netflix or Disney+
-2. Start playing any video and enable subtitles
-3. Click the DualSub icon → enable Dual Subtitles and choose target language
+2. Play any video: two lines of subtitles appear, by default the video's language on top and yours underneath; a video already in your language shows one line
+3. Click the DualSub icon to turn dual subtitles off or change the languages
 
 ### Update
 

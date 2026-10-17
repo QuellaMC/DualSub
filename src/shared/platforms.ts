@@ -15,6 +15,11 @@ export const PLATFORM_HOSTS: Record<PlatformId, string> = {
     disneyplus: 'disneyplus.com',
 };
 
+/** Where a viewer starts watching on the site. */
+export function platformHome(id: PlatformId): string {
+    return `https://www.${PLATFORM_HOSTS[id]}/`;
+}
+
 export function isPlatformId(value: unknown): value is PlatformId {
     return (PLATFORM_IDS as readonly unknown[]).includes(value);
 }

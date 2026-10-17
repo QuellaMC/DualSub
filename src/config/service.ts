@@ -1159,36 +1159,9 @@ class ConfigService {
 
     // ------------------------------------------------------------- lifecycle
 
-    /**
-     * Register the onInstalled defaults pass. The migration hook runs BEFORE
-     * defaults are written — the reverse order would resurrect retired keys
-     * and mis-scope credentials.
-     */
     /** Apply the stored logging level (schema default when unreadable). */
     async syncLoggingLevel(): Promise<void> {
         setLoggingLevel(await this.get('loggingLevel'));
-    }
-
-    initializeDefaults(beforeDefaults?: () => Promise<void>): void {
-        browser.runtime.onInstalled.addListener((details) => {
-            if (details.reason !== 'install' && details.reason !== 'update') {
-                return;
-            }
-            void (async () => {
-                try {
-                    await beforeDefaults?.();
-                } catch (error) {
-                    this.logger.warn(
-                        'Pre-default configuration migration failed; continuing with schema defaults',
-                        {
-                            reason: details.reason,
-                            errorName: (error as Error)?.name,
-                        }
-                    );
-                }
-                await this.setDefaultsForMissingKeys();
-            })();
-        });
     }
 
     /**

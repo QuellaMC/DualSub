@@ -32,8 +32,8 @@ import { installNativeSubHider } from '../platform/shared/nativeSubHider';
 import { Renderer } from '../renderer/Renderer';
 import { RendererState } from '../renderer/RendererState';
 import type { UiRoot } from '../renderer/domLayer';
-import { customLook, type SubtitleLook } from '../renderer/looks';
-import type { DisplaySettings } from '../renderer/styling';
+import type { SubtitleLook } from '../renderer/looks';
+import { toDisplaySettings } from '../renderer/styling';
 import type { WordIntent } from '../renderer/wordLayer';
 import {
     allocateLifecycleGeneration,
@@ -149,20 +149,6 @@ function sameSubtitleLanguages(
             left.targetLanguage === right.targetLanguage &&
             left.useOfficialTranslations === right.useOfficialTranslations)
     );
-}
-
-export function toDisplaySettings(settings: ContentSettings): DisplaySettings {
-    return {
-        style: settings.subtitleStyle,
-        customLook: customLook(settings.subtitleCustomLook),
-        translationColor: settings.subtitleTranslationColor,
-        fontScale: settings.subtitleFontScale,
-        gap: settings.subtitleGap,
-        verticalPosition: settings.subtitleVerticalPosition,
-        orientation: settings.subtitleLayoutOrientation,
-        order: settings.subtitleLayoutOrder,
-        timeOffset: settings.subtitleTimeOffset,
-    };
 }
 
 function isContextInvalidated(error: unknown): boolean {

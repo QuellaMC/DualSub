@@ -3,7 +3,7 @@
 ### 环境要求
 
 - Google Chrome 或其它基于 Chromium 的浏览器（建议最新版本）
-- 网络连接（用于翻译与 AI 上下文）
+- 网络连接（用于翻译与单词解释）
 - 开发用途：需要 Node.js 24 LTS 与 npm 11+
 
 ---
@@ -12,13 +12,14 @@
 
 1. 打开扩展页面： [Chrome 商店](https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 2. 点击“添加至 Chrome” → “添加扩展程序”
-3. 可选：点击工具栏拼图图标，将 DualSub 固定至工具栏以便快速访问
+3. 随后会打开欢迎页，语言已经选好；如有需要，可以在那里更改字幕翻译成的语言
+4. 可选：点击工具栏拼图图标，将 DualSub 固定至工具栏以便快速访问
 
 ### 验证
 
 1. 访问 Netflix 或 Disney+
-2. 播放任意视频并开启字幕
-3. 点击 DualSub 图标 → 启用双语字幕并选择目标语言
+2. 播放任意视频：会出现两行字幕，默认上面是视频的语言，下面是你的语言；视频本来就是你的语言时只显示一行
+3. 点击 DualSub 图标可以关闭双语字幕或更改语言
 
 ### 更新
 
