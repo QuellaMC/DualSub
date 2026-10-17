@@ -1,4 +1,4 @@
-import type { CuePlacement } from '@/shared/cuePlacement';
+import { raisedLine, type CuePlacement } from '@/shared/cuePlacement';
 import type { FetchVttResponse } from '@/messaging/contracts/fetchVtt';
 import { parseVtt, type VttCue } from './vtt';
 
@@ -46,20 +46,31 @@ function together(a: VttCue, b: VttCue): boolean {
     return shorter > 0 && sharedTime(a, b) >= PAIRING_SHARE * shorter;
 }
 
-/** How closely two lines' times match: what they share over the time
- *  either is on screen. */
-function timeMatch(a: VttCue, b: VttCue): number {
-    return (
-        sharedTime(a, b) / (Math.max(a.end, b.end) - Math.min(a.start, b.start))
-    );
+/** What a match gains when both lines sit in the same part of the
+ *  picture, the dialogue band or raised over on-screen text: enough to
+ *  settle lines timed alike, such as a sign and the dialogue under it,
+ *  never enough to outweigh clearly different timing. */
+const SAME_PLACE_PREFERENCE = 0.1;
+
+/** How well an official line matches an original: the time they share
+ *  over the time either is on screen, and whether they sit alike. */
+function matchScore(original: VttCue, target: VttCue): number {
+    const timeMatch =
+        sharedTime(original, target) /
+        (Math.max(original.end, target.end) -
+            Math.min(original.start, target.start));
+    const sitAlike =
+        (raisedLine(original.placement) === null) ===
+        (raisedLine(target.placement) === null);
+    return timeMatch + (sitAlike ? SAME_PLACE_PREFERENCE : 0);
 }
 
 /**
  * Each original's official lines, in order, and which official lines belong
  * with some original. An official line belongs with each original it is on
  * screen with in turn; of originals on screen together, such as a sign
- * above the dialogue, only with the one whose time matches its own best,
- * so no official line shows twice.
+ * above the dialogue, only with the one it matches best, so no official
+ * line shows twice.
  */
 function pairOfficialLines(
     originals: readonly VttCue[],
@@ -72,8 +83,8 @@ function pairOfficialLines(
             .filter((index) => together(originals[index]!, target))
             .sort(
                 (a, b) =>
-                    timeMatch(originals[b]!, target) -
-                    timeMatch(originals[a]!, target)
+                    matchScore(originals[b]!, target) -
+                    matchScore(originals[a]!, target)
             );
         const chosen: VttCue[] = [];
         for (const index of candidates) {

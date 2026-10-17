@@ -1,4 +1,8 @@
-import type { CuePlacement, LineAlign } from '@/shared/cuePlacement';
+import {
+    raisedLine,
+    type CuePlacement,
+    type LineAlign,
+} from '@/shared/cuePlacement';
 import type { Cue } from '../subtitles/cueModel';
 
 export interface ActiveCueScan {
@@ -43,20 +47,13 @@ export type BlockPlacement =
 
 export const STANDARD_PLACEMENT: BlockPlacement = { kind: 'standard' };
 
-/** A cue anchored at or below this fraction of the picture height sits
- *  where the platform draws ordinary dialogue (Disney+ anchors at 85%,
- *  Netflix at 90%), so it takes the viewer's position; anything higher is
+/** A cue in the dialogue band takes the viewer's position; a raised one is
  *  drawn where the platform put it. */
-export const STANDARD_BAND = 0.75;
-
 export function placeBlock(placement: CuePlacement): BlockPlacement {
-    return placement.line === null || placement.line >= STANDARD_BAND
+    const line = raisedLine(placement);
+    return line === null
         ? STANDARD_PLACEMENT
-        : {
-              kind: 'line',
-              line: placement.line,
-              lineAlign: placement.lineAlign,
-          };
+        : { kind: 'line', line, lineAlign: placement.lineAlign };
 }
 
 export function blockKey(placement: BlockPlacement): string {

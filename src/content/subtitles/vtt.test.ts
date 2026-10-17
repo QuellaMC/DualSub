@@ -233,6 +233,49 @@ describe('buildCueSet pairing the show’s own translation', () => {
         ]);
     });
 
+    it('tells apart a sign and dialogue timed alike by where each is drawn', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\n3番線',
+                    '00:00:10.000 --> 00:00:14.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000\nWhere are you going?',
+                    '00:00:10.000 --> 00:00:14.000 line:10%,start\nPLATFORM 3',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(set.cues.map((cue) => [cue.original, cue.translated])).toEqual([
+            ['3番線', 'PLATFORM 3'],
+            ['どこに行くの？', 'Where are you going?'],
+        ]);
+    });
+
+    it('lets clearly different timing outweigh where a line is drawn', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\n3番線',
+                    '00:00:11.000 --> 00:00:13.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText:
+                    'WEBVTT\n\n00:00:10.000 --> 00:00:14.000\nPLATFORM 3',
+            },
+            true
+        );
+        expect(set.cues.map((cue) => [cue.original, cue.translated])).toEqual([
+            ['3番線', 'PLATFORM 3'],
+            ['どこに行くの？', null],
+        ]);
+    });
+
     it('shows a long official line under two originals that only touch', () => {
         expect(
             paired(

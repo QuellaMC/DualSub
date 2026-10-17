@@ -540,14 +540,13 @@ describe('PlayerSession pairing the show’s own translation', () => {
         active.tick(1.2);
         expect(texts()).toEqual(['Hello', '']);
 
+        // The video stays paused: the switch alone repaints the frame.
         await fakeBrowser.storage.sync.set({ pairOfficialTranslations: true });
         await settle();
-        active.tick(1.25);
         expect(texts()).toEqual(['Hello', '你好']);
 
         await fakeBrowser.storage.sync.set({ pairOfficialTranslations: false });
         await settle();
-        active.tick(1.3);
         expect(texts()).toEqual(['Hello', '']);
         expect(
             requests.filter((request) => request.action === 'fetchVTT')

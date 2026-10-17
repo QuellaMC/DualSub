@@ -16,6 +16,18 @@ export interface CuePlacement {
 
 export const AUTO_PLACEMENT: CuePlacement = { line: null, lineAlign: 'end' };
 
+/** A cue anchored at or below this fraction of the picture height sits
+ *  where the platform draws ordinary dialogue (Disney+ anchors at 85%,
+ *  Netflix at 90%); anything higher is raised over on-screen text. */
+const DIALOGUE_BAND = 0.75;
+
+/** The line a raised cue hangs on; null for a cue in the dialogue band. */
+export function raisedLine(placement: CuePlacement): number | null {
+    return placement.line === null || placement.line >= DIALOGUE_BAND
+        ? null
+        : placement.line;
+}
+
 const LINE_ALIGNS: readonly LineAlign[] = ['start', 'center', 'end'];
 
 /** The placement in a cue's settings text (`line:85%,end position:50%`).

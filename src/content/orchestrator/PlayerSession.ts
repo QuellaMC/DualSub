@@ -677,7 +677,7 @@ export class PlayerSession {
             this.settings.pairOfficialTranslations
         );
         this.shown = { response, cueSet };
-        this.rendererState.loadCues(cueSet);
+        this.renderer.loadCues(cueSet);
         return cueSet;
     }
 
