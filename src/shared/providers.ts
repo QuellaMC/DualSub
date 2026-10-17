@@ -8,13 +8,12 @@ export const PROVIDER_IDS = [
 
 export type ProviderId = (typeof PROVIDER_IDS)[number];
 
-export const PROVIDER_NAMES: Record<ProviderId, string> = {
-    google: 'Google Translate (Free)',
-    microsoft_edge: 'Microsoft Translate (Free)',
-    deepl: 'DeepL Translate (API Key Required)',
-    openai_compatible: 'OpenAI Compatible (API Key Required)',
-    vertex_gemini: 'Vertex AI Gemini (API Key Required)',
-};
+/** Providers that need no account, in the order they cover for a failing
+ *  one. */
+export const KEYLESS_PROVIDERS = [
+    'microsoft_edge',
+    'google',
+] as const satisfies readonly ProviderId[];
 
 export const VERTEX_LOCATIONS = [
     'us-central1',

@@ -249,6 +249,12 @@ export const configSchema = {
         default: 150,
         scope: 'sync',
     }),
+    /** When the chosen provider fails for good, a keyless one covers. */
+    translationFallback: setting({
+        schema: z.boolean(),
+        default: true,
+        scope: 'sync',
+    }),
 
     deeplApiKey: setting({
         schema: z.string(),

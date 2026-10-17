@@ -38,7 +38,10 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 ## Translation
 
 8. Switch providers in the options page (Microsoft, Google, a keyed one):
-   translations resume for the current line without a page reload.
+   translations resume for the current line without a page reload. With
+   a keyed provider whose key is wrong, translations keep coming through
+   Microsoft, and after fixing the key the keyed provider takes over at
+   once.
 9. Kill the service worker from chrome://serviceworker-internals while
    playing: translations resume within a few cues.
 

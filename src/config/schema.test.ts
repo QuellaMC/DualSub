@@ -13,8 +13,8 @@ import {
 } from './schema';
 
 describe('registry shape', () => {
-    it('has exactly the 51 v3 keys', () => {
-        expect(SETTINGS_KEYS).toHaveLength(51);
+    it('has exactly the 52 v3 keys', () => {
+        expect(SETTINGS_KEYS).toHaveLength(52);
     });
 
     it('retired v2 keys are gone', () => {
