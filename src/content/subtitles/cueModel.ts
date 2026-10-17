@@ -31,25 +31,36 @@ export interface CueSet {
     readonly targetLanguage: string;
 }
 
-/** An official line belongs with an original line when the two share at
- *  least this much of the shorter one's time: enough that a line ending
- *  just as the next begins does not count, and that one long line can
- *  belong with two short ones. */
+/** Two lines are on screen together when they share at least this much of
+ *  the shorter one's time: enough that a line ending just as the next
+ *  begins does not count, and that one long line can be with two short
+ *  ones in turn. */
 const PAIRING_SHARE = 0.5;
 
-function belongsWith(original: VttCue, target: VttCue): boolean {
-    const shared =
-        Math.min(original.end, target.end) -
-        Math.max(original.start, target.start);
-    const shorter = Math.min(
-        original.end - original.start,
-        target.end - target.start
-    );
-    return shorter > 0 && shared >= PAIRING_SHARE * shorter;
+function sharedTime(a: VttCue, b: VttCue): number {
+    return Math.min(a.end, b.end) - Math.max(a.start, b.start);
 }
 
-/** Each original's official lines, in order, and which official lines
- *  belong with some original. */
+function together(a: VttCue, b: VttCue): boolean {
+    const shorter = Math.min(a.end - a.start, b.end - b.start);
+    return shorter > 0 && sharedTime(a, b) >= PAIRING_SHARE * shorter;
+}
+
+/** How closely two lines' times match: what they share over the time
+ *  either is on screen. */
+function timeMatch(a: VttCue, b: VttCue): number {
+    return (
+        sharedTime(a, b) / (Math.max(a.end, b.end) - Math.min(a.start, b.start))
+    );
+}
+
+/**
+ * Each original's official lines, in order, and which official lines belong
+ * with some original. An official line belongs with each original it is on
+ * screen with in turn; of originals on screen together, such as a sign
+ * above the dialogue, only with the one whose time matches its own best,
+ * so no official line shows twice.
+ */
 function pairOfficialLines(
     originals: readonly VttCue[],
     targets: readonly VttCue[]
@@ -57,11 +68,22 @@ function pairOfficialLines(
     const lines = originals.map((): string[] => []);
     const paired = new Set<number>();
     for (const [targetIndex, target] of targets.entries()) {
-        for (const [originalIndex, original] of originals.entries()) {
-            if (belongsWith(original, target)) {
-                lines[originalIndex]!.push(target.text);
-                paired.add(targetIndex);
+        const candidates = [...originals.keys()]
+            .filter((index) => together(originals[index]!, target))
+            .sort(
+                (a, b) =>
+                    timeMatch(originals[b]!, target) -
+                    timeMatch(originals[a]!, target)
+            );
+        const chosen: VttCue[] = [];
+        for (const index of candidates) {
+            const original = originals[index]!;
+            if (chosen.some((other) => together(other, original))) {
+                continue;
             }
+            chosen.push(original);
+            lines[index]!.push(target.text);
+            paired.add(targetIndex);
         }
     }
     return {

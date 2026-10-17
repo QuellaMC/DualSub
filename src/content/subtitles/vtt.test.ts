@@ -210,6 +210,41 @@ describe('buildCueSet pairing the show’s own translation', () => {
         ).toEqual(['Where are you going?', 'Where are you going?']);
     });
 
+    it('gives each of two originals on screen together only the official line that matches its time', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\n3番線',
+                    '00:00:11.000 --> 00:00:13.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\nPLATFORM 3',
+                    '00:00:11.000 --> 00:00:13.000\nWhere are you going?',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(set.cues.map((cue) => [cue.original, cue.translated])).toEqual([
+            ['3番線', 'PLATFORM 3'],
+            ['どこに行くの？', 'Where are you going?'],
+        ]);
+    });
+
+    it('shows a long official line under two originals that only touch', () => {
+        expect(
+            paired(
+                vtt(
+                    ['10.000', '12.100', 'どこに'],
+                    ['12.000', '14.000', '行くの？']
+                ),
+                vtt(['10.000', '14.000', 'Where are you going?'])
+            ).map((cue) => cue.translated)
+        ).toEqual(['Where are you going?', 'Where are you going?']);
+    });
+
     it('joins, in order, the official lines that fall within one original', () => {
         expect(
             paired(
