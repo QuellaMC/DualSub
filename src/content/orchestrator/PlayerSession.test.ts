@@ -9,6 +9,7 @@ import {
     vi,
 } from 'vitest';
 import { getDefaultValue } from '@/config/schema';
+import { configService } from '@/config/service';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { setUrl } from '@/test-utils/dom';
@@ -101,6 +102,7 @@ function startSession(languageSettings: LanguageSettings = LANGUAGES) {
         id: 1,
         videoId: '1',
         descriptor: netflixDescriptor,
+        config: configService.forSite('netflix'),
         bridge: { connected: true, sendControl },
         cache,
         uiRoot: new UiRoot(controller.signal),
@@ -261,6 +263,33 @@ describe('PlayerSession', () => {
         expect(texts()).toEqual(['', 'Loading…']);
         await settle(1_000);
         expect(texts()).toEqual(['', '']);
+    });
+
+    it("follows changes to its site's own settings, not another site's", async () => {
+        stubBackground({ 'zh-CN': '你好' });
+        active = startSession();
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+        active.tick(1.5);
+        expect(texts()).toEqual(['Hello', '你好']);
+
+        const stageHidden = (): boolean =>
+            document.querySelector<HTMLElement>('#dualsub-subtitle-stage')
+                ?.style.display === 'none';
+
+        await configService.setMultiple(
+            { subtitlesEnabled: false },
+            { site: 'disneyplus', target: 'own' }
+        );
+        await settle();
+        expect(stageHidden()).toBe(false);
+
+        await configService.setMultiple(
+            { subtitlesEnabled: false },
+            { site: 'netflix', target: 'own' }
+        );
+        await settle();
+        expect(stageHidden()).toBe(true);
     });
 
     it('watches the spoken language for its whole life', () => {

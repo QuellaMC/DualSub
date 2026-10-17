@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { detectBrowserLanguage, type SettingsValues } from '@/config/schema';
 import { createLogger } from '@/shared/logger';
+import type { PlatformId } from '@/shared/platforms';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
 import { useStatusMessage } from '../hooks/useStatusMessage';
 import {
+    activeTabPlatform,
     previewContentSettings,
     readPlatformLookStatus,
     type PlatformLookStatus,
@@ -51,12 +53,56 @@ function sliderChange(
     return { [key]: value };
 }
 
+/** The popup edits the settings the active tab's site sees, each where
+ *  that site gets it from. */
 export function PopupApp() {
-    const { settings, status, save } = useSettings(POPUP_SETTINGS_KEYS);
-    const { t, ready } = useI18n(
-        settings?.uiLanguage ??
-            (status === 'unavailable' ? detectBrowserLanguage() : null)
+    const [site, setSite] = useState<PlatformId | null | undefined>();
+    const [tabUnreadable, setTabUnreadable] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        activeTabPlatform().then(
+            (platform) => {
+                if (active) {
+                    setSite(platform);
+                }
+            },
+            (error: unknown) => {
+                logger.error('Active tab unreadable', error);
+                if (active) {
+                    setTabUnreadable(true);
+                }
+            }
+        );
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    if (tabUnreadable) {
+        return <Unavailable />;
+    }
+    return site === undefined ? (
+        <div role="status">Loading...</div>
+    ) : (
+        <PopupControls site={site} />
     );
+}
+
+/** What the popup shows when it cannot tell what to edit: settings it
+ *  cannot read, or a tab it cannot place, where a change meant for one
+ *  site could land on every site. */
+function Unavailable() {
+    const { t } = useI18n(detectBrowserLanguage());
+    return <div role="alert">{t('settingsLoadFailed')}</div>;
+}
+
+function PopupControls({ site }: { site: PlatformId | null }) {
+    const { settings, status, save } = useSettings(POPUP_SETTINGS_KEYS, {
+        site,
+        siteTarget: 'source',
+    });
+    const { t, ready } = useI18n(settings?.uiLanguage ?? null);
     const { message, show } = useStatusMessage();
     const settingsRef = useRef(settings);
     const [platformLook, setPlatformLook] = useState<PlatformLookStatus | null>(
@@ -89,7 +135,7 @@ export function PopupApp() {
     }, []);
 
     if (status === 'unavailable') {
-        return <div role="alert">{t('settingsLoadFailed')}</div>;
+        return <Unavailable />;
     }
     if (!settings || !ready) {
         return <div role="status">Loading...</div>;

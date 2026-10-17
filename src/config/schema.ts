@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { CONTEXT_TYPES } from '@/shared/contextTypes';
 import { PROVIDER_IDS, VERTEX_LOCATIONS } from '@/shared/providers';
 import { toHostPermissionPattern } from '@/shared/hostPermissions';
+import { PLATFORM_IDS, type PlatformId } from '@/shared/platforms';
 import {
     AUTO_LANGUAGE,
     browserLanguage,
@@ -197,6 +198,138 @@ function isValidSubtitleBlacklist(
     }
     return true;
 }
+
+/** Settings a site can hold its own value for; every other setting is
+ *  shared by all sites. The translation language is the viewer's own, so it
+ *  is the same everywhere, as are the word explanations written in it. */
+export const SITE_SETTING_KEYS = [
+    'subtitlesEnabled',
+    'hideOfficialSubtitles',
+    'originalLanguage',
+    'useOfficialTranslations',
+    'subtitleStyle',
+    'subtitleCustomLook',
+    'subtitleTranslationColor',
+    'subtitleFontScale',
+    'subtitleGap',
+    'subtitleVerticalPosition',
+    'subtitleLayoutOrder',
+    'subtitleLayoutOrientation',
+    'subtitleTimeOffset',
+] as const;
+
+export type SiteSettingKey = (typeof SITE_SETTING_KEYS)[number];
+
+/** Each site's own values by site id, as stored: what this version knows,
+ *  and what a newer one wrote. */
+type StoredSiteProfiles = Partial<Record<string, Record<string, unknown>>>;
+
+/** Deep equality for setting values: JSON-like data, key order ignored. */
+export function sameSettingValue(left: unknown, right: unknown): boolean {
+    if (Object.is(left, right)) {
+        return true;
+    }
+    if (Array.isArray(left) || Array.isArray(right)) {
+        return (
+            Array.isArray(left) &&
+            Array.isArray(right) &&
+            left.length === right.length &&
+            left.every((item, index) => sameSettingValue(item, right[index]))
+        );
+    }
+    if (
+        typeof left !== 'object' ||
+        typeof right !== 'object' ||
+        left === null ||
+        right === null
+    ) {
+        return false;
+    }
+    const leftKeys = Object.keys(left);
+    return (
+        leftKeys.length === Object.keys(right).length &&
+        leftKeys.every(
+            (key) =>
+                Object.hasOwn(right, key) &&
+                sameSettingValue(
+                    (left as Record<string, unknown>)[key],
+                    (right as Record<string, unknown>)[key]
+                )
+        )
+    );
+}
+
+/** The own data entries of a plain object. Accessors and dangerous keys are
+ *  evidence of tampering and fail the whole value. */
+function plainEntries(value: unknown): [string, unknown][] {
+    if (
+        typeof value !== 'object' ||
+        value === null ||
+        Array.isArray(value) ||
+        !isPlainRecord(value)
+    ) {
+        throw new TypeError(INVALID_SETTING_VALUE_MESSAGE);
+    }
+    return Reflect.ownKeys(value).map((key) => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (
+            typeof key !== 'string' ||
+            DANGEROUS_OBJECT_KEYS.has(key) ||
+            !descriptor ||
+            !('value' in descriptor) ||
+            !descriptor.enumerable
+        ) {
+            throw new TypeError(INVALID_SETTING_VALUE_MESSAGE);
+        }
+        return [key, descriptor.value as unknown];
+    });
+}
+
+/**
+ * Canonicalize each site's values for the site settings this version
+ * knows, and keep everything else as written: another synced device may run
+ * a newer version with more sites, more site settings, or values this one
+ * cannot read, and dropping them would erase that device's settings once
+ * startup repair wrote the value back. Readers see only what they can use
+ * (`siteProfileOf`). A canonical value comes back as the same object, so
+ * startup repair leaves it alone. Accessors and dangerous keys are signs of
+ * tampering and fail the whole value.
+ */
+function normalizeSiteProfiles(value: unknown): StoredSiteProfiles {
+    const normalized: StoredSiteProfiles = {};
+    for (const [site, rawProfile] of plainEntries(value)) {
+        const known = (PLATFORM_IDS as readonly string[]).includes(site);
+        const profile: Record<string, unknown> = {};
+        for (const [key, raw] of plainEntries(rawProfile)) {
+            profile[key] =
+                known && isSiteSettingKey(key)
+                    ? canonicalOrAsWritten(key, raw)
+                    : raw;
+        }
+        if (Object.keys(profile).length > 0) {
+            normalized[site] = profile;
+        }
+    }
+    return sameSettingValue(normalized, value)
+        ? (value as StoredSiteProfiles)
+        : normalized;
+}
+
+function canonicalOrAsWritten(key: SiteSettingKey, raw: unknown): unknown {
+    try {
+        return prepareSettingValue(key, raw);
+    } catch {
+        return raw;
+    }
+}
+
+const siteProfilesSchema = z.custom<StoredSiteProfiles>((value) => {
+    try {
+        return sameSettingValue(normalizeSiteProfiles(value), value);
+    } catch {
+        return false;
+    }
+});
 
 const subtitleBlacklistSchema = z.custom<Record<string, string[]>>(
     isValidSubtitleBlacklist
@@ -412,6 +545,14 @@ export const configSchema = {
         scope: 'sync',
     }),
 
+    /** Each site's own values for site settings, over the shared ones. */
+    siteProfiles: setting({
+        schema: siteProfilesSchema,
+        default: {},
+        scope: 'sync',
+        normalize: normalizeSiteProfiles,
+    }),
+
     appearanceAccordionOpen: setting({
         schema: z.boolean(),
         default: false,
@@ -540,11 +681,6 @@ export const configSchema = {
         scope: 'sync',
     }),
 
-    debugMode: setting({
-        schema: z.boolean(),
-        default: false,
-        scope: 'local',
-    }),
     loggingLevel: setting({
         schema: z.number().int().min(0).max(4),
         default: 3,
@@ -558,6 +694,27 @@ export type SettingsValues = {
 };
 
 export const SETTINGS_KEYS = Object.keys(configSchema) as SettingsKey[];
+
+/** One site's own values, each valid for its key. */
+export type SiteProfile = Partial<Pick<SettingsValues, SiteSettingKey>>;
+
+export function isSiteSettingKey(key: string): key is SiteSettingKey {
+    return (SITE_SETTING_KEYS as readonly string[]).includes(key);
+}
+
+/** `site`'s own values this version can use, from a resolved
+ *  `siteProfiles` value: known site settings with valid values. */
+export function siteProfileOf(
+    profiles: SettingsValues['siteProfiles'],
+    site: PlatformId
+): SiteProfile {
+    return Object.fromEntries(
+        Object.entries(profiles[site] ?? {}).filter(
+            ([key, value]) =>
+                isSiteSettingKey(key) && validateSetting(key, value)
+        )
+    );
+}
 
 export const SENSITIVE_KEYS = SETTINGS_KEYS.filter(
     (key) => configSchema[key].sensitive === true

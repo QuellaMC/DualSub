@@ -6,18 +6,39 @@ import {
 } from '@/messaging/contracts/control';
 import type { ResponseOf } from '@/messaging/registry';
 import { createLogger } from '@/shared/logger';
+import { platformFromUrl, type PlatformId } from '@/shared/platforms';
 import type { ContentSettings } from '@/content/orchestrator/PlayerSession';
 
 const logger = createLogger('ContentTab');
 const generations = new Map<string, number>();
 
 /** The active tab of the current window; where a popup's page lives. */
-async function activeTabId(): Promise<number | null> {
+async function activeTab(): Promise<{
+    id?: number;
+    url?: string;
+    pendingUrl?: string;
+} | null> {
     const [tab] = await browser.tabs.query({
         active: true,
         currentWindow: true,
     });
-    return tab?.id ?? null;
+    return tab ?? null;
+}
+
+async function activeTabId(): Promise<number | null> {
+    return (await activeTab())?.id ?? null;
+}
+
+/** The site of the active tab, or null when DualSub does not work there.
+ *  Rejects when that is unknown, not none: the tab cannot be read, or it is
+ *  on its way to another site than the one it shows. */
+export async function activeTabPlatform(): Promise<PlatformId | null> {
+    const tab = await activeTab();
+    const site = platformFromUrl(tab?.url);
+    if (tab?.pendingUrl && platformFromUrl(tab.pendingUrl) !== site) {
+        throw new Error('The active tab is on its way to another site');
+    }
+    return site;
 }
 
 /**

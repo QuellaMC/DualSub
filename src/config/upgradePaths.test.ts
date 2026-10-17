@@ -179,9 +179,9 @@ describe('upgrade paths', () => {
             vertexAccessToken: 'vt-sync',
             openaiApiKey: 'oa-sync',
             geminiApiKey: 'gm-sync',
-            debugMode: true,
             vertexTokenExpiresAt: 0,
         });
+        expect(storage.local).not.toHaveProperty('debugMode');
         expect(storage.sync).toMatchObject({
             selectedProvider: 'microsoft_edge',
             useOfficialTranslations: true,

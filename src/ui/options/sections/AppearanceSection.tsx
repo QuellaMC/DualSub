@@ -4,13 +4,15 @@ import {
     CUSTOM_LOOK_FONTS,
     type CustomLook,
 } from '@/config/schema';
-import type { PlatformId } from '@/content/platform/types';
+import {
+    isPlatformId,
+    PLATFORM_NAMES,
+    type PlatformId,
+} from '@/shared/platforms';
 import { customLook, resolveLook } from '@/content/renderer/looks';
 import type { DisplaySettings } from '@/content/renderer/styling';
 import {
-    isPlatformId,
     isSubtitleStyle,
-    PLATFORM_NAMES,
     PLATFORM_PRESETS,
     SUBTITLE_STYLE_LABELS,
 } from '../../subtitleStyle';

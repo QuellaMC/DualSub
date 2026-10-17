@@ -1,14 +1,20 @@
 import { browser } from 'wxt/browser';
 import { createLogger, setLoggingLevel } from '@/shared/logger';
+import type { PlatformId } from '@/shared/platforms';
 import {
     SETTINGS_KEYS,
     configSchema,
     getDefaultValue,
     getKeysByScope,
     isSettingsKey,
+    isSiteSettingKey,
     prepareSettingValue,
+    sameSettingValue,
+    siteProfileOf,
     type SettingsKey,
     type SettingsValues,
+    type SiteProfile,
+    type SiteSettingKey,
 } from './schema';
 import {
     ConfigServiceReadError,
@@ -54,10 +60,41 @@ export interface ConfigReadResult {
 
 export interface ReadOptions {
     includeSensitive?: boolean;
+    /** Resolve site settings as this site sees them: its own values over
+     *  the shared ones. */
+    site?: PlatformId;
+}
+
+/** Where a write of site settings lands for one site. */
+export interface SiteWrite {
+    readonly site: PlatformId;
+    /** `own` gives the site its own values; a value equal to the shared one
+     *  drops the site's own instead. `source` changes each value where the
+     *  site gets it from: its own value when it has one, which stays its own
+     *  even when it comes to equal the shared one, else the shared one. */
+    readonly target: 'own' | 'source';
 }
 
 export type SettingsChanges = Partial<SettingsValues>;
 export type ChangeListener = (changes: SettingsChanges) => unknown;
+
+/** The settings one site sees; content scripts read through this. */
+export interface SiteConfig {
+    get<K extends SettingsKey>(key: K): Promise<SettingsValues[K]>;
+    getMultiple(keys: readonly string[]): Promise<Partial<SettingsValues>>;
+    onChanged(callback: ChangeListener): () => void;
+}
+
+interface ChangeListenerRecord {
+    readonly includeSensitive: boolean;
+    readonly site: PlatformId | null;
+    readonly callback: ChangeListener;
+    /** Site projections read storage; they are delivered in event order. */
+    delivery: Promise<void>;
+    /** Site keys a failed read left unprojected; the next event reads them
+     *  again and reports what the site sees. */
+    readonly missed: Set<SiteSettingKey>;
+}
 
 /**
  * Recognizes the explicit capability to include sensitive settings without
@@ -86,6 +123,21 @@ export function isSensitiveAccessExplicitlyEnabled(options: unknown): boolean {
     }
 }
 
+/** `profiles` with `site`'s own values replaced; an empty profile goes. */
+function withSiteProfile(
+    profiles: SettingsValues['siteProfiles'],
+    site: PlatformId,
+    own: Record<string, unknown>
+): SettingsValues['siteProfiles'] {
+    const next = { ...profiles };
+    if (Object.keys(own).length > 0) {
+        next[site] = own;
+    } else {
+        delete next[site];
+    }
+    return next;
+}
+
 function detach<T>(value: T): T {
     return value !== null && typeof value === 'object'
         ? structuredClone(value)
@@ -100,13 +152,13 @@ interface ResolvedStoredValue {
     resolution: StoredResolution;
 }
 
+const SITE_PROFILES_LOCK = 'dualsub:siteProfiles';
+
 class ConfigService {
     private readonly logger = createLogger('ConfigService');
-    private readonly changeListeners = new Set<{
-        includeSensitive: boolean;
-        callback: ChangeListener;
-    }>();
+    private readonly changeListeners = new Set<ChangeListenerRecord>();
     private changeListenerInitialized = false;
+    /** The latest rewrite of `siteProfiles` in this context, settled or not. */
 
     // ------------------------------------------------------------------ storage
 
@@ -146,22 +198,6 @@ class ConfigService {
                 error,
                 { area, keys, quotaError: error.isQuotaError }
             );
-            throw error;
-        }
-    }
-
-    private async removeFromStorage(
-        area: StorageArea,
-        keys: readonly string[]
-    ): Promise<void> {
-        try {
-            await browser.storage[area].remove([...keys]);
-        } catch (cause) {
-            const error = new ConfigStorageError('remove', area, keys, cause);
-            this.logger.error('Storage remove operation failed', error, {
-                area,
-                keys,
-            });
             throw error;
         }
     }
@@ -232,6 +268,43 @@ class ConfigService {
         }
     }
 
+    /** `site`'s own values from the stored items of the sync area, which
+     *  must include `siteProfiles`; empty without a site. */
+    private siteProfileIn(
+        site: PlatformId | undefined,
+        syncItems: Record<string, unknown>
+    ): SiteProfile {
+        if (!site) {
+            return {};
+        }
+        const { value } = this.resolveStoredValue('siteProfiles', syncItems);
+        return siteProfileOf(value as SettingsValues['siteProfiles'], site);
+    }
+
+    /** One key's value as the site sees it. */
+    private resolveForSite(
+        key: SettingsKey,
+        items: Record<string, unknown>,
+        profile: SiteProfile
+    ): unknown {
+        return isSiteSettingKey(key) && Object.hasOwn(profile, key)
+            ? profile[key]
+            : this.resolveStoredValue(key, items).value;
+    }
+
+    /** The sync keys to read for `keys`: `siteProfiles` joins them when a
+     *  site's own values may apply. */
+    private syncReadKeys(
+        keys: readonly SettingsKey[],
+        site: PlatformId | undefined
+    ): SettingsKey[] {
+        return site &&
+            keys.some(isSiteSettingKey) &&
+            !keys.includes('siteProfiles')
+            ? [...keys, 'siteProfiles']
+            : [...keys];
+    }
+
     // ----------------------------------------------------------- read bundles
 
     private async readResultBundle(
@@ -280,7 +353,13 @@ class ConfigService {
         const areaReads = await Promise.allSettled(
             STORAGE_AREAS.map((area) =>
                 keysByArea[area].length > 0
-                    ? this.getFromStorage(area, keysByArea[area], privacySafe)
+                    ? this.getFromStorage(
+                          area,
+                          area === 'sync'
+                              ? this.syncReadKeys(keysByArea.sync, options.site)
+                              : keysByArea[area],
+                          privacySafe
+                      )
                     : Promise.resolve({})
             )
         );
@@ -311,10 +390,16 @@ class ConfigService {
             }
 
             result.areas[area] = { status: 'ok' };
+            const profile =
+                area === 'sync'
+                    ? this.siteProfileIn(options.site, areaRead.value)
+                    : {};
             for (const key of areaKeys) {
-                const { value, usedDefault, invalidStoredValue } =
+                const { usedDefault, invalidStoredValue } =
                     this.resolveStoredValue(key, areaRead.value);
-                (result.values as Record<string, unknown>)[key] = detach(value);
+                (result.values as Record<string, unknown>)[key] = detach(
+                    this.resolveForSite(key, areaRead.value, profile)
+                );
                 result.sources[key] = {
                     scope: area,
                     source: usedDefault
@@ -410,9 +495,18 @@ class ConfigService {
      * storage failure silently resolves to the schema default — callers that
      * must distinguish those cases use the strict read APIs instead.
      */
-    async get<K extends SettingsKey>(key: K): Promise<SettingsValues[K]>;
-    async get(key: string): Promise<unknown>;
-    async get(key: string): Promise<unknown> {
+    async get<K extends SettingsKey>(
+        key: K,
+        options?: Pick<ReadOptions, 'site'>
+    ): Promise<SettingsValues[K]>;
+    async get(
+        key: string,
+        options?: Pick<ReadOptions, 'site'>
+    ): Promise<unknown>;
+    async get(
+        key: string,
+        options: Pick<ReadOptions, 'site'> = {}
+    ): Promise<unknown> {
         if (!isSettingsKey(key)) {
             this.logger.error(`Invalid key "${key}" requested`, null, {
                 method: 'get',
@@ -423,11 +517,14 @@ class ConfigService {
         try {
             const items = await this.getFromStorage(
                 scope,
-                [key],
+                scope === 'sync'
+                    ? this.syncReadKeys([key], options.site)
+                    : [key],
                 configSchema[key].sensitive === true
             );
-            const { value } = this.resolveStoredValue(key, items);
-            return detach(value);
+            const profile =
+                scope === 'sync' ? this.siteProfileIn(options.site, items) : {};
+            return detach(this.resolveForSite(key, items, profile));
         } catch {
             return getDefaultValue(key);
         }
@@ -435,7 +532,8 @@ class ConfigService {
 
     /** Multi-value read; throws on storage failure, skips unknown keys. */
     async getMultiple(
-        keys: readonly string[]
+        keys: readonly string[],
+        options: Pick<ReadOptions, 'site'> = {}
     ): Promise<Partial<SettingsValues>> {
         const validKeys = [...new Set(keys)].filter(isSettingsKey);
         const invalidKeys = keys.filter((key) => !isSettingsKey(key));
@@ -455,20 +553,34 @@ class ConfigService {
         );
         const [syncItems, localItems] = await Promise.all([
             keysByArea.sync.length > 0
-                ? this.getFromStorage('sync', keysByArea.sync, privacySafe)
+                ? this.getFromStorage(
+                      'sync',
+                      this.syncReadKeys(keysByArea.sync, options.site),
+                      privacySafe
+                  )
                 : Promise.resolve({}),
             keysByArea.local.length > 0
                 ? this.getFromStorage('local', keysByArea.local, privacySafe)
                 : Promise.resolve({}),
         ]);
 
+        const profile = this.siteProfileIn(options.site, syncItems);
         const result: Record<string, unknown> = {};
         for (const key of validKeys) {
             const items =
                 configSchema[key].scope === 'sync' ? syncItems : localItems;
-            result[key] = detach(this.resolveStoredValue(key, items).value);
+            result[key] = detach(this.resolveForSite(key, items, profile));
         }
         return result;
+    }
+
+    /** The settings `site` sees, for code that only ever reads one site. */
+    forSite(site: PlatformId): SiteConfig {
+        return {
+            get: (key) => this.get(key, { site }),
+            getMultiple: (keys) => this.getMultiple(keys, { site }),
+            onChanged: (callback) => this.onChanged(callback, { site }),
+        };
     }
 
     /** Full projection; throws ConfigServiceReadError if any area fails. */
@@ -479,45 +591,33 @@ class ConfigService {
 
     // ---------------------------------------------------------------- writes
 
-    async set<K extends SettingsKey>(
-        key: K,
-        value: unknown
-    ): Promise<SettingsValues[K]> {
-        if (!isSettingsKey(key)) {
-            const error = new Error(
-                `Invalid key "${String(key)}" provided for set`
-            );
-            this.logger.error(error.message, error, { method: 'set' });
-            throw error;
-        }
-        const prepared = this.tryPrepare(key, value);
-        if (!prepared.ok) {
-            const error = new Error(`Invalid value for key "${key}"`);
-            this.logger.error(error.message, error, {
-                method: 'set',
-                requestedKey: key,
-                actualType: typeof value,
-            });
-            throw error;
-        }
-
-        await this.setToStorage(configSchema[key].scope, {
-            [key]: prepared.value,
-        });
-
-        if (key === 'loggingLevel') {
-            setLoggingLevel(prepared.value as number);
-        }
-        return detach(prepared.value) as SettingsValues[K];
-    }
-
     /**
      * Multi-key write. Validates everything first (nothing is written when any
      * key/value is invalid), then writes each storage area independently and
-     * aggregates area failures.
+     * aggregates area failures. A write that rewrites `siteProfiles` waits for
+     * the one before it, made in any extension page, so it builds on the
+     * profiles that one left.
      */
-    async setMultiple(
-        settings: Partial<SettingsValues>
+    setMultiple(
+        settings: Partial<SettingsValues>,
+        siteWrite?: SiteWrite
+    ): Promise<Partial<SettingsValues>> {
+        return siteWrite || Object.hasOwn(settings, 'siteProfiles')
+            ? this.afterProfiles(() => this.writeMultiple(settings, siteWrite))
+            : this.writeMultiple(settings, siteWrite);
+    }
+
+    /** Run `change` once every earlier rewrite of `siteProfiles` has
+     *  settled; each reads the profiles and writes them whole. The lock is
+     *  shared by every extension page and the worker, which share the
+     *  extension's origin, so a popup and a settings tab take turns too. */
+    private afterProfiles<T>(change: () => Promise<T>): Promise<T> {
+        return navigator.locks.request(SITE_PROFILES_LOCK, change);
+    }
+
+    private async writeMultiple(
+        settings: Partial<SettingsValues>,
+        siteWrite?: SiteWrite
     ): Promise<Partial<SettingsValues>> {
         const invalidKeys: string[] = [];
         const byArea: Record<StorageArea, Record<string, unknown>> = {
@@ -547,6 +647,9 @@ class ConfigService {
             const error = new ConfigValidationError(invalidKeys);
             this.logger.error(error.message, error, { invalidKeys });
             throw error;
+        }
+        if (siteWrite) {
+            await this.routeSiteValues(siteWrite, byArea.sync);
         }
 
         const failures: { area: StorageArea; error: unknown }[] = [];
@@ -582,6 +685,76 @@ class ConfigService {
         return detach(preparedSettings);
     }
 
+    /**
+     * Move the site settings among `syncWrites` into the site's own values
+     * where `siteWrite` says they land. The shared values and `siteProfiles`
+     * share the sync area, so the whole change is one storage write.
+     */
+    private async routeSiteValues(
+        { site, target }: SiteWrite,
+        syncWrites: Record<string, unknown>
+    ): Promise<void> {
+        const keys = Object.keys(syncWrites).filter(isSiteSettingKey);
+        if (keys.length === 0) {
+            return;
+        }
+        const items = await this.getFromStorage(
+            'sync',
+            [...keys, 'siteProfiles'],
+            false
+        );
+        const profiles = this.resolveStoredValue('siteProfiles', items)
+            .value as SettingsValues['siteProfiles'];
+        // The stored entry, with what a newer version wrote, not just what
+        // this one reads.
+        const own: Record<string, unknown> = { ...profiles[site] };
+        // A value this version cannot read leaves the site on the shared
+        // one, so the shared one is the source.
+        const readable = siteProfileOf(profiles, site);
+        let routed = false;
+        for (const key of keys) {
+            if (target === 'source' && !Object.hasOwn(readable, key)) {
+                continue;
+            }
+            routed = true;
+            const value = syncWrites[key];
+            delete syncWrites[key];
+            if (
+                target === 'own' &&
+                sameSettingValue(
+                    value,
+                    this.resolveStoredValue(key, items).value
+                )
+            ) {
+                delete own[key];
+            } else {
+                own[key] = value;
+            }
+        }
+        if (routed) {
+            syncWrites.siteProfiles = withSiteProfile(profiles, site, own);
+        }
+    }
+
+    /** `site` follows the shared values of `keys` again. Reads strictly:
+     *  a profile read from a failed store would erase every site's. */
+    removeSiteValues(
+        site: PlatformId,
+        keys: readonly SiteSettingKey[]
+    ): Promise<void> {
+        return this.afterProfiles(async () => {
+            const { values } = await this.readResultStrict('siteProfiles');
+            const profiles = values.siteProfiles ?? {};
+            const own: Record<string, unknown> = { ...profiles[site] };
+            for (const key of keys) {
+                delete own[key];
+            }
+            await this.writeMultiple({
+                siteProfiles: withSiteProfile(profiles, site, own),
+            });
+        });
+    }
+
     // ------------------------------------------------------ change broadcast
 
     /**
@@ -595,9 +768,12 @@ class ConfigService {
                 'ConfigService onChanged requires a callable callback'
             );
         }
-        const record = {
+        const record: ChangeListenerRecord = {
             includeSensitive: isSensitiveAccessExplicitlyEnabled(options),
+            site: options.site ?? null,
             callback,
+            delivery: Promise.resolve(),
+            missed: new Set(),
         };
         this.changeListeners.add(record);
         return () => {
@@ -656,6 +832,120 @@ class ConfigService {
         return listenerChanges;
     }
 
+    /**
+     * The changes as `site` sees them, read after the storage event: a
+     * shared change the site's own value hides is dropped, and a site value
+     * added, changed, or removed reports what the site sees now, as does a
+     * key in `missed`. When the read fails, the site keys join `missed`.
+     */
+    private async projectForSite(
+        site: PlatformId,
+        changes: SettingsChanges,
+        rawSiteProfiles: { oldValue?: unknown } | undefined,
+        missed: Set<SiteSettingKey>
+    ): Promise<SettingsChanges> {
+        const projected: Record<string, unknown> = {};
+        const recovering = new Set(missed);
+        const touched = new Set(missed);
+        for (const [key, value] of Object.entries(changes)) {
+            if (isSiteSettingKey(key)) {
+                touched.add(key);
+            } else {
+                projected[key] = value;
+            }
+        }
+        const previous = rawSiteProfiles
+            ? this.tryPrepare('siteProfiles', rawSiteProfiles.oldValue)
+            : null;
+        const before = previous
+            ? siteProfileOf(
+                  (previous.ok
+                      ? previous.value
+                      : {}) as SettingsValues['siteProfiles'],
+                  site
+              )
+            : null;
+        if (before) {
+            const after = changes.siteProfiles
+                ? siteProfileOf(changes.siteProfiles, site)
+                : {};
+            for (const key of new Set([
+                ...Object.keys(before),
+                ...Object.keys(after),
+            ])) {
+                if (
+                    isSiteSettingKey(key) &&
+                    !sameSettingValue(before[key], after[key])
+                ) {
+                    touched.add(key);
+                }
+            }
+        }
+        if (touched.size === 0) {
+            return projected;
+        }
+        let items: Record<string, unknown>;
+        try {
+            items = await this.getFromStorage(
+                'sync',
+                [...touched, 'siteProfiles'],
+                false
+            );
+        } catch (error) {
+            for (const key of touched) {
+                missed.add(key);
+            }
+            this.logger.warn('Site change projection deferred', {
+                site,
+                reason: error instanceof Error ? error.name : 'unknown',
+            });
+            return projected;
+        }
+        missed.clear();
+        const profile = this.siteProfileIn(site, items);
+        for (const key of touched) {
+            const hiddenSharedChange =
+                !recovering.has(key) &&
+                Object.hasOwn(changes, key) &&
+                Object.hasOwn(profile, key) &&
+                (before === null ||
+                    sameSettingValue(before[key], profile[key]));
+            if (!hiddenSharedChange) {
+                projected[key] = this.resolveForSite(key, items, profile);
+            }
+        }
+        return projected;
+    }
+
+    private deliver(
+        record: ChangeListenerRecord,
+        changes: SettingsChanges,
+        context: { areaName: string; changedKeys: string[] }
+    ): void {
+        const listenerChanges = this.projectChangesForListener(
+            changes,
+            record.includeSensitive
+        );
+        if (Object.keys(listenerChanges).length === 0) {
+            return;
+        }
+        try {
+            void Promise.resolve(record.callback(listenerChanges)).catch(() => {
+                this.logger.error(
+                    'Error in change listener callback',
+                    null,
+                    context
+                );
+            });
+        } catch {
+            this.logger.error(
+                'Error in change listener callback',
+                null,
+                context
+            );
+        }
+    }
+
     /** Wire chrome.storage.onChanged into the schema-projected broadcast. */
     initializeChangeListener(): void {
         if (this.changeListenerInitialized) {
@@ -675,35 +965,38 @@ class ConfigService {
 
             // Subscription mutations made by callbacks take effect on the
             // next storage event, not midway through the current one.
-            const listenerSnapshot = [...this.changeListeners];
-            for (const record of listenerSnapshot) {
-                const listenerChanges = this.projectChangesForListener(
-                    relevantChanges,
-                    record.includeSensitive
-                );
-                if (Object.keys(listenerChanges).length === 0) {
+            const context = { areaName, changedKeys };
+            const rawSiteProfiles = Object.hasOwn(changes, 'siteProfiles')
+                ? (changes.siteProfiles as { oldValue?: unknown })
+                : undefined;
+            for (const record of [...this.changeListeners]) {
+                const { site } = record;
+                if (site === null) {
+                    this.deliver(record, relevantChanges, context);
                     continue;
                 }
-                try {
-                    void Promise.resolve(
-                        record.callback(listenerChanges)
-                    ).catch(() => {
+                record.delivery = record.delivery
+                    .then(async () => {
+                        if (this.changeListeners.has(record)) {
+                            this.deliver(
+                                record,
+                                await this.projectForSite(
+                                    site,
+                                    relevantChanges,
+                                    rawSiteProfiles,
+                                    record.missed
+                                ),
+                                context
+                            );
+                        }
+                    })
+                    .catch(() => {
                         this.logger.error(
-                            'Error in change listener callback',
+                            'Site change projection failed',
                             null,
-                            { areaName, changedKeys }
+                            context
                         );
                     });
-                } catch {
-                    this.logger.error(
-                        'Error in change listener callback',
-                        null,
-                        {
-                            areaName,
-                            changedKeys,
-                        }
-                    );
-                }
             }
 
             if (Object.hasOwn(relevantChanges, 'loggingLevel')) {
@@ -750,9 +1043,14 @@ class ConfigService {
      * Repair pass: persist canonical values for every key whose stored value
      * is missing, invalid, or non-canonical. Tolerates per-area read failures
      * (that area is skipped); throws only when every attempted repair write
-     * failed.
+     * failed. It takes its turn with the rewrites of `siteProfiles`, so a
+     * profile saved while it reads is not overwritten with what it read.
      */
-    async setDefaultsForMissingKeys(): Promise<void> {
+    setDefaultsForMissingKeys(): Promise<void> {
+        return this.afterProfiles(() => this.repairStoredValues());
+    }
+
+    private async repairStoredValues(): Promise<void> {
         const repairs: Record<StorageArea, Record<string, unknown>> = {
             sync: {},
             local: {},
@@ -799,45 +1097,6 @@ class ConfigService {
             throw new ConfigWriteError(
                 `setDefaultsForMissingKeys() failed completely: ${failures.length} set operation(s) failed`,
                 { completeFailure: true, errors: failures }
-            );
-        }
-    }
-
-    /** Write every schema default to storage. */
-    async resetToDefaults(): Promise<void> {
-        const defaults: Record<StorageArea, Record<string, unknown>> = {
-            sync: {},
-            local: {},
-        };
-        for (const key of SETTINGS_KEYS) {
-            defaults[configSchema[key].scope][key] = getDefaultValue(key);
-        }
-        await Promise.all([
-            this.setToStorage('sync', defaults.sync),
-            this.setToStorage('local', defaults.local),
-        ]);
-        setLoggingLevel(defaults.sync.loggingLevel as number);
-    }
-
-    /** Remove every schema key from storage; aggregates area failures. */
-    async clearAll(): Promise<void> {
-        const failures: { area: StorageArea; error: unknown }[] = [];
-        let successes = 0;
-        for (const area of STORAGE_AREAS) {
-            try {
-                await this.removeFromStorage(area, getKeysByScope(area));
-                successes += 1;
-            } catch (error) {
-                failures.push({ area, error });
-            }
-        }
-        if (failures.length > 0) {
-            if (successes === 0) {
-                throw failures[0]!.error;
-            }
-            throw new ConfigWriteError(
-                `clearAll() completed with partial failures: ${successes} area(s) succeeded, ${failures.length} area(s) failed`,
-                { completeFailure: false, errors: failures }
             );
         }
     }

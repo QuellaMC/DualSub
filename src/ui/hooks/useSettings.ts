@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { configService, type SettingsChanges } from '@/config/service';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    configService,
+    type SettingsChanges,
+    type SiteWrite,
+} from '@/config/service';
 import type { SettingsKey, SettingsValues } from '@/config/schema';
+import type { PlatformId } from '@/shared/platforms';
 
 export type SettingsStatus = 'loading' | 'ready' | 'unavailable';
 
@@ -16,8 +21,21 @@ export interface SettingsHandle<K extends SettingsKey> {
 }
 
 interface SettingsState<K extends SettingsKey> {
+    /** What the settings were read for: the keys, credentials, and site. */
+    readonly view: string;
     readonly status: SettingsStatus;
     readonly settings: SettingsProjection<K> | null;
+}
+
+/** `state` with `changes` on top, when it holds ready settings of `view`. */
+function withChanges<K extends SettingsKey>(
+    state: SettingsState<K>,
+    view: string,
+    changes: Partial<SettingsProjection<K>>
+): SettingsState<K> {
+    return state.view === view && state.settings
+        ? { view, status: 'ready', settings: { ...state.settings, ...changes } }
+        : state;
 }
 
 function pickWatched<K extends SettingsKey>(
@@ -33,48 +51,70 @@ function pickWatched<K extends SettingsKey>(
     return picked as Partial<SettingsProjection<K>>;
 }
 
+export interface SettingsOptions {
+    readonly includeSensitive?: boolean;
+    /** Show the settings as this site sees them, and write site settings
+     *  where `siteTarget` says. */
+    readonly site?: PlatformId | null;
+    readonly siteTarget?: SiteWrite['target'];
+}
+
 /**
  * A UI surface's view of the settings it renders. Storage is the single
  * source of truth: reads are authoritative (a failed read blocks the
  * surface rather than showing defaults), successful writes and storage
  * change events both flow into the same local projection, and an
- * unavailable surface retries on the next storage change.
+ * unavailable surface retries on the next storage change. Switching to
+ * another view, such as another site, shows it loading until its own
+ * settings arrive.
  */
 export function useSettings<K extends SettingsKey>(
     keys: readonly K[],
-    options: { readonly includeSensitive?: boolean } = {}
+    options: SettingsOptions = {}
 ): SettingsHandle<K> {
     const keyList = keys.join(' ');
     const includeSensitive = options.includeSensitive === true;
+    const site = options.site ?? null;
+    const siteTarget = options.siteTarget ?? 'source';
+    const view = JSON.stringify([keyList, includeSensitive, site]);
     const [state, setState] = useState<SettingsState<K>>({
+        view,
         status: 'loading',
         settings: null,
     });
-    const stateRef = useRef(state);
-
-    useEffect(() => {
-        stateRef.current = state;
-    }, [state]);
 
     useEffect(() => {
         const watched = keyList.split(' ') as K[];
+        const readOptions = { includeSensitive, ...(site ? { site } : {}) };
         let active = true;
+        let unavailable = false;
+        /** Counts the reads started; only the newest one's answer shows. */
+        let reads = 0;
+        // Changes heard since the newest read began are newer than its answer.
+        let heard: Partial<SettingsProjection<K>> = {};
 
         const load = async (): Promise<void> => {
+            const read = ++reads;
+            heard = {};
             let next: SettingsState<K>;
             try {
                 const { values } = await configService.readMultipleResultStrict(
                     watched,
-                    { includeSensitive }
+                    readOptions
                 );
                 next = {
+                    view,
                     status: 'ready',
-                    settings: values as SettingsProjection<K>,
+                    settings: {
+                        ...(values as SettingsProjection<K>),
+                        ...heard,
+                    },
                 };
             } catch {
-                next = { status: 'unavailable', settings: null };
+                next = { view, status: 'unavailable', settings: null };
             }
-            if (active) {
+            if (active && read === reads) {
+                unavailable = next.status === 'unavailable';
                 setState(next);
             }
         };
@@ -85,7 +125,7 @@ export function useSettings<K extends SettingsKey>(
                 if (!active) {
                     return;
                 }
-                if (stateRef.current.status === 'unavailable') {
+                if (unavailable) {
                     void load();
                     return;
                 }
@@ -93,16 +133,10 @@ export function useSettings<K extends SettingsKey>(
                 if (Object.keys(relevant).length === 0) {
                     return;
                 }
-                setState((previous) =>
-                    previous.settings
-                        ? {
-                              status: 'ready',
-                              settings: { ...previous.settings, ...relevant },
-                          }
-                        : previous
-                );
+                Object.assign(heard, relevant);
+                setState((previous) => withChanges(previous, view, relevant));
             },
-            { includeSensitive }
+            readOptions
         );
         void load();
 
@@ -110,23 +144,21 @@ export function useSettings<K extends SettingsKey>(
             active = false;
             unsubscribe();
         };
-    }, [keyList, includeSensitive]);
+    }, [view, keyList, includeSensitive, site]);
 
     const save = useCallback(
         async (changes: Partial<SettingsProjection<K>>): Promise<void> => {
-            const written = await configService.setMultiple(changes);
-            const relevant = pickWatched(written, keyList.split(' ') as K[]);
-            setState((previous) =>
-                previous.settings
-                    ? {
-                          status: 'ready',
-                          settings: { ...previous.settings, ...relevant },
-                      }
-                    : previous
+            const written = await configService.setMultiple(
+                changes,
+                site ? { site, target: siteTarget } : undefined
             );
+            const relevant = pickWatched(written, keyList.split(' ') as K[]);
+            setState((previous) => withChanges(previous, view, relevant));
         },
-        [keyList]
+        [view, keyList, site, siteTarget]
     );
 
-    return { status: state.status, settings: state.settings, save };
+    return state.view === view
+        ? { status: state.status, settings: state.settings, save }
+        : { status: 'loading', settings: null, save };
 }

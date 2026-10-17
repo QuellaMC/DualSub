@@ -48,7 +48,6 @@ describe('registry shape', () => {
         expect(local.sort()).toEqual(
             [
                 'appearanceAccordionOpen',
-                'debugMode',
                 'vertexTokenExpiresAt',
                 ...SENSITIVE_KEYS,
             ].sort()

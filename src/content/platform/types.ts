@@ -2,8 +2,7 @@ import type { CapturedEvent, IsolatedToMain } from '../bridge/protocol';
 import type { Logger } from '@/shared/logger';
 import type { SettingsValues } from '@/config/schema';
 import type { SubtitleLook } from '../renderer/looks';
-
-export type PlatformId = 'netflix' | 'disneyplus';
+import type { PlatformId } from '@/shared/platforms';
 
 /** Fixed per-platform behavior flags — data, not overridable escape hatches. */
 export interface PlatformCapabilities {

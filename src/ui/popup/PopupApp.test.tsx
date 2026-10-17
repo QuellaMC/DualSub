@@ -40,9 +40,9 @@ function stubEnglishCatalog(): void {
     );
 }
 
-function stubTabs() {
+function stubTabs(url?: string) {
     vi.spyOn(browser.tabs, 'query').mockResolvedValue([
-        { id: 7 } as unknown as Browser.tabs.Tab,
+        { id: 7, url } as unknown as Browser.tabs.Tab,
     ] as never);
     return vi
         .spyOn(browser.tabs, 'sendMessage')
@@ -194,6 +194,29 @@ describe('PopupApp', () => {
         );
     });
 
+    it('on a site with its own values, edits each where that site gets it from', async () => {
+        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            siteProfiles: { netflix: { subtitleFontScale: 1.8 } },
+        });
+        stubTabs('https://www.netflix.com/watch/81');
+        const { enable } = await renderReady();
+        const slider = screen.getByRole('slider', { name: 'Font Size:' });
+        expect(slider).toHaveValue('1.8');
+
+        fireEvent.change(slider, { target: { value: '2' } });
+        fireEvent.pointerUp(slider);
+        fireEvent.click(enable);
+        await waitFor(async () =>
+            expect(await fakeBrowser.storage.sync.get(null)).toMatchObject({
+                subtitleFontScale: 1.2,
+                subtitlesEnabled: false,
+                siteProfiles: { netflix: { subtitleFontScale: 2 } },
+            })
+        );
+    });
+
     it('rolls the page back to the persisted value when a slider commit fails', async () => {
         await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
         const send = stubTabs();
@@ -319,6 +342,19 @@ describe('PopupApp', () => {
         stubTabs();
         vi.spyOn(browser.storage.sync, 'get').mockRejectedValueOnce(
             new Error('storage broken')
+        );
+        render(<PopupApp />);
+
+        const alert = await screen.findByRole('alert');
+        await waitFor(() =>
+            expect(alert).toHaveTextContent('Failed to load settings')
+        );
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
+    it('edits nothing when it cannot tell which site the tab is on', async () => {
+        vi.spyOn(browser.tabs, 'query').mockRejectedValue(
+            new Error('tabs broken')
         );
         render(<PopupApp />);
 
