@@ -267,7 +267,11 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 3.1.0 (Current)
+### Version 3.1.1 (Current)
+
+- 🐛 The two subtitle lines are called Original and Translation, so their names hold whichever one is on top
+
+### Version 3.1.0
 
 - 🧭 **A new settings page**: every setting in plain words, with search, undo, and a menu of short section names; advanced options show on request
 - 🎨 **Style editor**: the subtitles at your video's true proportions; click a line to style it, drag them to move them, or check them full screen
