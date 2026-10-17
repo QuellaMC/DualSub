@@ -46,31 +46,48 @@ function together(a: VttCue, b: VttCue): boolean {
     return shorter > 0 && sharedTime(a, b) >= PAIRING_SHARE * shorter;
 }
 
-/** What a match gains when both lines sit in the same part of the
- *  picture, the dialogue band or raised over on-screen text: enough to
- *  settle lines timed alike, such as a sign and the dialogue under it,
+/** How far down the picture a line sits, from the top at 0 to the dialogue
+ *  band at 1. */
+function depth(placement: CuePlacement): number {
+    return raisedLine(placement) ?? 1;
+}
+
+/** The most a match gains for two lines sitting in the same place: enough
+ *  to settle lines timed alike, such as a sign and the dialogue under it,
  *  never enough to outweigh clearly different timing. */
 const SAME_PLACE_PREFERENCE = 0.1;
 
 /** How well an official line matches an original: the time they share
- *  over the time either is on screen, and whether they sit alike. */
+ *  over the time either is on screen, and how near each other they sit. */
 function matchScore(original: VttCue, target: VttCue): number {
     const timeMatch =
         sharedTime(original, target) /
         (Math.max(original.end, target.end) -
             Math.min(original.start, target.start));
-    const sitAlike =
-        (raisedLine(original.placement) === null) ===
-        (raisedLine(target.placement) === null);
-    return timeMatch + (sitAlike ? SAME_PLACE_PREFERENCE : 0);
+    const nearness =
+        1 - Math.abs(depth(original.placement) - depth(target.placement));
+    return timeMatch + SAME_PLACE_PREFERENCE * nearness;
+}
+
+interface TrackCue {
+    readonly index: number;
+    readonly cue: VttCue;
+}
+
+function inTimeOrder(cues: readonly VttCue[]): TrackCue[] {
+    return cues
+        .map((cue, index) => ({ index, cue }))
+        .sort((a, b) => a.cue.start - b.cue.start);
 }
 
 /**
- * Each original's official lines, in order, and which official lines belong
- * with some original. An official line belongs with each original it is on
- * screen with in turn; of originals on screen together, such as a sign
- * above the dialogue, only with the one it matches best, so no official
- * line shows twice.
+ * Each original's official lines, in the order they are spoken, and which
+ * official lines belong with some original. An official line belongs with
+ * each original it is on screen with in turn; of originals on screen
+ * together, such as a sign above the dialogue, only with the one it matches
+ * best, so no official line shows twice. Both tracks are walked in time
+ * order, so each official line is weighed against the originals around it
+ * rather than the whole track.
  */
 function pairOfficialLines(
     originals: readonly VttCue[],
@@ -78,21 +95,29 @@ function pairOfficialLines(
 ): { translations: (string | null)[]; paired: Set<number> } {
     const lines = originals.map((): string[] => []);
     const paired = new Set<number>();
-    for (const [targetIndex, target] of targets.entries()) {
-        const candidates = [...originals.keys()]
-            .filter((index) => together(originals[index]!, target))
+    const upcoming = inTimeOrder(originals);
+    let next = 0;
+    let around: TrackCue[] = [];
+    for (const { index: targetIndex, cue: target } of inTimeOrder(targets)) {
+        while (
+            next < upcoming.length &&
+            upcoming[next]!.cue.start < target.end
+        ) {
+            around.push(upcoming[next]!);
+            next += 1;
+        }
+        around = around.filter(({ cue }) => cue.end > target.start);
+        const candidates = around
+            .filter(({ cue }) => together(cue, target))
             .sort(
-                (a, b) =>
-                    matchScore(originals[b]!, target) -
-                    matchScore(originals[a]!, target)
+                (a, b) => matchScore(b.cue, target) - matchScore(a.cue, target)
             );
         const chosen: VttCue[] = [];
-        for (const index of candidates) {
-            const original = originals[index]!;
-            if (chosen.some((other) => together(other, original))) {
+        for (const { index, cue } of candidates) {
+            if (chosen.some((other) => together(other, cue))) {
                 continue;
             }
-            chosen.push(original);
+            chosen.push(cue);
             lines[index]!.push(target.text);
             paired.add(targetIndex);
         }

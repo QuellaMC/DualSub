@@ -276,6 +276,29 @@ describe('buildCueSet pairing the show’s own translation', () => {
         ]);
     });
 
+    it('tells apart two signs timed alike by how near each official line sits', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:10%,start\n3番線',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,center\n出口',
+                ].join('\n\n'),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:45%,center\nEXIT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\nPLATFORM 3',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(set.cues.map((cue) => [cue.original, cue.translated])).toEqual([
+            ['3番線', 'PLATFORM 3'],
+            ['出口', 'EXIT'],
+        ]);
+    });
+
     it('shows a long official line under two originals that only touch', () => {
         expect(
             paired(
@@ -304,6 +327,25 @@ describe('buildCueSet pairing the show’s own translation', () => {
                 end: 14,
                 translated: 'Where are you going?\nTo the station.',
             },
+        ]);
+    });
+
+    it('pairs tracks listed out of time order, joining lines as they are spoken', () => {
+        expect(
+            paired(
+                vtt(
+                    ['20.000', '22.000', 'またね。'],
+                    ['10.000', '14.000', 'どこに行くの？駅まで。']
+                ),
+                vtt(
+                    ['12.000', '14.000', 'To the station.'],
+                    ['20.000', '22.000', 'See you.'],
+                    ['10.000', '12.000', 'Where are you going?']
+                )
+            ).map((cue) => [cue.id, cue.translated])
+        ).toEqual([
+            ['o1', 'Where are you going?\nTo the station.'],
+            ['o0', 'See you.'],
         ]);
     });
 
