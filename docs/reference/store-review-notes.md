@@ -79,9 +79,9 @@ provider account.
 2. Sign in to Netflix or Disney+ and open any title.
 3. Play: two subtitle lines appear (one, for a video already in the
    translation language). In the options page's Languages section, toggle
-   "Use the show's own translation when it has one" to switch between the
+   "Use the show's own translation" to switch between the
    platform's own translation track and the provider.
-4. Optional: in the options page's Word explanations section, paste an
+4. Optional: in the options page's Meanings section, paste an
    OpenAI or Gemini API key and turn the feature on, then click a subtitle
    word; the side panel opens with the word selected and "Analyze" returns
    a structured explanation.

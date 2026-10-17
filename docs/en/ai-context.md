@@ -14,7 +14,7 @@ Get cultural, historical, and linguistic explanations for selected subtitle text
 
 ## Setup
 
-In the settings page, open **Word explanations** and follow its three steps:
+In the settings page, open **Meanings** and follow its three steps:
 
 1. Choose a service (Gemini or OpenAI)
 2. Open the service's key page and create a key

@@ -1,6 +1,6 @@
 # Privacy Policy for DualSub
 
-**Last updated:** July 11, 2026
+**Last updated:** October 17, 2026
 
 ## Overview
 

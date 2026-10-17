@@ -42,7 +42,7 @@
 - Multiple translation providers with rate limiting and caching
 - Word explanations through your own OpenAI or Google Gemini key
 - Flexible layouts, appearance controls, and timing offset
-- Every setting on one plain-language page, with search, undo, and per-site settings
+- Every setting on one plain-language page, with search, undo, per-site settings, and a style editor that shows the subtitles at their real size
 - Multi-language UI (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
 See details in: [features.md](docs/en/features.md), [platforms.md](docs/en/platforms.md), [providers.md](docs/en/providers.md).
@@ -52,7 +52,7 @@ See details in: [features.md](docs/en/features.md), [platforms.md](docs/en/platf
 1. Install from the Chrome Web Store or load unpacked (see [installation.md](docs/en/installation.md)).
 2. A welcome page opens with your languages already picked; change the translation language there if you like.
 3. Open Netflix or Disney+ and play anything: two lines of subtitles appear, by default the video's language on top and yours underneath. A video already in your language shows one line.
-4. Optional: in the settings page, set up Word explanations with your own OpenAI or Gemini key.
+4. Optional: in the settings page's Meanings section, set up Word explanations with your own OpenAI or Gemini key.
 
 Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: [ai-context.md](docs/en/ai-context.md).
 
@@ -62,8 +62,8 @@ Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: 
 
 ```
 Translation: Microsoft Translator (free)
-The top line shows: Always the language you are learning
-Which line goes on top: The video's language
+Top line: Always one language, the one you are learning
+Lines: Video's on top
 Text size: Large
 Word explanations: On (meaning, culture, history)
 ```
@@ -267,7 +267,17 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 3.0.2 (Current)
+### Version 3.1.0 (Current)
+
+- 🧭 **A new settings page**: every setting in plain words, with search, undo, and a menu of short section names; advanced options show on request
+- 🎨 **Style editor**: the subtitles at your video's true proportions; click a line to style it, drag them to move them, or check them full screen
+- 🎮 **Popup remote**: turn DualSub on or off for the site, pick your language, and move the text size, timing, and position while you watch
+- 👋 **Welcome page**: opens once after install with your languages already picked
+- 🌍 **Per-site settings**: Netflix and Disney+ can each keep their own look, languages, and timing
+- 🛟 **Translation fallback**: when your service fails, Microsoft Translator and then Google Translate keep subtitles coming
+- 🗣️ **Automatic top line**: follows the language spoken in the video, audio track switches included
+
+### Version 3.0.2
 
 - 🐛 No empty subtitle box over the video between lines
 

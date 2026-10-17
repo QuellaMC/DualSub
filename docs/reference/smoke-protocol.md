@@ -25,21 +25,26 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    without a stale line from the earlier session.
 5. Seek rapidly and press the popup's text size, timing, and position
    buttons while playing: the overlay follows each press at once and
-   never goes blank between cues. Switch the subtitle style in the
-   settings page between Look like the site and My own style and resize
-   the window: the text restyles live and scales with the video. With
-   the platform's own subtitles off, Look like the site still follows the
-   profile's subtitle appearance settings.
+   never goes blank between cues. In the settings page's Style section,
+   switch the Look row between Like the site and a ready-made look and
+   resize the window: the text restyles live and scales with the video.
+   With the platform's own subtitles off, Like the site still follows
+   the profile's subtitle appearance settings.
 6. Open the popup on a playing Netflix video: it says DualSub is working
    on it. Turn DualSub off there: Netflix shows its own subtitles while a
    Disney+ tab keeps dual subtitles. On any other page the popup names
    the sites and opens each one.
-7. In the settings page's How subtitles look section, pick each
-   ready-made look, then change colors and font (font, bold, text color,
-   edge, background) and the translation color: the preview follows each
-   edit at once, the overlay follows after a pause, both styles draw the
-   translation in the chosen color, and the values are still there after
-   the settings page is reloaded.
+7. In the settings page's Style section, pick each ready-made look in
+   the Look row, then change the font, edge, bold, top line color, and
+   box, and the translation color: the stage follows each edit at once,
+   the overlay follows after a pause, every look draws the translation in
+   the chosen color, and the values are still there after the settings
+   page is reloaded. Click each line on the stage: the top line opens
+   Look, yours opens Translation color. Drag the subtitles up: the
+   Position row opens, a guide marks the usual height, the overlay
+   follows once they drop, and Undo puts them back. Open Full screen: the
+   text is the size it has on a full-screen video, and Escape closes it
+   with focus back on the Full screen button.
 8. Disney+ only: an ad or recap interstitial shows no subtitle, and the
    time source stays correct across the shadow-DOM player controls.
 
@@ -72,14 +77,15 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 16. Change the UI language: popup, settings page, and panel switch
     without a reload; the settings page title follows.
 17. On a clean profile the settings page opens on Start and says
-    it is working on Netflix and Disney+. Change the text size: the
-    notice confirms it, stays while pointed at, and Undo (or Ctrl+Z)
-    puts it back. Search "twice": Sites opens with focus on Netflix's
-    hide switch. Show advanced
-    options, pick Netflix in the bar at the top, and change the size:
-    it gets a "Netflix only" tag, the Netflix overlay follows, Disney+
-    keeps the shared size, and "Use the All-sites value" drops it
-    again. Choose DeepL without a key: Start says it isn't set up yet
+    it is working on Netflix and Disney+, the menu's highlight on Start.
+    Make the text bigger with A+: the notice confirms it, stays while
+    pointed at, and Undo (or Ctrl+Z) puts it back. Search "twice": Sites
+    opens with focus on Netflix's hide switch. In Timing, Show earlier
+    slides the subtitle bars ahead of the voice on the timeline. Turn on
+    Advanced options in the top bar, pick Netflix in the bar at the top,
+    and change the size in Style: the Size row gets a dot and a "Netflix
+    only" tag, the Netflix overlay follows, Disney+ keeps the shared
+    size, and "Use All sites" drops it again. Choose DeepL without a key: Start says it isn't set up yet
     and that Microsoft Translator translates until it is; turn
     fallback off and Start says nothing is translated.
 18. Install the build into a clean profile: the welcome page opens once,
