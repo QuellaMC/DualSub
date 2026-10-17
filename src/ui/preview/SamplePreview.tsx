@@ -7,7 +7,6 @@ import { languageName } from '../languageLabels';
 import { PLATFORM_PRESETS } from '../subtitleStyle';
 import { LookPreview } from './LookPreview';
 import {
-    sampleCaption,
     sampleSubtitles,
     sampleVideoLanguage,
     type SampleSubtitles,
@@ -69,30 +68,9 @@ export function SamplePreview({
     );
 }
 
-/** What each sample line is, and each language English stands in for. */
-export function SampleCaption({
-    t,
-    settings,
-    sample,
-}: {
-    t: Translate;
-    settings: Pick<
-        SettingsValues,
-        'originalLanguage' | 'useOfficialTranslations'
-    >;
-    sample: SampleSubtitles;
-}) {
-    return (
-        <>
-            <p className="help">{sampleCaption(t, settings, sample)}</p>
-            <SampleStandIns t={t} sample={sample} />
-        </>
-    );
-}
-
 /** A language picked that the sample has no lines in, from a backup or
  *  another computer, shows as English; each says so. */
-function SampleStandIns({
+export function SampleStandIns({
     t,
     sample,
 }: {

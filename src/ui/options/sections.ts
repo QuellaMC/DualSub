@@ -21,27 +21,18 @@ export const SECTIONS: Record<
         readonly icon: IconName;
         /** Shown only with the advanced options. */
         readonly advanced?: true;
-        /** Shows the live subtitle preview beside it. */
-        readonly preview?: true;
+        /** Takes the column beside it too, for the style editor's stage
+         *  and the pane next to it. */
+        readonly wide?: true;
         /** Holds settings a site can keep of its own, so the page can edit
          *  them for one site; elsewhere it edits what every site shares. */
         readonly scoped?: true;
     }
 > = {
-    start: { labelKey: 'navStart', icon: 'home', preview: true, scoped: true },
-    languages: {
-        labelKey: 'navLanguages',
-        icon: 'languages',
-        preview: true,
-        scoped: true,
-    },
-    look: { labelKey: 'navLook', icon: 'look', preview: true, scoped: true },
-    timing: {
-        labelKey: 'navTiming',
-        icon: 'timing',
-        preview: true,
-        scoped: true,
-    },
+    start: { labelKey: 'navStart', icon: 'home', scoped: true },
+    languages: { labelKey: 'navLanguages', icon: 'languages', scoped: true },
+    look: { labelKey: 'navLook', icon: 'look', wide: true, scoped: true },
+    timing: { labelKey: 'navTiming', icon: 'timing', scoped: true },
     translation: { labelKey: 'navTranslation', icon: 'translation' },
     explanations: { labelKey: 'navExplanations', icon: 'explain' },
     sites: { labelKey: 'navSites', icon: 'sites' },

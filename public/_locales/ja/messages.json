@@ -285,25 +285,22 @@
         "message": "コピーできませんでした。文字を選んで、ご自分でコピーしてください。"
     },
     "advancedDownload": {
-        "message": "設定をダウンロード"
+        "message": "ダウンロード"
     },
     "advancedJsonHelp": {
-        "message": "DualSubが保存している内容です（キーは含みません）。サイトごとの設定には、違う項目だけが入っています。"
+        "message": "キーは含みません。サイトごとの設定には、違う項目だけが入っています。"
     },
     "advancedJsonTitle": {
         "message": "すべての設定（JSON形式）"
-    },
-    "advancedLead": {
-        "message": "バックアップ、設定データそのもの、トラブル調査のための機能です。"
     },
     "advancedLoadApply": {
         "message": "置き換える"
     },
     "advancedLoadFile": {
-        "message": "ファイルから設定を読み込む"
+        "message": "ファイルから読み込む"
     },
     "advancedLoadFileHelp": {
-        "message": "置き換える前に、変わる設定の数を確認できます。"
+        "message": "置き換える前に、何が変わるか確認できます。"
     },
     "advancedLoadNothing": {
         "message": "このファイルで変わる設定はありません。"
@@ -336,7 +333,7 @@
         "message": "レポートをコピー"
     },
     "advancedReportHelp": {
-        "message": "バージョン、ブラウザ、設定（キーは除く）をまとめたものです。不具合の報告にそのまま貼り付けられます。"
+        "message": "不具合の報告用です。キーは含みません。"
     },
     "advancedReportTitle": {
         "message": "診断レポート"
@@ -351,16 +348,16 @@
         "message": "リセット"
     },
     "advancedResetHelp": {
-        "message": "すべての設定をおすすめの状態に戻し、サイトごとの専用設定を消します。キーと、それぞれのキーに合わせた設定（アドレスやモデルなど）、この設定画面の言語はそのまま残ります。"
+        "message": "すべての設定をおすすめに戻し、サイト専用の設定も消します。キーは残ります。"
     },
     "advancedResetTitle": {
         "message": "最初からやり直す"
     },
     "advancedSaveFile": {
-        "message": "設定をファイルに保存"
+        "message": "ファイルに保存"
     },
     "advancedSaveFileHelp": {
-        "message": "サイトごとの専用の設定も含まれます。APIキーはこのパソコンに残り、ファイルには入りません。"
+        "message": "すべてのサイトの設定です。キーはこのパソコンに残ります。"
     },
     "advancedTroubleshootingTitle": {
         "message": "トラブル調査"
@@ -394,9 +391,6 @@
     },
     "explainAllowHost": {
         "message": "単語を説明するには、DualSubがこのアドレスに接続することを許可してください。"
-    },
-    "explainLead": {
-        "message": "字幕の単語をクリックすると、意味や使われ方、その背景にある話がわかります。"
     },
     "explainLimitsTitle": {
         "message": "モデルと制限"
@@ -515,29 +509,26 @@
     "helpGoTranslation": {
         "message": "「翻訳」を開く"
     },
-    "helpLead": {
-        "message": "よくある問題と、それぞれの直し方です。"
-    },
     "helpNoSubtitlesPlaying": {
-        "message": "タイトル画面で止まっていないか、動画が再生中か確かめてください。"
+        "message": "動画を再生してください。止まったタイトル画面には出ません。"
     },
     "helpNoSubtitlesReload": {
         "message": "ページを再読み込みしてください。"
     },
     "helpNoSubtitlesSite": {
-        "message": "そのサイトでDualSubがオンになっているか、「%s」で確かめてください。"
+        "message": "「%s」でDualSubがオンか確かめてください。"
     },
     "helpNoSubtitlesTitle": {
         "message": "字幕が表示されない"
     },
     "helpNoSubtitlesTracks": {
-        "message": "動画に字幕があるか確かめてください。サイトの字幕メニューを開くとわかります。"
+        "message": "サイトの字幕メニューに字幕があるか確かめてください。"
     },
     "helpPrivacy": {
-        "message": "字幕の文章は、選んだ翻訳サービスにだけ送られます。追跡は一切なく、私たちに何かが送られることもありません。"
+        "message": "字幕の文章は、選んだ翻訳サービスにだけ送られます。私たちには何も送られません。"
     },
     "helpPrivacyFallback": {
-        "message": "字幕の文章は、選んだ翻訳サービスと、それが使えないときに代わりを務める無料のサービスにだけ送られます。追跡は一切なく、私たちに何かが送られることもありません。"
+        "message": "字幕の文章は、選んだ翻訳サービスと、その代わりを務める無料のサービスにだけ送られます。私たちには何も送られません。"
     },
     "helpSource": {
         "message": "ソースコード"
@@ -545,20 +536,11 @@
     "helpMadeBy": {
         "message": "制作：QuellaMC、1jifang"
     },
-    "helpTimingHelp": {
-        "message": "字幕を少し早く、または少し遅くずらします。"
-    },
     "helpTimingTitle": {
         "message": "字幕が声とずれている"
     },
-    "helpTranslationHelp": {
-        "message": "別の翻訳サービスを試すか、作品の公式字幕を使ってください。"
-    },
     "helpTranslationTitle": {
         "message": "翻訳が読みにくい"
-    },
-    "helpTwiceHelp": {
-        "message": "DualSubの字幕の下に、サイト本来の字幕も表示されています。"
     },
     "helpTwiceTitle": {
         "message": "字幕が二重に表示される"
@@ -566,44 +548,38 @@
     "helpVersion": {
         "message": "バージョン %s"
     },
-    "languagesLead": {
-        "message": "字幕のそれぞれの行に、どの言語を表示するかを決めます。"
-    },
     "languagesOfficialHelp": {
-        "message": "NetflixやDisney+には、人の手で訳された字幕が自分の言語で用意されていることがよくあります。機械翻訳より読みやすいです。ない作品では、DualSubが翻訳します。"
+        "message": "ある場合に使います。人が訳しているので読みやすいです。"
     },
     "languagesOfficialTitle": {
-        "message": "作品に公式字幕があれば、それを使う"
-    },
-    "languagesSpeakHelp": {
-        "message": "下の行はこの言語に翻訳されます。"
+        "message": "作品の公式字幕を使う"
     },
     "languagesSpeakTitle": {
         "message": "自分の言語"
     },
     "languagesTopAuto": {
-        "message": "動画で話されている言語"
+        "message": "動画の言語"
     },
     "languagesTopAutoHelp": {
-        "message": "動画ごとにDualSubが合わせます。韓国ドラマなら上の行は韓国語、英語の映画なら英語になります。"
+        "message": "動画ごとに合わせます。"
     },
     "languagesTopFixed": {
         "message": "常に同じ言語"
     },
     "languagesTopFixedHelp": {
-        "message": "どの動画でも同じ言語を学びたいときに。サイトにその言語の字幕がある場合に使えます。"
+        "message": "ひとつの言語を学ぶときに。"
     },
     "languagesTopFixedMenu": {
         "message": "上の行の言語"
     },
     "languagesTopTitle": {
-        "message": "上の行に表示する言語"
+        "message": "上の行"
     },
     "lookArrangementSideBySide": {
-        "message": "横に並べる"
+        "message": "横並び"
     },
     "lookArrangementStacked": {
-        "message": "上下に並べる"
+        "message": "上下"
     },
     "lookArrangementTitle": {
         "message": "2行の並べ方"
@@ -612,10 +588,10 @@
         "message": "太字"
     },
     "lookBoxColorLabel": {
-        "message": "文字の背景の色"
+        "message": "背景"
     },
     "lookBoxOpacityLabel": {
-        "message": "背景の濃さ：%d%"
+        "message": "背景の濃さ"
     },
     "lookColorCyan": {
         "message": "水色"
@@ -636,13 +612,13 @@
         "message": "黄色"
     },
     "lookCustomizeButton": {
-        "message": "色とフォントを変える"
+        "message": "色とフォント"
     },
     "lookEdgeDepressed": {
         "message": "くぼみ"
     },
     "lookEdgeLabel": {
-        "message": "文字のふち"
+        "message": "ふち"
     },
     "lookEdgeNone": {
         "message": "なし"
@@ -657,13 +633,10 @@
         "message": "やわらかい影"
     },
     "lookExactPosition": {
-        "message": "高さ：%s（0.1の一番下から9.9の真ん中まで）"
+        "message": "高さを細かく"
     },
     "lookExactSize": {
-        "message": "文字の大きさ：%s倍"
-    },
-    "lookFineTuneButton": {
-        "message": "大きさ・高さ・間隔を細かく調整"
+        "message": "文字の大きさを細かく"
     },
     "lookFontCasual": {
         "message": "カジュアル"
@@ -686,44 +659,38 @@
     "lookFontSmallCaps": {
         "message": "スモールキャピタル"
     },
-    "lookGap": {
-        "message": "行の間隔：%s行分"
-    },
     "lookGapTitle": {
         "message": "行の間隔"
     },
-    "lookLead": {
-        "message": "変更するとすぐにプレビューが変わり、動画にも1秒以内に反映されます。"
-    },
     "lookMoveDown": {
-        "message": "下げる"
+        "message": "下へ"
     },
     "lookMoveUp": {
-        "message": "上げる"
+        "message": "上へ"
     },
     "lookOrderMineFirst": {
-        "message": "自分の言語を上に"
+        "message": "自分の言語が上"
     },
     "lookOrderTitle": {
         "message": "上に表示する行"
     },
     "lookOrderVideoFirst": {
-        "message": "動画の言語を上に"
+        "message": "動画の言語が上"
     },
     "lookPositionBottom": {
-        "message": "画面の下端の近く"
+        "message": "いちばん下"
     },
     "lookPositionLower": {
-        "message": "画面の下のほう"
+        "message": "高め"
     },
     "lookPositionMiddle": {
-        "message": "画面の真ん中あたり"
+        "message": "中央"
     },
     "lookPositionTitle": {
         "message": "画面上の位置"
     },
     "lookPositionUsual": {
-        "message": "下端の少し上（多くの人が好む位置）"
+        "message": "いつもの高さ"
     },
     "lookPresetBoxed": {
         "message": "背景つき"
@@ -740,47 +707,101 @@
     "lookPresetsLabel": {
         "message": "用意された見た目"
     },
-    "lookPresetSample": {
-        "message": "こんにちは"
-    },
     "lookSizeTitle": {
         "message": "文字の大きさ"
     },
-    "lookStyleCustom": {
-        "message": "自分好みのスタイル"
-    },
-    "lookStyleCustomHelp": {
-        "message": "用意された見た目から始めて、好みで色やフォントを変えられます。"
-    },
     "lookStylePlatform": {
-        "message": "見ているサイトと同じ見た目"
+        "message": "サイトと同じ"
     },
     "lookStylePlatformSite": {
-        "message": "%sと同じ見た目"
+        "message": "%sと同じ"
     },
     "lookStylePlatformHelp": {
-        "message": "NetflixやDisney+のプロフィールにある字幕設定に従います。"
+        "message": "NetflixやDisney+の字幕設定で決まります。"
     },
     "lookStyleTitle": {
-        "message": "スタイル"
+        "message": "見た目と用意されたスタイル"
     },
     "lookTopColorLabel": {
-        "message": "上の行の色"
-    },
-    "lookTranslationColorHelp": {
-        "message": "どちらのスタイルでも使われるので、2つの行を見分けやすくなります。"
+        "message": "上の行"
     },
     "lookTranslationColorTitle": {
-        "message": "翻訳の行の色"
+        "message": "翻訳の色"
+    },
+    "lookScene": {
+        "message": "場面"
+    },
+    "lookNight": {
+        "message": "夜"
+    },
+    "lookDay": {
+        "message": "昼"
+    },
+    "lookFullScreen": {
+        "message": "全画面"
+    },
+    "lookFullScreenTitle": {
+        "message": "実際の大きさで見る"
+    },
+    "lookStageHint": {
+        "message": "行をクリックすると見た目を変えられます。字幕はドラッグで動かせます。"
+    },
+    "lookLineTop": {
+        "message": "上の行：見た目を変える"
+    },
+    "lookLineYours": {
+        "message": "自分の言語の行：色を変える"
+    },
+    "lookUsualHeight": {
+        "message": "いつもの高さ"
+    },
+    "lookPaneLabel": {
+        "message": "字幕のスタイル"
+    },
+    "lookRowSize": {
+        "message": "大きさ"
+    },
+    "lookRowPosition": {
+        "message": "位置"
+    },
+    "lookRowLook": {
+        "message": "見た目"
+    },
+    "lookRowLines": {
+        "message": "行"
+    },
+    "lookExact": {
+        "message": "細かく"
+    },
+    "lookCustom": {
+        "message": "カスタム"
+    },
+    "lookOnTop": {
+        "message": "上に"
+    },
+    "lookOrderVideoShort": {
+        "message": "動画の言語"
+    },
+    "lookOrderMineShort": {
+        "message": "自分の言語"
+    },
+    "lookLayout": {
+        "message": "並べ方"
+    },
+    "lookSpacing": {
+        "message": "行間"
     },
     "navAdvancedSwitch": {
-        "message": "上級者向けの設定を表示"
+        "message": "上級者向けの設定"
     },
-    "navAdvancedSwitchHelp": {
-        "message": "サイトごとの設定、APIの詳細、制限、バックアップ。"
+    "toastAdvancedOn": {
+        "message": "上級者向けの設定を表示しました"
+    },
+    "toastAdvancedOff": {
+        "message": "上級者向けの設定を隠しました"
     },
     "navExplanations": {
-        "message": "単語の解説"
+        "message": "意味"
     },
     "navHelp": {
         "message": "ヘルプ"
@@ -792,7 +813,7 @@
         "message": "言語"
     },
     "navLook": {
-        "message": "字幕の見た目"
+        "message": "スタイル"
     },
     "navSites": {
         "message": "サイト"
@@ -803,24 +824,6 @@
     "navTiming": {
         "message": "タイミング"
     },
-    "previewCaptionAuto": {
-        "message": "動画の行は%s（この動画で話されている言語）。自分の言語の行は%sで、作品に公式の翻訳があればそれを使います。"
-    },
-    "previewCaptionFixed": {
-        "message": "動画の行は%s。自分の言語の行は%sで、作品に公式の翻訳があればそれを使います。"
-    },
-    "previewCaptionAutoTranslated": {
-        "message": "動画の行は%s（この動画で話されている言語）。自分の言語の行は%sで、DualSubが翻訳します。"
-    },
-    "previewCaptionAutoOne": {
-        "message": "動画の行は%s（この動画で話されている言語）です。"
-    },
-    "previewCaptionFixedTranslated": {
-        "message": "動画の行は%s。自分の言語の行は%sで、DualSubが翻訳します。"
-    },
-    "previewCaptionFixedOne": {
-        "message": "動画の行は%sです。"
-    },
     "previewEnglishFilm": {
         "message": "英語の映画"
     },
@@ -830,11 +833,23 @@
     "previewLabel": {
         "message": "字幕プレビュー"
     },
+    "previewLegendSpoken": {
+        "message": "%s · 動画で話されている言語"
+    },
+    "previewLegendChosen": {
+        "message": "%s · 選んだ言語"
+    },
+    "previewLegendYours": {
+        "message": "%s · 自分の言語"
+    },
+    "previewLegendOneLine": {
+        "message": "%s · すでに自分の言語なので1行だけ"
+    },
+    "previewLinesLabel": {
+        "message": "字幕の例：%s"
+    },
     "previewOff": {
         "message": "二言語字幕はオフです"
-    },
-    "previewOneLine": {
-        "message": "この動画はもともと自分の言語なので、DualSubは1行だけ表示します。"
     },
     "previewSampleVideo": {
         "message": "サンプル動画"
@@ -842,11 +857,8 @@
     "previewStandIn": {
         "message": "ここには %s のサンプルがないので、英語で代わりに表示しています。"
     },
-    "previewShownOn": {
-        "message": "表示するサイト"
-    },
-    "previewTitle": {
-        "message": "プレビュー"
+    "lookPreviewSite": {
+        "message": "サイトの見た目"
     },
     "providerAi": {
         "message": "AI翻訳"
@@ -885,22 +897,16 @@
         "message": "「すべてのサイト」に戻る"
     },
     "scopeEditingSite": {
-        "message": "%sの設定だけを変更しています。"
+        "message": "%sのみ。"
     },
     "scopeEditingSiteHelp": {
-        "message": "ここで変えた項目には「%sのみ」の印が付きます。それ以外は「すべてのサイト」の設定に従います。"
-    },
-    "scopeHelp": {
-        "message": "専用の設定がないサイトでは、「すべてのサイト」の設定が使われます。"
+        "message": "それ以外は「すべてのサイト」の設定に従います。"
     },
     "scopeLabel": {
         "message": "設定するサイト"
     },
     "scopeOwnCount": {
         "message": "専用の設定 %d項目"
-    },
-    "scopeSameAsAll": {
-        "message": "「すべてのサイト」と同じ"
     },
     "scopeSharedSetting": {
         "message": "どのサイトでも共通"
@@ -909,7 +915,7 @@
         "message": "%sのみ"
     },
     "scopeUseShared": {
-        "message": "「すべてのサイト」の値を使う"
+        "message": "「すべてのサイト」に合わせる"
     },
     "setupAddress": {
         "message": "サービスのアドレス"
@@ -983,9 +989,6 @@
     "sitesHideTitle": {
         "message": "サイト本来の字幕を隠す"
     },
-    "sitesLead": {
-        "message": "DualSubはこれらのサイトで自動的にオンになります。サイトごとにオフにしたり、専用の設定を作ったりできます。"
-    },
     "sitesMoreHelp": {
         "message": "DualSubが新しいサイトに対応すると、ここに表示されます。最初からオンになっていて、「すべてのサイト」の設定が使われます。"
     },
@@ -1034,32 +1037,14 @@
     "startFromBrowser": {
         "message": "ブラウザの設定から選びました"
     },
-    "startLead": {
-        "message": "NetflixかDisney+を開いて、好きな動画を再生してください。字幕が2行表示されます。上は動画の言語、下は自分の言語です。"
+    "startChangeStyle": {
+        "message": "スタイルを変える"
     },
     "startOpenSite": {
         "message": "%sを開く"
     },
     "startProblemsTitle": {
         "message": "うまくいかないときは"
-    },
-    "startProviderAi": {
-        "message": "AI翻訳（自分のキーを使用）"
-    },
-    "startProviderDeepL": {
-        "message": "DeepL（自分のキーを使用）"
-    },
-    "startProviderGoogle": {
-        "message": "Google翻訳、無料、設定は不要"
-    },
-    "startProviderMicrosoft": {
-        "message": "Microsoft翻訳、無料、設定は不要"
-    },
-    "startProviderVertex": {
-        "message": "Google Vertex AI"
-    },
-    "startSetUpTitle": {
-        "message": "あらかじめ設定してあります"
     },
     "startTopTitle": {
         "message": "上の行"
@@ -1085,20 +1070,17 @@
     "startStatusReadyHelp": {
         "message": "設定は不要です。動画を再生するだけです。"
     },
-    "startTitle": {
-        "message": "こんにちは！DualSubの準備ができました。"
-    },
-    "startTopAuto": {
-        "message": "それぞれの動画で話されている言語"
-    },
-    "startTopFixed": {
-        "message": "常に%s"
-    },
     "tagFree": {
         "message": "無料"
     },
     "tagGoogleCloud": {
         "message": "Google Cloudユーザー向け"
+    },
+    "tagYourKey": {
+        "message": "自分のキー"
+    },
+    "tagCloud": {
+        "message": "Google Cloud"
     },
     "tagNeedsKey": {
         "message": "キーが必要"
@@ -1112,9 +1094,6 @@
     "timingEarlierBy": {
         "message": "%s秒早く"
     },
-    "timingEarlierHelp": {
-        "message": "どの行も少し早く表示されます。"
-    },
     "timingExactHelp": {
         "message": "単位は秒です。プラスの数にすると、字幕が早く表示されます（%sとして保存）。"
     },
@@ -1127,29 +1106,32 @@
     "timingLaterBy": {
         "message": "%s秒遅く"
     },
-    "timingLaterHelp": {
-        "message": "どの行も少し遅く表示されます。"
-    },
-    "timingLead": {
-        "message": "字幕が声とずれているときは、少しずらしてください。ほとんどの動画では、ここを変える必要はありません。"
-    },
     "timingOnTime": {
         "message": "ずれなし"
-    },
-    "timingOnTimeHelp": {
-        "message": "字幕は動画どおりのタイミングで表示されます。"
     },
     "timingReset": {
         "message": "ずれなしに戻す"
     },
     "timingTipHelp": {
-        "message": "ブラウザのツールバーにあるDualSubのボタンにも、同じ2つのボタンがあります。動画を見たまま、字幕を聞こえる声に合わせられます。"
-    },
-    "timingTipTitle": {
-        "message": "見ながら直す"
+        "message": "同じ2つのボタンがツールバーのDualSubボタンにもあるので、見ながら直せます。"
     },
     "timingTitle": {
         "message": "字幕のタイミング"
+    },
+    "timingVoice": {
+        "message": "声"
+    },
+    "timingSubtitles": {
+        "message": "字幕"
+    },
+    "timingTimelineOnTime": {
+        "message": "字幕は声と同時に出ます。"
+    },
+    "timingTimelineEarlier": {
+        "message": "字幕は声より%s秒早く出ます。"
+    },
+    "timingTimelineLater": {
+        "message": "字幕は声より%s秒遅れて出ます。"
     },
     "toastCopied": {
         "message": "コピーしました"
@@ -1193,6 +1175,15 @@
     "toastMovedUp": {
         "message": "字幕を上げました"
     },
+    "toastMoved": {
+        "message": "字幕を動かしました"
+    },
+    "toastLinesStacked": {
+        "message": "行：上下"
+    },
+    "toastLinesSideBySide": {
+        "message": "行：横並び"
+    },
     "toastOfficialOff": {
         "message": "常にDualSubが翻訳します"
     },
@@ -1235,11 +1226,8 @@
     "toastSpeak": {
         "message": "自分の言語：%s"
     },
-    "toastStyleCustom": {
-        "message": "スタイル：自分好み"
-    },
     "toastStylePlatform": {
-        "message": "スタイル：サイトと同じ"
+        "message": "見た目：サイトと同じ"
     },
     "toastSubtitlesOff": {
         "message": "二言語字幕をオフにしました"
@@ -1281,10 +1269,10 @@
         "message": "公式 こうしき 正式 日本語字幕 人の翻訳 人間の翻訳 人が訳した プロの翻訳 機械翻訳 用意された字幕 netflix disney ネットフリックス ネトフリ ディズニー ディズニープラス"
     },
     "searchWordsSize": {
-        "message": "サイズ 文字サイズ 字幕サイズ 字幕の大きさ おおきさ 大きく おおきく 大きい 小さく ちいさく 小さい 文字を大きく 字幕を大きく 拡大 縮小 ズーム 見えにくい 見づらい 読みにくい もじ フォント"
+        "message": "サイズ 文字サイズ 字幕サイズ 字幕の大きさ おおきさ 大きく おおきく 大きい 小さく ちいさく 小さい 文字を大きく 字幕を大きく 拡大 縮小 ズーム 見えにくい 見づらい 読みにくい もじ フォント 細かく 正確"
     },
     "searchWordsPosition": {
-        "message": "いち 場所 高さ たかさ 上げる 下げる 上に 下に 移動 動かす 位置をずらす 上下 縦 高い 低い 隠れる 邪魔 じゃま かぶる"
+        "message": "いち 場所 高さ たかさ 上げる 下げる 上に 下に 移動 動かす 位置をずらす 上下 縦 高い 低い 隠れる 邪魔 じゃま かぶる ドラッグ 細かく"
     },
     "searchWordsStyle": {
         "message": "見た目 みため デザイン 外観 おまかせ 雰囲気 サイトと同じ 自分好み カスタム プラットフォーム 標準 普通 ふつう"
@@ -1301,8 +1289,11 @@
     "searchWordsArrangement": {
         "message": "配置 レイアウト 横並び 横に並べる 左右 縦並び 上下 二段 2段 ２段 ２行 二行 二列 2列"
     },
-    "searchWordsFineTune": {
-        "message": "かんかく 行間 ぎょうかん すき間 隙間 すきま 空き 狭く 狭い 広く 広い 詰める 離す 微調整 数値 数字 正確 ぴったり サイズ"
+    "searchWordsGap": {
+        "message": "かんかく 行間 ぎょうかん すき間 隙間 すきま 空き 狭く 狭い 広く 広い 詰める 離す"
+    },
+    "searchWordsFullScreen": {
+        "message": "ぜんがめん 全画面 実際 本当 大きさ 確認 プレビュー"
     },
     "searchWordsTiming": {
         "message": "ずれ ズレ ずれる ずらす 字幕がずれる 音ズレ 音ずれ 遅れ 遅れる 遅い おそい 早い はやい 早く 遅く 早める 遅らせる 同期 合わない 合わせる 声 こえ 音声 秒 時間 ディレイ"
@@ -1423,9 +1414,6 @@
     },
     "translationFallbackTitle": {
         "message": "このサービスが使えないときも翻訳を続ける"
-    },
-    "translationLead": {
-        "message": "作品に公式字幕がないときに、下の行を翻訳するサービスを選びます。"
     },
     "translationServiceTitle": {
         "message": "翻訳サービス"
@@ -1592,7 +1580,7 @@
     "popupPosition": {
         "message": "位置"
     },
-    "popupExactSize": {
+    "sizeExact": {
         "message": "%s×"
     },
     "positionLowest": {
@@ -1607,10 +1595,10 @@
     "positionMiddle": {
         "message": "真ん中"
     },
-    "popupSmaller": {
+    "sizeSmaller": {
         "message": "文字を小さく"
     },
-    "popupBigger": {
+    "sizeBigger": {
         "message": "文字を大きく"
     },
     "popupElsewhereTitle": {

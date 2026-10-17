@@ -204,10 +204,9 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
 
     return (
         <section className="section" aria-labelledby="advanced-title">
-            <h1 id="advanced-title" tabIndex={-1}>
+            <h1 id="advanced-title" className="sr-only" tabIndex={-1}>
                 {t('navAdvanced')}
             </h1>
-            <p className="lead">{t('advancedLead')}</p>
             {backedUp.status === 'unavailable' && (
                 <p role="alert" className="notice danger">
                     {t('settingsLoadFailed')}

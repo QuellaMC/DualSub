@@ -1,4 +1,10 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import {
+    useLayoutEffect,
+    useRef,
+    useState,
+    type CSSProperties,
+    type ReactNode,
+} from 'react';
 import {
     CUSTOM_LOOK_EDGES,
     CUSTOM_LOOK_FONTS,
@@ -6,20 +12,43 @@ import {
     SETTING_BOUNDS,
     sameSettingValue,
     type CustomLook,
+    type SiteSettingKey,
 } from '@/config/schema';
-import { customLook } from '@/content/renderer/looks';
-import { PLATFORM_NAMES } from '@/shared/platforms';
+import {
+    customLook,
+    resolveLook,
+    type SubtitleLook,
+} from '@/content/renderer/looks';
+import { toDisplaySettings } from '@/content/renderer/styling';
+import {
+    PLATFORM_IDS,
+    PLATFORM_NAMES,
+    type PlatformId,
+} from '@/shared/platforms';
 import {
     clampPosition,
+    namedSize,
     POSITION_BOUNDS,
+    POSITION_KEY_STEPS,
     POSITION_STEP,
     positionLabelKey,
+    TEXT_SIZES,
+    type TextSize,
 } from '../../adjustments';
-import { Icon } from '../../design/Icon';
+import { Icon, type IconName } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
-import { SizePicker } from '../controls/SizePicker';
-import { SiteTag, useScope, useSiteDraft } from '../shell/scopeContext';
-import type { OptionsSettings, SectionProps } from '../types';
+import type { Translate } from '../../hooks/useI18n';
+import { sampleSubtitles, sampleVideoLanguage } from '../../preview/sample';
+import { PLATFORM_PRESETS } from '../../subtitleStyle';
+import { SampleVideoChoice } from '../preview/SampleVideoChoice';
+import { Stage } from '../preview/Stage';
+import {
+    SiteTag,
+    useScope,
+    useSiteDraft,
+    useSiteOwner,
+} from '../shell/scopeContext';
+import type { SectionProps } from '../types';
 
 const PRESETS: readonly { labelKey: string; look: CustomLook }[] = [
     {
@@ -86,6 +115,43 @@ const TRANSLATION_COLORS = [
     { hex: '#ffffff', labelKey: 'lookColorWhite' },
 ] as const;
 
+const ORDERS = [
+    {
+        order: 'original_top',
+        shortKey: 'lookOrderVideoShort',
+        labelKey: 'lookOrderVideoFirst',
+    },
+    {
+        order: 'translation_top',
+        shortKey: 'lookOrderMineShort',
+        labelKey: 'lookOrderMineFirst',
+    },
+] as const;
+
+const ORIENTATIONS = [
+    {
+        orientation: 'column',
+        labelKey: 'lookArrangementStacked',
+        toastKey: 'toastLinesStacked',
+    },
+    {
+        orientation: 'row',
+        labelKey: 'lookArrangementSideBySide',
+        toastKey: 'toastLinesSideBySide',
+    },
+] as const;
+
+type FormatRowId = 'size' | 'position' | 'look' | 'color' | 'lines';
+
+/** The rows whose settings shape the whole block, which the stage
+ *  outlines while one is open. */
+const BLOCK_ROWS: readonly FormatRowId[] = [
+    'size',
+    'position',
+    'look',
+    'lines',
+];
+
 function isFont(value: string): value is CustomLook['font'] {
     return (CUSTOM_LOOK_FONTS as readonly string[]).includes(value);
 }
@@ -94,41 +160,120 @@ function isEdge(value: string): value is CustomLook['edge'] {
     return (CUSTOM_LOOK_EDGES as readonly string[]).includes(value);
 }
 
-function presetStyle(look: CustomLook): CSSProperties {
-    const drawn = customLook(look);
+function lookStyle(look: SubtitleLook): CSSProperties {
     return {
-        fontFamily: drawn.fontFamily,
-        fontWeight: drawn.fontWeight,
-        fontVariant: drawn.fontVariant,
-        color: drawn.originalColor,
-        textShadow: drawn.textShadow,
-        WebkitTextStroke: drawn.textStroke || undefined,
-        background: drawn.background,
-        padding: drawn.padding,
-        borderRadius: drawn.borderRadius,
+        fontFamily: look.fontFamily,
+        fontWeight: look.fontWeight,
+        fontVariant: look.fontVariant,
+        color: look.originalColor,
+        textShadow: look.textShadow,
+        WebkitTextStroke: look.textStroke || undefined,
+        background: look.background,
+        padding: look.padding,
+        borderRadius: look.borderRadius,
     };
 }
 
-/** Unsaved edits the preview shows while their write waits for a pause. */
-export type LookDraft = Partial<
-    Pick<
-        OptionsSettings,
-        | 'subtitleCustomLook'
-        | 'subtitleTranslationColor'
-        | 'subtitleFontScale'
-        | 'subtitleVerticalPosition'
-        | 'subtitleGap'
-    >
->;
+function roundHundredths(value: number): number {
+    return Math.round(value * 100) / 100;
+}
 
-export function LookSection({
+/** One setting of the pane: its name and value in a row that opens. */
+function FormatRow({
     t,
-    settings,
-    save,
-    onDraft,
-}: SectionProps & {
-    onDraft: (draft: LookDraft) => void;
+    id,
+    icon,
+    title,
+    summary,
+    keys,
+    open,
+    onToggle,
+    children,
+}: {
+    t: Translate;
+    id: string;
+    icon: IconName;
+    title: string;
+    summary: ReactNode;
+    keys: readonly SiteSettingKey[];
+    open: boolean;
+    onToggle: () => void;
+    children: ReactNode;
 }) {
+    const owner = useSiteOwner(keys);
+    return (
+        <div className={open ? 'format-row open' : 'format-row'} id={id}>
+            <button
+                type="button"
+                className="format-head"
+                aria-expanded={open}
+                onClick={onToggle}
+            >
+                <Icon name={icon} />
+                <span className="format-name">{title}</span>
+                {owner && (
+                    <span
+                        className="format-own"
+                        title={t('scopeSiteOnly', PLATFORM_NAMES[owner])}
+                    >
+                        <span className="sr-only">
+                            {t('scopeSiteOnly', PLATFORM_NAMES[owner])}
+                        </span>
+                    </span>
+                )}
+                <span className="format-value">{summary}</span>
+                <span className="format-chevron">
+                    <Icon name="chevron" />
+                </span>
+            </button>
+            {open && (
+                <div className="format-body">
+                    {children}
+                    <SiteTag keys={keys} />
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SceneChoice({
+    t,
+    day,
+    onPick,
+    overPicture = false,
+}: {
+    t: Translate;
+    day: boolean;
+    onPick: (day: boolean) => void;
+    overPicture?: boolean;
+}) {
+    return (
+        <div
+            className={overPicture ? 'segmented dark' : 'segmented'}
+            role="group"
+            aria-label={t('lookScene')}
+        >
+            <button
+                type="button"
+                aria-pressed={!day}
+                onClick={() => onPick(false)}
+            >
+                <Icon name="moon" />
+                {t('lookNight')}
+            </button>
+            <button
+                type="button"
+                aria-pressed={day}
+                onClick={() => onPick(true)}
+            >
+                <Icon name="sun" />
+                {t('lookDay')}
+            </button>
+        </div>
+    );
+}
+
+export function LookSection({ t, settings, save }: SectionProps) {
     const scope = useScope();
     const look = useSiteDraft(
         'subtitleCustomLook',
@@ -155,546 +300,715 @@ export function LookSection({
         settings.subtitleGap,
         (value, notice) => save({ subtitleGap: value }, notice)
     );
-    useEffect(() => {
-        onDraft({
-            subtitleCustomLook: look.value,
-            subtitleTranslationColor: translationColor.value,
-            subtitleFontScale: scale.value,
-            subtitleVerticalPosition: position.value,
-            subtitleGap: gap.value,
-        });
-    }, [
-        onDraft,
-        look.value,
-        translationColor.value,
-        scale.value,
-        position.value,
-        gap.value,
-    ]);
-    useEffect(() => () => onDraft({}), [onDraft]);
-    const [customizing, setCustomizing] = useState(false);
-    const [fineTuning, setFineTuning] = useState(false);
-    const custom = settings.subtitleStyle === 'custom';
-    const topColor = custom ? look.value.originalColor : '#ffffff';
-    const edit = (changes: Partial<CustomLook>): void => {
-        look.edit({ ...look.value, ...changes });
+    /** Where the subtitles are being dragged; saved where they drop. */
+    const [dragged, setDragged] = useState<number | null>(null);
+    const [open, setOpen] = useState<FormatRowId | null>('size');
+    const [day, setDay] = useState(false);
+    const [spoken, setSpoken] = useState(() =>
+        sampleVideoLanguage(settings.targetLanguage)
+    );
+    const [previewSite, setPreviewSite] = useState<PlatformId>(PLATFORM_IDS[0]);
+    const [full, setFull] = useState(false);
+    const fullScreen = useRef<HTMLDialogElement>(null);
+    const openFullScreen = useRef<HTMLButtonElement>(null);
+    const done = useRef<HTMLButtonElement>(null);
+
+    useLayoutEffect(() => {
+        if (full) {
+            fullScreen.current?.showModal();
+            done.current?.focus();
+        }
+    }, [full]);
+
+    const closeFullScreen = (): void => {
+        setFull(false);
+        openFullScreen.current?.focus();
     };
+
+    const custom = settings.subtitleStyle === 'custom';
+    const site = scope === 'all' ? previewSite : scope;
+    const shownPosition = dragged ?? position.value;
+    const display = toDisplaySettings({
+        ...settings,
+        subtitleCustomLook: look.value,
+        subtitleTranslationColor: translationColor.value,
+        subtitleFontScale: scale.value,
+        subtitleVerticalPosition: shownPosition,
+        subtitleGap: gap.value,
+    });
+    const sample = sampleSubtitles(settings, spoken);
+    const size = namedSize(scale.value);
+    const preset = custom
+        ? PRESETS.find((option) => sameSettingValue(look.value, option.look))
+        : undefined;
+    const platformName =
+        scope === 'all'
+            ? t('lookStylePlatform')
+            : t('lookStylePlatformSite', PLATFORM_NAMES[scope]);
+    const color = TRANSLATION_COLORS.find(
+        (option) => option.hex === translationColor.value.toLowerCase()
+    );
+    const percent = new Intl.NumberFormat(settings.uiLanguage, {
+        style: 'percent',
+    });
+
+    const toggle = (row: FormatRowId): void =>
+        setOpen((current) => (current === row ? null : row));
+    const pickSize = (option: TextSize): void =>
+        scale.set(option.scale, {
+            message: t('toastSize', t(option.labelKey)),
+        });
+    const move = (direction: 1 | -1, step: number): void =>
+        position.update(
+            (current) => clampPosition(current + direction * step),
+            { message: t(direction > 0 ? 'toastMovedUp' : 'toastMovedDown') }
+        );
+    const editLook = (changes: Partial<CustomLook>): void =>
+        look.edit({ ...look.value, ...changes });
+    const pickPreset = (option: (typeof PRESETS)[number]): void => {
+        const notice = { message: t('toastPreset', t(option.labelKey)) };
+        if (custom) {
+            look.set(option.look, notice);
+            return;
+        }
+        // The custom style's controls show once this lands, so no edit can
+        // build on the pick before it does.
+        void save(
+            { subtitleStyle: 'custom', subtitleCustomLook: option.look },
+            notice
+        );
+    };
+
+    const stage = (tools?: ReactNode): ReactNode => (
+        <Stage
+            t={t}
+            display={display}
+            look={resolveLook(display, PLATFORM_PRESETS[site], null)}
+            originalText={sample.originalText}
+            translatedText={sample.translatedText}
+            enabled={settings.subtitlesEnabled}
+            day={day}
+            ring={
+                open === 'color'
+                    ? 'translated'
+                    : open !== null && BLOCK_ROWS.includes(open)
+                      ? 'block'
+                      : null
+            }
+            onPickLine={(line) =>
+                setOpen(line === 'original' ? 'look' : 'color')
+            }
+            onDrag={(value) => {
+                setDragged(value);
+                setOpen('position');
+            }}
+            onDrop={(value) => {
+                setDragged(null);
+                position.set(value, { message: t('toastMoved') });
+            }}
+            onNudge={(direction, coarse) => {
+                setOpen('position');
+                move(
+                    direction,
+                    coarse ? POSITION_KEY_STEPS.coarse : POSITION_KEY_STEPS.fine
+                );
+            }}
+        >
+            {tools}
+        </Stage>
+    );
+    const moveButtons = (
+        <>
+            <button
+                type="button"
+                disabled={shownPosition >= POSITION_BOUNDS.max}
+                onClick={() => move(1, POSITION_STEP)}
+            >
+                <Icon name="up" />
+                {t('lookMoveUp')}
+            </button>
+            <button
+                type="button"
+                disabled={shownPosition <= POSITION_BOUNDS.min}
+                onClick={() => move(-1, POSITION_STEP)}
+            >
+                <Icon name="down" />
+                {t('lookMoveDown')}
+            </button>
+        </>
+    );
 
     return (
         <section className="section" aria-labelledby="look-title">
-            <h1 id="look-title" tabIndex={-1}>
+            <h1 id="look-title" className="sr-only" tabIndex={-1}>
                 {t('navLook')}
             </h1>
-            <p className="lead">{t('lookLead')}</p>
-
-            <div className="card" id="text-size">
-                <div className="label" id="look-size">
-                    {t('lookSizeTitle')}
-                </div>
-                <SiteTag keys={['subtitleFontScale']} />
-                <SizePicker
-                    t={t}
-                    scale={scale.value}
-                    labelledBy="look-size"
-                    onPick={(value, label) =>
-                        scale.set(value, { message: t('toastSize', label) })
-                    }
-                />
-            </div>
-
-            <div className="card" id="position">
-                <div className="row">
-                    <div className="grow">
-                        <div className="label">{t('lookPositionTitle')}</div>
-                        <div className="help">
-                            {t(positionLabelKey(position.value))}
+            <div className="style-editor">
+                <div className="stage-column">
+                    <div className="stage-bar">
+                        <div className="inline wrap">
+                            <SceneChoice t={t} day={day} onPick={setDay} />
+                            <SampleVideoChoice
+                                t={t}
+                                spoken={spoken}
+                                onPick={setSpoken}
+                            />
+                            {!custom && scope === 'all' && (
+                                <div
+                                    className="segmented"
+                                    role="group"
+                                    aria-label={t('lookPreviewSite')}
+                                >
+                                    {PLATFORM_IDS.map((id) => (
+                                        <button
+                                            key={id}
+                                            type="button"
+                                            aria-pressed={previewSite === id}
+                                            onClick={() => setPreviewSite(id)}
+                                        >
+                                            {PLATFORM_NAMES[id]}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    </div>
-                    <div className="inline">
                         <button
+                            ref={openFullScreen}
+                            id="look-full-screen"
                             type="button"
                             className="button"
-                            disabled={position.value >= POSITION_BOUNDS.max}
-                            onClick={() =>
-                                position.update(
-                                    (current) =>
-                                        clampPosition(current + POSITION_STEP),
-                                    { message: t('toastMovedUp') }
-                                )
-                            }
+                            onClick={() => setFull(true)}
                         >
-                            <Icon name="up" />
-                            {t('lookMoveUp')}
-                        </button>
-                        <button
-                            type="button"
-                            className="button"
-                            disabled={position.value <= POSITION_BOUNDS.min}
-                            onClick={() =>
-                                position.update(
-                                    (current) =>
-                                        clampPosition(current - POSITION_STEP),
-                                    { message: t('toastMovedDown') }
-                                )
-                            }
-                        >
-                            <Icon name="down" />
-                            {t('lookMoveDown')}
+                            <Icon name="fullScreen" />
+                            {t('lookFullScreen')}
                         </button>
                     </div>
+                    {stage()}
+                    <p className="hint">
+                        <Icon name="move" />
+                        {t('lookStageHint')}
+                    </p>
                 </div>
-                <SiteTag keys={['subtitleVerticalPosition']} />
-            </div>
 
-            <div className="card" id="style">
-                <div className="label" id="look-style">
-                    {t('lookStyleTitle')}
-                </div>
-                <SiteTag keys={['subtitleStyle', 'subtitleCustomLook']} />
-                <div
-                    className="choices"
-                    role="group"
-                    aria-labelledby="look-style"
-                >
-                    <button
-                        type="button"
-                        className="choice"
-                        aria-pressed={!custom}
-                        onClick={() =>
-                            void save(
-                                { subtitleStyle: 'platform' },
-                                { message: t('toastStylePlatform') }
-                            )
-                        }
-                    >
-                        <span className="choice-title">
-                            {scope === 'all'
-                                ? t('lookStylePlatform')
-                                : t(
-                                      'lookStylePlatformSite',
-                                      PLATFORM_NAMES[scope]
-                                  )}
-                        </span>
-                        <span className="help">
-                            {t('lookStylePlatformHelp')}
-                        </span>
-                    </button>
-                    <button
-                        type="button"
-                        id="look-style-custom"
-                        className="choice"
-                        aria-pressed={custom}
-                        onClick={() =>
-                            void save(
-                                { subtitleStyle: 'custom' },
-                                { message: t('toastStyleCustom') }
-                            )
-                        }
-                    >
-                        <span className="choice-title">
-                            {t('lookStyleCustom')}
-                        </span>
-                        <span className="help">{t('lookStyleCustomHelp')}</span>
-                    </button>
-                </div>
-                {custom && (
-                    <>
-                        <div
-                            className="presets"
-                            role="group"
-                            aria-label={t('lookPresetsLabel')}
+                <div className="format-frame">
+                    <aside className="format" aria-label={t('lookPaneLabel')}>
+                        <FormatRow
+                            t={t}
+                            id="format-size"
+                            icon="size"
+                            title={t('lookRowSize')}
+                            summary={
+                                size
+                                    ? t(size.labelKey)
+                                    : t(
+                                          'sizeExact',
+                                          roundHundredths(scale.value)
+                                      )
+                            }
+                            keys={['subtitleFontScale']}
+                            open={open === 'size'}
+                            onToggle={() => toggle('size')}
                         >
-                            {PRESETS.map((preset) => (
-                                <button
-                                    key={preset.labelKey}
-                                    type="button"
-                                    className="preset"
-                                    aria-pressed={sameSettingValue(
-                                        look.value,
-                                        preset.look
+                            <div
+                                className="format-segments"
+                                role="group"
+                                aria-label={t('lookSizeTitle')}
+                            >
+                                {TEXT_SIZES.map((option) => (
+                                    <button
+                                        key={option.labelKey}
+                                        type="button"
+                                        aria-pressed={size === option}
+                                        aria-label={t(option.labelKey)}
+                                        title={t(option.labelKey)}
+                                        onClick={() => pickSize(option)}
+                                    >
+                                        <span
+                                            style={{
+                                                fontSize: `${option.glyphPx}px`,
+                                            }}
+                                        >
+                                            A
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="format-control">
+                                <label htmlFor="look-exact-size">
+                                    {t('lookExact')}
+                                </label>
+                                <input
+                                    id="look-exact-size"
+                                    type="range"
+                                    aria-label={t('lookExactSize')}
+                                    min={SETTING_BOUNDS.subtitleFontScale.min}
+                                    max={SETTING_BOUNDS.subtitleFontScale.max}
+                                    step={0.05}
+                                    value={scale.value}
+                                    onChange={(event) =>
+                                        scale.edit(Number(event.target.value))
+                                    }
+                                />
+                                <span className="format-number">
+                                    {t(
+                                        'sizeExact',
+                                        roundHundredths(scale.value)
                                     )}
+                                </span>
+                            </div>
+                        </FormatRow>
+
+                        <FormatRow
+                            t={t}
+                            id="format-position"
+                            icon="move"
+                            title={t('lookRowPosition')}
+                            summary={t(positionLabelKey(shownPosition))}
+                            keys={['subtitleVerticalPosition']}
+                            open={open === 'position'}
+                            onToggle={() => toggle('position')}
+                        >
+                            <div className="format-pair">{moveButtons}</div>
+                            <div className="format-control">
+                                <label htmlFor="look-exact-position">
+                                    {t('lookExact')}
+                                </label>
+                                <input
+                                    id="look-exact-position"
+                                    type="range"
+                                    aria-label={t('lookExactPosition')}
+                                    min={POSITION_BOUNDS.min}
+                                    max={POSITION_BOUNDS.max}
+                                    step={0.1}
+                                    value={shownPosition}
+                                    onChange={(event) =>
+                                        position.edit(
+                                            Number(event.target.value)
+                                        )
+                                    }
+                                />
+                                <span className="format-number">
+                                    {shownPosition.toFixed(1)}
+                                </span>
+                            </div>
+                        </FormatRow>
+
+                        <FormatRow
+                            t={t}
+                            id="format-look"
+                            icon="palette"
+                            title={t('lookRowLook')}
+                            summary={
+                                !custom
+                                    ? platformName
+                                    : preset
+                                      ? t(preset.labelKey)
+                                      : t('lookCustom')
+                            }
+                            keys={['subtitleStyle', 'subtitleCustomLook']}
+                            open={open === 'look'}
+                            onToggle={() => toggle('look')}
+                        >
+                            <div
+                                className="look-tiles"
+                                role="group"
+                                aria-label={t('lookPresetsLabel')}
+                            >
+                                <button
+                                    type="button"
+                                    aria-pressed={!custom}
+                                    aria-label={platformName}
+                                    title={platformName}
                                     onClick={() =>
-                                        look.set(preset.look, {
-                                            message: t(
-                                                'toastPreset',
-                                                t(preset.labelKey)
-                                            ),
-                                        })
+                                        void save(
+                                            { subtitleStyle: 'platform' },
+                                            {
+                                                message:
+                                                    t('toastStylePlatform'),
+                                            }
+                                        )
                                     }
                                 >
-                                    <span className="preset-tile">
-                                        <span style={presetStyle(preset.look)}>
-                                            {t('lookPresetSample')}
-                                        </span>
-                                    </span>
-                                    <span>{t(preset.labelKey)}</span>
-                                </button>
-                            ))}
-                        </div>
-                        <button
-                            type="button"
-                            id="look-customize"
-                            className="disclosure"
-                            aria-expanded={customizing}
-                            onClick={() => setCustomizing(!customizing)}
-                        >
-                            <Icon name="chevron" />
-                            {t('lookCustomizeButton')}
-                        </button>
-                        {customizing && (
-                            <div className="controls-grid">
-                                <div className="control">
-                                    <label htmlFor="look-font">
-                                        {t('lookFontLabel')}
-                                    </label>
-                                    <select
-                                        id="look-font"
-                                        className="field wide"
-                                        value={look.value.font}
-                                        onChange={(event) => {
-                                            if (isFont(event.target.value)) {
-                                                edit({
-                                                    font: event.target.value,
-                                                });
-                                            }
-                                        }}
-                                    >
-                                        {CUSTOM_LOOK_FONTS.map((font) => (
-                                            <option key={font} value={font}>
-                                                {t(FONT_LABELS[font])}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="control">
-                                    <label htmlFor="look-edge">
-                                        {t('lookEdgeLabel')}
-                                    </label>
-                                    <select
-                                        id="look-edge"
-                                        className="field wide"
-                                        value={look.value.edge}
-                                        onChange={(event) => {
-                                            if (isEdge(event.target.value)) {
-                                                edit({
-                                                    edge: event.target.value,
-                                                });
-                                            }
-                                        }}
-                                    >
-                                        {CUSTOM_LOOK_EDGES.map((edge) => (
-                                            <option key={edge} value={edge}>
-                                                {t(EDGE_LABELS[edge])}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="control">
                                     <span
-                                        className="control-label"
-                                        id="look-bold"
-                                    >
-                                        {t('lookBoldLabel')}
-                                    </span>
-                                    <Switch
-                                        checked={look.value.bold}
-                                        labelledBy="look-bold"
-                                        onChange={(bold) => edit({ bold })}
-                                    />
-                                </div>
-                                <div className="control">
-                                    <label htmlFor="look-top-color">
-                                        {t('lookTopColorLabel')}
-                                    </label>
-                                    <input
-                                        id="look-top-color"
-                                        type="color"
-                                        className="color-field"
-                                        value={look.value.originalColor}
-                                        onChange={(event) =>
-                                            edit({
-                                                originalColor:
-                                                    event.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-                                <div className="control">
-                                    <label htmlFor="look-box-color">
-                                        {t('lookBoxColorLabel')}
-                                    </label>
-                                    <input
-                                        id="look-box-color"
-                                        type="color"
-                                        className="color-field"
-                                        value={look.value.backgroundColor}
-                                        onChange={(event) =>
-                                            edit({
-                                                backgroundColor:
-                                                    event.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
-                                <div className="control">
-                                    <label htmlFor="look-box-opacity">
-                                        {t(
-                                            'lookBoxOpacityLabel',
-                                            Math.round(
-                                                look.value.backgroundOpacity *
-                                                    100
-                                            )
+                                        style={lookStyle(
+                                            PLATFORM_PRESETS[site]
                                         )}
-                                    </label>
-                                    <input
-                                        id="look-box-opacity"
-                                        type="range"
-                                        min={0}
-                                        max={1}
-                                        step={0.05}
-                                        value={look.value.backgroundOpacity}
-                                        onChange={(event) =>
-                                            edit({
-                                                backgroundOpacity: Number(
-                                                    event.target.value
+                                    >
+                                        Aa
+                                    </span>
+                                </button>
+                                {PRESETS.map((option) => (
+                                    <button
+                                        key={option.labelKey}
+                                        type="button"
+                                        aria-pressed={preset === option}
+                                        aria-label={t(option.labelKey)}
+                                        title={t(option.labelKey)}
+                                        onClick={() => pickPreset(option)}
+                                    >
+                                        <span
+                                            style={lookStyle(
+                                                customLook(option.look)
+                                            )}
+                                        >
+                                            Aa
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                            {custom ? (
+                                <>
+                                    <div className="format-control">
+                                        <label htmlFor="look-font">
+                                            {t('lookFontLabel')}
+                                        </label>
+                                        <select
+                                            id="look-font"
+                                            className="field"
+                                            value={look.value.font}
+                                            onChange={(event) => {
+                                                if (
+                                                    isFont(event.target.value)
+                                                ) {
+                                                    editLook({
+                                                        font: event.target
+                                                            .value,
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            {CUSTOM_LOOK_FONTS.map((font) => (
+                                                <option key={font} value={font}>
+                                                    {t(FONT_LABELS[font])}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="format-control">
+                                        <label htmlFor="look-edge">
+                                            {t('lookEdgeLabel')}
+                                        </label>
+                                        <select
+                                            id="look-edge"
+                                            className="field"
+                                            value={look.value.edge}
+                                            onChange={(event) => {
+                                                if (
+                                                    isEdge(event.target.value)
+                                                ) {
+                                                    editLook({
+                                                        edge: event.target
+                                                            .value,
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            {CUSTOM_LOOK_EDGES.map((edge) => (
+                                                <option key={edge} value={edge}>
+                                                    {t(EDGE_LABELS[edge])}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="format-control">
+                                        <span id="look-bold">
+                                            {t('lookBoldLabel')}
+                                        </span>
+                                        <Switch
+                                            small
+                                            checked={look.value.bold}
+                                            labelledBy="look-bold"
+                                            onChange={(bold) =>
+                                                editLook({ bold })
+                                            }
+                                        />
+                                    </div>
+                                    <div className="format-control">
+                                        <label htmlFor="look-top-color">
+                                            {t('lookTopColorLabel')}
+                                        </label>
+                                        <input
+                                            id="look-top-color"
+                                            type="color"
+                                            className="color-field"
+                                            value={look.value.originalColor}
+                                            onChange={(event) =>
+                                                editLook({
+                                                    originalColor:
+                                                        event.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                    <div className="format-control">
+                                        <label htmlFor="look-box-color">
+                                            {t('lookBoxColorLabel')}
+                                        </label>
+                                        <input
+                                            id="look-box-color"
+                                            type="color"
+                                            className="color-field"
+                                            value={look.value.backgroundColor}
+                                            onChange={(event) =>
+                                                editLook({
+                                                    backgroundColor:
+                                                        event.target.value,
+                                                })
+                                            }
+                                        />
+                                        <input
+                                            type="range"
+                                            aria-label={t(
+                                                'lookBoxOpacityLabel'
+                                            )}
+                                            min={0}
+                                            max={1}
+                                            step={0.05}
+                                            value={look.value.backgroundOpacity}
+                                            onChange={(event) =>
+                                                editLook({
+                                                    backgroundOpacity: Number(
+                                                        event.target.value
+                                                    ),
+                                                })
+                                            }
+                                        />
+                                        <span className="format-number">
+                                            {percent.format(
+                                                look.value.backgroundOpacity
+                                            )}
+                                        </span>
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="help">
+                                    {t('lookStylePlatformHelp')}
+                                </p>
+                            )}
+                        </FormatRow>
+
+                        <FormatRow
+                            t={t}
+                            id="format-color"
+                            icon="drop"
+                            title={t('lookTranslationColorTitle')}
+                            summary={
+                                <>
+                                    <span
+                                        className="color-dot"
+                                        style={{
+                                            background: translationColor.value,
+                                        }}
+                                    />
+                                    {color
+                                        ? t(color.labelKey)
+                                        : t('lookCustom')}
+                                </>
+                            }
+                            keys={['subtitleTranslationColor']}
+                            open={open === 'color'}
+                            onToggle={() => toggle('color')}
+                        >
+                            <div
+                                className="swatches"
+                                role="group"
+                                aria-label={t('lookTranslationColorTitle')}
+                            >
+                                {TRANSLATION_COLORS.map((option) => (
+                                    <button
+                                        key={option.hex}
+                                        type="button"
+                                        className="swatch"
+                                        style={{ background: option.hex }}
+                                        aria-label={t(option.labelKey)}
+                                        aria-pressed={color === option}
+                                        onClick={() =>
+                                            translationColor.set(option.hex, {
+                                                message: t(
+                                                    'toastTranslationColor',
+                                                    t(option.labelKey)
                                                 ),
                                             })
                                         }
                                     />
+                                ))}
+                                <input
+                                    type="color"
+                                    className="color-field"
+                                    aria-label={t('lookColorOther')}
+                                    value={translationColor.value}
+                                    onChange={(event) =>
+                                        translationColor.edit(
+                                            event.target.value
+                                        )
+                                    }
+                                />
+                            </div>
+                        </FormatRow>
+
+                        <FormatRow
+                            t={t}
+                            id="format-lines"
+                            icon="lines"
+                            title={t('lookRowLines')}
+                            summary={t(
+                                settings.subtitleLayoutOrientation === 'row'
+                                    ? 'lookArrangementSideBySide'
+                                    : settings.subtitleLayoutOrder ===
+                                        'translation_top'
+                                      ? 'lookOrderMineFirst'
+                                      : 'lookOrderVideoFirst'
+                            )}
+                            keys={[
+                                'subtitleLayoutOrder',
+                                'subtitleLayoutOrientation',
+                                'subtitleGap',
+                            ]}
+                            open={open === 'lines'}
+                            onToggle={() => toggle('lines')}
+                        >
+                            <div className="format-control">
+                                <span>{t('lookOnTop')}</span>
+                                <div
+                                    className="format-segments"
+                                    role="group"
+                                    aria-label={t('lookOrderTitle')}
+                                >
+                                    {ORDERS.map((option) => (
+                                        <button
+                                            key={option.order}
+                                            type="button"
+                                            aria-pressed={
+                                                settings.subtitleLayoutOrder ===
+                                                option.order
+                                            }
+                                            onClick={() =>
+                                                void save(
+                                                    {
+                                                        subtitleLayoutOrder:
+                                                            option.order,
+                                                    },
+                                                    {
+                                                        message: t(
+                                                            option.labelKey
+                                                        ),
+                                                    }
+                                                )
+                                            }
+                                        >
+                                            {t(option.shortKey)}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                        )}
-                    </>
-                )}
-            </div>
-
-            <div className="card" id="translation-color">
-                <div className="label" id="look-translation-color">
-                    {t('lookTranslationColorTitle')}
-                </div>
-                <div className="help">{t('lookTranslationColorHelp')}</div>
-                <SiteTag keys={['subtitleTranslationColor']} />
-                <div
-                    className="swatches"
-                    role="group"
-                    aria-labelledby="look-translation-color"
-                >
-                    {TRANSLATION_COLORS.map((color) => (
-                        <button
-                            key={color.hex}
-                            type="button"
-                            className="swatch"
-                            style={{ background: color.hex }}
-                            aria-label={t(color.labelKey)}
-                            aria-pressed={
-                                translationColor.value.toLowerCase() ===
-                                color.hex
-                            }
-                            onClick={() =>
-                                translationColor.set(color.hex, {
-                                    message: t(
-                                        'toastTranslationColor',
-                                        t(color.labelKey)
-                                    ),
-                                })
-                            }
-                        />
-                    ))}
-                    <label className="inline color-other">
-                        <input
-                            type="color"
-                            className="color-field"
-                            value={translationColor.value}
-                            onChange={(event) =>
-                                translationColor.edit(event.target.value)
-                            }
-                        />
-                        <span>{t('lookColorOther')}</span>
-                    </label>
-                </div>
-            </div>
-
-            <div className="card" id="layout">
-                <div className="label" id="look-order">
-                    {t('lookOrderTitle')}
-                </div>
-                <SiteTag keys={['subtitleLayoutOrder']} />
-                <div
-                    className="choices"
-                    role="group"
-                    aria-labelledby="look-order"
-                >
-                    {(
-                        [
-                            ['original_top', 'lookOrderVideoFirst'],
-                            ['translation_top', 'lookOrderMineFirst'],
-                        ] as const
-                    ).map(([order, labelKey]) => {
-                        const [first, second] =
-                            order === 'original_top'
-                                ? [topColor, translationColor.value]
-                                : [translationColor.value, topColor];
-                        return (
-                            <button
-                                key={order}
-                                type="button"
-                                className="choice"
-                                aria-pressed={
-                                    settings.subtitleLayoutOrder === order
-                                }
-                                onClick={() =>
-                                    void save(
-                                        { subtitleLayoutOrder: order },
-                                        { message: t(labelKey) }
-                                    )
-                                }
-                            >
-                                <span
-                                    className="mini stacked"
-                                    aria-hidden="true"
+                            <div className="format-control">
+                                <span>{t('lookLayout')}</span>
+                                <div
+                                    className="format-segments"
+                                    role="group"
+                                    aria-label={t('lookArrangementTitle')}
                                 >
-                                    <span
-                                        className="bar long"
-                                        style={{ background: first }}
-                                    />
-                                    <span
-                                        className="bar"
-                                        style={{ background: second }}
-                                    />
-                                </span>
-                                <span className="choice-title">
-                                    {t(labelKey)}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-                <div className="label" id="look-arrangement">
-                    {t('lookArrangementTitle')}
-                </div>
-                <SiteTag keys={['subtitleLayoutOrientation']} />
-                <div
-                    className="choices"
-                    role="group"
-                    aria-labelledby="look-arrangement"
-                >
-                    {(
-                        [
-                            ['column', 'lookArrangementStacked'],
-                            ['row', 'lookArrangementSideBySide'],
-                        ] as const
-                    ).map(([orientation, labelKey]) => (
-                        <button
-                            key={orientation}
-                            type="button"
-                            className="choice"
-                            aria-pressed={
-                                settings.subtitleLayoutOrientation ===
-                                orientation
-                            }
-                            onClick={() =>
-                                void save(
-                                    { subtitleLayoutOrientation: orientation },
-                                    { message: t(labelKey) }
-                                )
-                            }
-                        >
-                            <span
-                                className={`mini ${orientation === 'column' ? 'stacked' : 'side'}`}
-                                aria-hidden="true"
-                            >
-                                <span
-                                    className="bar"
-                                    style={{ background: topColor }}
+                                    {ORIENTATIONS.map((option) => (
+                                        <button
+                                            key={option.orientation}
+                                            type="button"
+                                            aria-pressed={
+                                                settings.subtitleLayoutOrientation ===
+                                                option.orientation
+                                            }
+                                            onClick={() =>
+                                                void save(
+                                                    {
+                                                        subtitleLayoutOrientation:
+                                                            option.orientation,
+                                                    },
+                                                    {
+                                                        message: t(
+                                                            option.toastKey
+                                                        ),
+                                                    }
+                                                )
+                                            }
+                                        >
+                                            {t(option.labelKey)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="format-control">
+                                <label htmlFor="look-gap">
+                                    {t('lookSpacing')}
+                                </label>
+                                <input
+                                    id="look-gap"
+                                    type="range"
+                                    min={0}
+                                    max={1}
+                                    step={0.05}
+                                    value={gap.value}
+                                    onChange={(event) =>
+                                        gap.edit(Number(event.target.value))
+                                    }
                                 />
-                                <span
-                                    className="bar"
-                                    style={{
-                                        background: translationColor.value,
-                                    }}
-                                />
-                            </span>
-                            <span className="choice-title">{t(labelKey)}</span>
-                        </button>
-                    ))}
+                                <span className="format-number">
+                                    {roundHundredths(gap.value)}
+                                </span>
+                            </div>
+                        </FormatRow>
+                    </aside>
                 </div>
             </div>
 
-            <div className="stack" id="fine-tune">
-                <button
-                    type="button"
-                    className="disclosure"
-                    aria-expanded={fineTuning}
-                    onClick={() => setFineTuning(!fineTuning)}
+            {full && (
+                <dialog
+                    ref={fullScreen}
+                    className="stage-dialog"
+                    aria-label={t('lookFullScreen')}
+                    onClose={closeFullScreen}
                 >
-                    <Icon name="chevron" />
-                    {t('lookFineTuneButton')}
-                </button>
-                {fineTuning && (
-                    <div className="card">
-                        <div className="control">
-                            <label htmlFor="look-exact-size">
-                                {t(
-                                    'lookExactSize',
-                                    Math.round(scale.value * 100) / 100
-                                )}
-                            </label>
-                            <input
-                                id="look-exact-size"
-                                type="range"
-                                min={SETTING_BOUNDS.subtitleFontScale.min}
-                                max={SETTING_BOUNDS.subtitleFontScale.max}
-                                step={0.05}
-                                value={scale.value}
-                                onChange={(event) =>
-                                    scale.edit(Number(event.target.value))
-                                }
+                    {stage(
+                        <div className="full-tools">
+                            <div
+                                className="segmented dark"
+                                role="group"
+                                aria-label={t('lookSizeTitle')}
+                            >
+                                {TEXT_SIZES.map((option) => (
+                                    <button
+                                        key={option.labelKey}
+                                        type="button"
+                                        aria-pressed={size === option}
+                                        onClick={() => pickSize(option)}
+                                    >
+                                        {t(option.labelKey)}
+                                    </button>
+                                ))}
+                            </div>
+                            <div
+                                className="segmented dark"
+                                role="group"
+                                aria-label={t('lookPositionTitle')}
+                            >
+                                {moveButtons}
+                            </div>
+                            <SceneChoice
+                                t={t}
+                                day={day}
+                                onPick={setDay}
+                                overPicture
                             />
-                            <SiteTag keys={['subtitleFontScale']} />
+                            <button
+                                ref={done}
+                                type="button"
+                                className="button"
+                                onClick={closeFullScreen}
+                            >
+                                {t('commonDone')}
+                            </button>
                         </div>
-                        <div className="control">
-                            <label htmlFor="look-exact-position">
-                                {t(
-                                    'lookExactPosition',
-                                    position.value.toFixed(1)
-                                )}
-                            </label>
-                            <input
-                                id="look-exact-position"
-                                type="range"
-                                min={POSITION_BOUNDS.min}
-                                max={POSITION_BOUNDS.max}
-                                step={0.1}
-                                value={position.value}
-                                onChange={(event) =>
-                                    position.edit(Number(event.target.value))
-                                }
-                            />
-                            <SiteTag keys={['subtitleVerticalPosition']} />
-                        </div>
-                        <div className="control">
-                            <label htmlFor="look-gap">
-                                {t(
-                                    'lookGap',
-                                    Math.round(gap.value * 100) / 100
-                                )}
-                            </label>
-                            <input
-                                id="look-gap"
-                                type="range"
-                                min={0}
-                                max={1}
-                                step={0.05}
-                                value={gap.value}
-                                onChange={(event) =>
-                                    gap.edit(Number(event.target.value))
-                                }
-                            />
-                            <SiteTag keys={['subtitleGap']} />
-                        </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </dialog>
+            )}
         </section>
     );
 }

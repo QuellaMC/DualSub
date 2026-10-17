@@ -56,6 +56,15 @@ function nav(name: string): void {
     );
 }
 
+/** Opens a row of the style pane by its name. */
+function openRow(name: RegExp): void {
+    fireEvent.click(
+        within(
+            screen.getByRole('complementary', { name: 'Subtitle style' })
+        ).getByRole('button', { name })
+    );
+}
+
 async function sync(key: string): Promise<unknown> {
     return (await fakeBrowser.storage.sync.get(key))[key];
 }
@@ -87,7 +96,7 @@ afterEach(() => {
 describe('OptionsApp', () => {
     it('opens on Start, ready to use, with the browser’s language picked', async () => {
         const title = await renderReady();
-        expect(title).toHaveTextContent('Hello! DualSub is ready.');
+        expect(title).toHaveTextContent('Start');
         expect(
             await screen.findByText('Working on Netflix and Disney+')
         ).toBeInTheDocument();
@@ -98,7 +107,9 @@ describe('OptionsApp', () => {
             screen.getByRole('switch', { name: 'Dual subtitles' })
         ).toHaveAttribute('aria-checked', 'true');
         expect(
-            screen.getByRole('heading', { name: 'Live preview' })
+            screen.getByRole('img', {
+                name: /^Sample subtitles: 뜻이 있는 곳에 길이 있다\./,
+            })
         ).toBeInTheDocument();
     });
 
@@ -111,7 +122,7 @@ describe('OptionsApp', () => {
 
     it('saves a choice, says so, and undoes it on request', async () => {
         await renderReady();
-        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Bigger text' }));
         await waitFor(async () =>
             expect(await sync('subtitleFontScale')).toBe(1.3)
         );
@@ -126,7 +137,7 @@ describe('OptionsApp', () => {
 
     it('leaves a setting changed in another tab since alone when undoing', async () => {
         await renderReady();
-        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Bigger text' }));
         const toast = await screen.findByText('Text size: Large');
         await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
         fireEvent.click(
@@ -164,7 +175,7 @@ describe('OptionsApp', () => {
                 ) as never;
             }
         );
-        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Bigger text' }));
         const toast = await screen.findByText('Text size: Large');
         await elsewhere.promise;
 
@@ -230,7 +241,7 @@ describe('OptionsApp', () => {
         expect(
             await screen.findByRole('heading', {
                 level: 1,
-                name: 'How subtitles look',
+                name: 'Style',
             })
         ).toBeInTheDocument();
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -266,20 +277,14 @@ describe('OptionsApp', () => {
                 screen.getByRole('group', { name: 'Settings for' })
             ).getByRole('button', { name: /^Netflix/ })
         );
-        expect(
-            await screen.findByText("You're changing Netflix only.")
-        ).toBeInTheDocument();
+        expect(await screen.findByText('Netflix only.')).toBeInTheDocument();
 
         nav('Help');
         await screen.findByRole('heading', { level: 1, name: 'Help' });
-        expect(
-            screen.queryByText("You're changing Netflix only.")
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText('Netflix only.')).not.toBeInTheDocument();
 
-        nav('How subtitles look');
-        expect(
-            await screen.findByText("You're changing Netflix only.")
-        ).toBeInTheDocument();
+        nav('Style');
+        expect(await screen.findByText('Netflix only.')).toBeInTheDocument();
     });
 
     it('goes back on time even right after quick presses', async () => {
@@ -301,9 +306,19 @@ describe('OptionsApp', () => {
     it('moves the subtitles earlier and later in plain words', async () => {
         location.hash = '#timing';
         await renderReady();
+        expect(
+            screen.getByRole('img', {
+                name: 'Each subtitle appears with the voice.',
+            })
+        ).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: /Show earlier/ }));
         expect(await screen.findByText('0.5 s earlier')).toBeInTheDocument();
         expect(await sync('subtitleTimeOffset')).toBe(0.5);
+        expect(
+            screen.getByRole('img', {
+                name: 'Each subtitle appears 0.5 seconds before the voice.',
+            })
+        ).toBeInTheDocument();
 
         fireEvent.click(
             screen.getByRole('button', { name: 'Back to on time' })
@@ -326,6 +341,46 @@ describe('OptionsApp', () => {
         expect(
             await screen.findByRole('heading', { level: 1, name: 'Sites' })
         ).toBeInTheDocument();
+    });
+
+    it('shows the advanced options from the top bar and says so', async () => {
+        await renderReady();
+        expect(
+            within(screen.getByRole('navigation')).queryByRole('link', {
+                name: 'Advanced',
+            })
+        ).toBeNull();
+        fireEvent.click(
+            screen.getByRole('switch', { name: 'Advanced options' })
+        );
+        expect(
+            await screen.findByText('Advanced options are showing')
+        ).toBeInTheDocument();
+        expect(
+            within(screen.getByRole('navigation')).getByRole('link', {
+                name: 'Advanced',
+            })
+        ).toBeInTheDocument();
+        expect(
+            within(
+                screen.getByRole('group', { name: 'Settings for' })
+            ).getByRole('button', { name: /^All sites/ })
+        ).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('takes a search for the real size to full screen', async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'real size' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: /^See them at full size/ })
+        );
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: 'Full screen' })
+            ).toHaveFocus()
+        );
     });
 
     it('keeps credentials available to the setup cards', async () => {
@@ -359,7 +414,7 @@ describe('OptionsApp', () => {
     it('lets a site keep its own value, marks it, and lets it follow all sites again', async () => {
         await renderReady();
         fireEvent.click(
-            screen.getByRole('switch', { name: 'Show advanced options' })
+            screen.getByRole('switch', { name: 'Advanced options' })
         );
         nav('Sites');
         fireEvent.click(
@@ -367,11 +422,9 @@ describe('OptionsApp', () => {
                 name: 'Give Netflix its own settings',
             })
         );
-        expect(
-            await screen.findByText("You're changing Netflix only.")
-        ).toBeInTheDocument();
+        expect(await screen.findByText('Netflix only.')).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: /Extra large$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Extra large' }));
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({
                 netflix: { subtitleFontScale: 1.6 },
@@ -382,7 +435,7 @@ describe('OptionsApp', () => {
 
         fireEvent.click(
             screen.getAllByRole('button', {
-                name: 'Use the All-sites value',
+                name: 'Use All sites',
             })[0]!
         );
         await waitFor(async () =>
@@ -405,7 +458,7 @@ describe('OptionsApp', () => {
         fireEvent.click(
             (
                 await screen.findAllByRole('button', {
-                    name: 'Use the All-sites value',
+                    name: 'Use All sites',
                 })
             )[0]!
         );
@@ -676,7 +729,7 @@ describe('OptionsApp', () => {
         location.hash = '#advanced';
         await renderReady();
         const download = screen.getByRole('button', {
-            name: 'Download settings',
+            name: 'Download',
         });
         await waitFor(() => expect(download).toBeEnabled());
 
@@ -1001,7 +1054,7 @@ describe('OptionsApp', () => {
             'backup.json',
             { type: 'application/json' }
         );
-        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+        fireEvent.change(screen.getByLabelText('Load from a file'), {
             target: { files: [backup] },
         });
         fireEvent.click(
@@ -1070,11 +1123,11 @@ describe('OptionsApp', () => {
         vi.spyOn(browser.storage.sync, 'set').mockRejectedValueOnce(
             new Error('quota')
         );
-        fireEvent.click(screen.getByRole('button', { name: /Small$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Smaller text' }));
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'Failed to save setting'
         );
-        fireEvent.click(screen.getByRole('button', { name: /Medium$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Bigger text' }));
         await waitFor(() =>
             expect(screen.queryByRole('alert')).not.toBeInTheDocument()
         );
@@ -1082,10 +1135,12 @@ describe('OptionsApp', () => {
 
     it('puts focus on the section a button opens', async () => {
         await renderReady();
-        fireEvent.click(screen.getAllByRole('button', { name: 'Change' })[0]!);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Change the style' })
+        );
         await waitFor(() =>
             expect(
-                screen.getByRole('heading', { level: 1, name: 'Languages' })
+                screen.getByRole('heading', { level: 1, name: 'Style' })
             ).toHaveFocus()
         );
     });
@@ -1094,19 +1149,18 @@ describe('OptionsApp', () => {
         await renderReady();
         const search = screen.getByRole('searchbox');
         fireEvent.change(search, { target: { value: 'spacing' } });
-        fireEvent.click(screen.getByRole('button', { name: /^Fine-tune/ }));
+        fireEvent.click(
+            screen.getByRole('button', { name: /^Space between the lines/ })
+        );
         await waitFor(() =>
             expect(
-                screen.getByRole('button', {
-                    name: 'Fine-tune size, height and spacing',
-                })
+                screen.getByRole('slider', { name: 'Spacing' })
             ).toHaveFocus()
         );
-        expect(
-            screen.getByRole('button', {
-                name: 'Fine-tune size, height and spacing',
-            })
-        ).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('button', { name: /^Lines/ })).toHaveAttribute(
+            'aria-expanded',
+            'true'
+        );
 
         fireEvent.change(search, { target: { value: 'pause between' } });
         fireEvent.click(
@@ -1269,15 +1323,17 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('opens where its address points, the custom look editor open', async () => {
+    it('opens where its address points, the row holding it open', async () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
-        location.hash = '#look/look-customize/look-style-custom';
+        location.hash = '#look/look-font/format-look';
         await renderReady();
-        const customize = screen.getByRole('button', {
-            name: 'Change colors and font',
-        });
-        await waitFor(() => expect(customize).toHaveFocus());
-        expect(customize).toHaveAttribute('aria-expanded', 'true');
+        await waitFor(() =>
+            expect(screen.getByLabelText('Font')).toHaveFocus()
+        );
+        expect(screen.getByRole('button', { name: /^Look/ })).toHaveAttribute(
+            'aria-expanded',
+            'true'
+        );
         expect(location.hash).toBe('#look');
     });
 
@@ -1313,18 +1369,20 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('offers fine-tuning to everyone, behind its fold', async () => {
+    it('offers the exact size and height to everyone, in their rows', async () => {
         location.hash = '#look';
         await renderReady();
-        const fold = await screen.findByRole('button', {
-            name: 'Fine-tune size, height and spacing',
-        });
-        expect(fold).toHaveAttribute('aria-expanded', 'false');
-
-        fireEvent.click(fold);
         expect(
-            screen.getByRole('slider', { name: /^Exact text size/ })
+            await screen.findByRole('slider', { name: 'Exact text size' })
         ).toBeInTheDocument();
+
+        openRow(/^Position/);
+        expect(
+            screen.getByRole('slider', { name: 'Exact height' })
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByRole('slider', { name: 'Exact text size' })
+        ).toBeNull();
     });
 
     it("lands a search for a site's own settings on that site's editing", async () => {
@@ -1461,7 +1519,7 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('opens the custom look from search, or lands on the choice that shows it', async () => {
+    it('opens the custom look from search, or lands on the looks that show it', async () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'platform' });
         await renderReady();
         const search = screen.getByRole('searchbox');
@@ -1469,27 +1527,23 @@ describe('OptionsApp', () => {
             fireEvent.change(search, { target: { value: 'font' } });
             fireEvent.click(
                 screen.getByRole('button', {
-                    name: /^Change colors and font\s*How subtitles look/,
+                    name: /^Colors and font\s*Style/,
                 })
             );
         };
         openResult();
-        const ownLook = await screen.findByRole('button', {
-            name: /^My own style/,
-        });
-        await waitFor(() => expect(ownLook).toHaveFocus());
+        const looks = await screen.findByRole('button', { name: /^Look/ });
+        await waitFor(() => expect(looks).toHaveFocus());
+        expect(looks).toHaveAttribute('aria-expanded', 'true');
 
-        fireEvent.click(ownLook);
+        fireEvent.click(screen.getByRole('button', { name: 'Boxed' }));
         await waitFor(async () =>
             expect(await sync('subtitleStyle')).toBe('custom')
         );
         openResult();
         await waitFor(() =>
-            expect(
-                screen.getByRole('button', { name: 'Change colors and font' })
-            ).toHaveAttribute('aria-expanded', 'true')
+            expect(screen.getByLabelText('Font')).toHaveFocus()
         );
-        expect(screen.getByLabelText('Font')).toBeInTheDocument();
     });
 
     it('leaves an advanced section when advanced options go off elsewhere', async () => {
@@ -1502,10 +1556,7 @@ describe('OptionsApp', () => {
 
         await fakeBrowser.storage.local.set({ showAdvancedSettings: false });
         expect(
-            await screen.findByRole('heading', {
-                level: 1,
-                name: 'Hello! DualSub is ready.',
-            })
+            await screen.findByRole('heading', { level: 1, name: 'Start' })
         ).toBeInTheDocument();
         await waitFor(() => expect(location.hash).toBe('#start'));
     });
@@ -1518,13 +1569,11 @@ describe('OptionsApp', () => {
             screen.getByRole('heading', { level: 1 });
         expect(heading()).toHaveTextContent('Advanced');
         const advanced = screen.getByRole('switch', {
-            name: 'Show advanced options',
+            name: 'Advanced options',
         });
 
         fireEvent.click(advanced);
-        await waitFor(() =>
-            expect(heading()).toHaveTextContent('Hello! DualSub is ready.')
-        );
+        await waitFor(() => expect(heading()).toHaveTextContent('Start'));
         fireEvent.click(advanced);
         await waitFor(async () =>
             expect(
@@ -1532,7 +1581,7 @@ describe('OptionsApp', () => {
                     .showAdvancedSettings
             ).toBe(true)
         );
-        expect(heading()).toHaveTextContent('Hello! DualSub is ready.');
+        expect(heading()).toHaveTextContent('Start');
     });
 
     it('uses a key only with the service it was entered for', async () => {
@@ -1741,7 +1790,7 @@ describe('OptionsApp', () => {
 
     it('undoes the last change with Ctrl+Z outside text fields', async () => {
         await renderReady();
-        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Bigger text' }));
         await screen.findByText('Text size: Large');
         fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
         await waitFor(async () =>
@@ -1753,15 +1802,12 @@ describe('OptionsApp', () => {
     it('keeps the Undo of a choice made twice before it is saved', async () => {
         location.hash = '#look';
         await renderReady();
-        const mine = screen.getByRole('button', {
-            name: /^My language on top/,
-        });
+        openRow(/^Lines/);
+        const mine = screen.getByRole('button', { name: 'Mine' });
         fireEvent.click(mine);
         fireEvent.click(mine);
         const toasts = document.querySelector<HTMLElement>('.toast-region')!;
-        await waitFor(() =>
-            expect(toasts).toHaveTextContent('My language on top')
-        );
+        await waitFor(() => expect(toasts).toHaveTextContent('Mine on top'));
         await new Promise((resolve) => setTimeout(resolve, 50));
 
         fireEvent.click(within(toasts).getByRole('button', { name: 'Undo' }));
@@ -1771,8 +1817,9 @@ describe('OptionsApp', () => {
     });
 
     it('keeps the Undo of a size picked twice in a row', async () => {
+        location.hash = '#look';
         await renderReady();
-        const large = screen.getByRole('button', { name: /Large$/ });
+        const large = screen.getByRole('button', { name: 'Large' });
         fireEvent.click(large);
         fireEvent.click(large);
         const toast = await screen.findByText('Text size: Large');
@@ -1789,16 +1836,11 @@ describe('OptionsApp', () => {
     it('undoes a quick second choice back to the first one', async () => {
         location.hash = '#look';
         await renderReady();
-        fireEvent.click(
-            screen.getByRole('button', { name: /^My language on top/ })
-        );
-        fireEvent.click(
-            screen.getByRole('button', { name: /^The video's language on top/ })
-        );
+        openRow(/^Lines/);
+        fireEvent.click(screen.getByRole('button', { name: 'Mine' }));
+        fireEvent.click(screen.getByRole('button', { name: "Video's" }));
         const toasts = document.querySelector<HTMLElement>('.toast-region')!;
-        await waitFor(() =>
-            expect(toasts).toHaveTextContent("The video's language on top")
-        );
+        await waitFor(() => expect(toasts).toHaveTextContent("Video's on top"));
         fireEvent.click(within(toasts).getByRole('button', { name: 'Undo' }));
         await waitFor(async () =>
             expect(await sync('subtitleLayoutOrder')).toBe('translation_top')
@@ -1809,10 +1851,8 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
         location.hash = '#look';
         await renderReady();
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Change colors and font' })
-        );
-        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        openRow(/^Look/);
+        fireEvent.click(screen.getByRole('button', { name: 'Cinema' }));
         const toast = await screen.findByText('Look: Cinema');
         expect(
             within(toast.parentElement!).getByRole('button', { name: 'Undo' })
@@ -1841,10 +1881,8 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
         location.hash = '#look';
         await renderReady();
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Change colors and font' })
-        );
-        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        openRow(/^Look/);
+        fireEvent.click(screen.getByRole('button', { name: 'Cinema' }));
         await screen.findByText('Look: Cinema');
 
         fireEvent.change(screen.getByLabelText('Font'), {
@@ -1862,14 +1900,12 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
         location.hash = '#look';
         await renderReady();
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Change colors and font' })
-        );
-        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        openRow(/^Look/);
+        fireEvent.click(screen.getByRole('button', { name: 'Cinema' }));
         const toast = await screen.findByText('Look: Cinema');
 
         // The edit waits for its pause; Ctrl+Z comes before it is saved.
-        fireEvent.click(screen.getByRole('switch', { name: 'Bold letters' }));
+        fireEvent.click(screen.getByRole('switch', { name: 'Bold' }));
         expect(
             within(toast.parentElement!).queryByRole('button', { name: 'Undo' })
         ).not.toBeInTheDocument();
@@ -1887,9 +1923,7 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
         location.hash = '#look';
         await renderReady();
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Change colors and font' })
-        );
+        openRow(/^Look/);
         const realSet = fakeBrowser.storage.sync.set.bind(
             fakeBrowser.storage.sync
         );
@@ -1904,8 +1938,8 @@ describe('OptionsApp', () => {
                 return held.promise.then(() => realSet(items)) as never;
             }
         );
-        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
-        fireEvent.click(screen.getByRole('switch', { name: 'Bold letters' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Cinema' }));
+        fireEvent.click(screen.getByRole('switch', { name: 'Bold' }));
         held.resolve();
 
         const toast = await screen.findByText('Look: Cinema');
@@ -1924,7 +1958,7 @@ describe('OptionsApp', () => {
     it('turns a switch back when it is pressed again while its first change is saved', async () => {
         await renderReady();
         const advanced = screen.getByRole('switch', {
-            name: 'Show advanced options',
+            name: 'Advanced options',
         });
         const realSave = configService.setMultiple.bind(configService);
         const firstWrite = Promise.withResolvers<void>();
@@ -1948,7 +1982,7 @@ describe('OptionsApp', () => {
 
     it('shows the banner when an Undo cannot be saved', async () => {
         await renderReady();
-        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Bigger text' }));
         const toast = await screen.findByText('Text size: Large');
         vi.spyOn(browser.storage.sync, 'set').mockRejectedValueOnce(
             new Error('quota')
@@ -1994,18 +2028,13 @@ describe('OptionsApp', () => {
                 screen.getByRole('group', { name: 'Settings for' })
             ).getByRole('button', { name: /^Netflix/ })
         );
-        await screen.findByText("You're changing Netflix only.");
-        fireEvent.click(
-            screen.getByRole('button', {
-                name: 'Fine-tune size, height and spacing',
-            })
-        );
-        fireEvent.change(screen.getByLabelText(/^Exact text size/), {
+        await screen.findByText('Netflix only.');
+        fireEvent.change(screen.getByLabelText('Exact text size'), {
             target: { value: '1.45' },
         });
         fireEvent.click(
             screen.getAllByRole('button', {
-                name: 'Use the All-sites value',
+                name: 'Use All sites',
             })[0]!
         );
         await waitFor(async () =>
@@ -2024,13 +2053,8 @@ describe('OptionsApp', () => {
                 name: 'Give Netflix its own settings',
             })
         );
-        await screen.findByText("You're changing Netflix only.");
-        fireEvent.click(
-            screen.getByRole('button', {
-                name: 'Fine-tune size, height and spacing',
-            })
-        );
-        fireEvent.change(screen.getByLabelText(/^Exact text size/), {
+        await screen.findByText('Netflix only.');
+        fireEvent.change(screen.getByLabelText('Exact text size'), {
             target: { value: '1.45' },
         });
         fireEvent.click(
@@ -2052,7 +2076,7 @@ describe('OptionsApp', () => {
         location.hash = '#look';
         await renderReady();
         const extraLarge = () =>
-            screen.queryByRole('button', { name: /Extra large$/ });
+            screen.queryByRole('button', { name: 'Extra large' });
         expect(extraLarge()).toHaveAttribute('aria-pressed', 'false');
 
         const netflix = within(
@@ -2146,7 +2170,7 @@ describe('OptionsApp', () => {
                 name: 'Edit Netflix settings',
             })
         );
-        await screen.findByText("You're changing Netflix only.");
+        await screen.findByText('Netflix only.');
         fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({
@@ -2180,7 +2204,7 @@ describe('OptionsApp', () => {
                 name: 'Edit Netflix settings',
             })
         );
-        await screen.findByText("You're changing Netflix only.");
+        await screen.findByText('Netflix only.');
         fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({
@@ -2438,7 +2462,7 @@ describe('OptionsApp', () => {
             'backup.json',
             { type: 'application/json' }
         );
-        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+        fireEvent.change(screen.getByLabelText('Load from a file'), {
             target: { files: [backup] },
         });
         expect(
@@ -2454,7 +2478,7 @@ describe('OptionsApp', () => {
             (await fakeBrowser.storage.local.get('openaiApiKeyOrigin'))
                 .openaiApiKeyOrigin
         ).toBe('https://api.openai.com');
-        nav('Word explanations');
+        nav('Meanings');
         await waitFor(() =>
             expect(screen.getByLabelText('Paste it here')).toHaveValue('')
         );
@@ -2479,7 +2503,7 @@ describe('OptionsApp', () => {
             'backup.json',
             { type: 'application/json' }
         );
-        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+        fireEvent.change(screen.getByLabelText('Load from a file'), {
             target: { files: [backup] },
         });
         const replace = await screen.findByRole('button', {
@@ -2504,7 +2528,7 @@ describe('OptionsApp', () => {
                 '"subtitleFontScale": 1'
             )
         );
-        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+        fireEvent.change(screen.getByLabelText('Load from a file'), {
             target: {
                 files: [
                     new File(
@@ -2555,10 +2579,10 @@ describe('OptionsApp', () => {
         await renderReady();
         await waitFor(() =>
             expect(
-                screen.getByRole('button', { name: 'Download settings' })
+                screen.getByRole('button', { name: 'Download' })
             ).toBeEnabled()
         );
-        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+        fireEvent.change(screen.getByLabelText('Load from a file'), {
             target: {
                 files: [
                     new File(
@@ -2616,7 +2640,7 @@ describe('OptionsApp', () => {
             'backup.json',
             { type: 'application/json' }
         );
-        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+        fireEvent.change(screen.getByLabelText('Load from a file'), {
             target: { files: [backup] },
         });
         expect(
@@ -2641,10 +2665,10 @@ describe('OptionsApp', () => {
         await renderReady();
         await waitFor(() =>
             expect(
-                screen.getByRole('button', { name: 'Download settings' })
+                screen.getByRole('button', { name: 'Download' })
             ).toBeEnabled()
         );
-        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+        fireEvent.change(screen.getByLabelText('Load from a file'), {
             target: {
                 files: [
                     new File(
@@ -2688,7 +2712,7 @@ describe('OptionsApp', () => {
             'backup.json',
             { type: 'application/json' }
         );
-        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+        fireEvent.change(screen.getByLabelText('Load from a file'), {
             target: { files: [backup] },
         });
         expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -2726,22 +2750,15 @@ describe('OptionsApp', () => {
             )
         );
         const load = (contents: unknown): void => {
-            fireEvent.change(
-                screen.getByLabelText('Load settings from a file'),
-                {
-                    target: {
-                        files: [
-                            new File(
-                                [JSON.stringify(contents)],
-                                'backup.json',
-                                {
-                                    type: 'application/json',
-                                }
-                            ),
-                        ],
-                    },
-                }
-            );
+            fireEvent.change(screen.getByLabelText('Load from a file'), {
+                target: {
+                    files: [
+                        new File([JSON.stringify(contents)], 'backup.json', {
+                            type: 'application/json',
+                        }),
+                    ],
+                },
+            });
         };
         load({ siteProfiles: { netflix: { subtitleFontScale: 999 } } });
         expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -2780,7 +2797,7 @@ describe('OptionsApp', () => {
             'second.json',
             { type: 'application/json' }
         );
-        const input = screen.getByLabelText('Load settings from a file');
+        const input = screen.getByLabelText('Load from a file');
         fireEvent.change(input, { target: { files: [first] } });
         fireEvent.change(input, { target: { files: [second] } });
         expect(

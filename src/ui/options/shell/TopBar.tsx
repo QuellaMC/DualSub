@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { isUiLanguage, UI_LANGUAGES, type UiLanguage } from '@/config/schema';
 import { Icon } from '../../design/Icon';
 import { Logo } from '../../design/Logo';
+import { Switch } from '../../design/Switch';
 import type { Translate } from '../../hooks/useI18n';
 import { NATIVE_LANGUAGE_NAMES } from '../../languageLabels';
 import { searchSettings, type SearchEntry } from '../search';
@@ -12,13 +13,15 @@ export function TopBar({
     uiLanguage,
     onUiLanguage,
     onOpen,
-    onHelp,
+    advanced,
+    onAdvanced,
 }: {
     t: Translate;
     uiLanguage: UiLanguage;
     onUiLanguage: (language: UiLanguage) => void;
     onOpen: (entry: SearchEntry) => void;
-    onHelp: () => void;
+    advanced: boolean;
+    onAdvanced: (advanced: boolean) => Promise<unknown>;
 }) {
     const [query, setQuery] = useState('');
     const results = searchSettings(query, t);
@@ -72,6 +75,8 @@ export function TopBar({
                                                     SECTIONS[entry.section]
                                                         .labelKey
                                                 )}
+                                                {entry.advanced &&
+                                                    ` · ${t('commonAdvanced')}`}
                                             </span>
                                         </button>
                                     </li>
@@ -82,29 +87,39 @@ export function TopBar({
                 )}
             </div>
             <div className="top-actions">
-                <Icon name="globe" />
-                <label htmlFor="ui-language" className="sr-only">
-                    {t('topMenuLanguage')}
-                </label>
-                <select
-                    id="ui-language"
-                    className="field"
-                    value={uiLanguage}
-                    onChange={(event) => {
-                        if (isUiLanguage(event.target.value)) {
-                            onUiLanguage(event.target.value);
-                        }
-                    }}
-                >
-                    {UI_LANGUAGES.map((language) => (
-                        <option key={language} value={language}>
-                            {NATIVE_LANGUAGE_NAMES[language]}
-                        </option>
-                    ))}
-                </select>
-                <button type="button" className="button quiet" onClick={onHelp}>
-                    {t('navHelp')}
-                </button>
+                <div className="inline">
+                    <span className="strong" id="advanced-label">
+                        {t('navAdvancedSwitch')}
+                    </span>
+                    <Switch
+                        small
+                        checked={advanced}
+                        labelledBy="advanced-label"
+                        onChange={onAdvanced}
+                    />
+                </div>
+                <div className="inline">
+                    <Icon name="globe" />
+                    <label htmlFor="ui-language" className="sr-only">
+                        {t('topMenuLanguage')}
+                    </label>
+                    <select
+                        id="ui-language"
+                        className="field"
+                        value={uiLanguage}
+                        onChange={(event) => {
+                            if (isUiLanguage(event.target.value)) {
+                                onUiLanguage(event.target.value);
+                            }
+                        }}
+                    >
+                        {UI_LANGUAGES.map((language) => (
+                            <option key={language} value={language}>
+                                {NATIVE_LANGUAGE_NAMES[language]}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
         </header>
     );

@@ -76,10 +76,9 @@ export function TranslationSection({
 
     return (
         <section className="section" aria-labelledby="translation-title">
-            <h1 id="translation-title" tabIndex={-1}>
+            <h1 id="translation-title" className="sr-only" tabIndex={-1}>
                 {t('navTranslation')}
             </h1>
-            <p className="lead">{t('translationLead')}</p>
             <SharedTag />
 
             <HealthNotice t={t} provider={settings.selectedProvider} />

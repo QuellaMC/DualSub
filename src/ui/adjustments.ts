@@ -1,12 +1,12 @@
 import type { Translate } from './hooks/useI18n';
 
-/** The named text sizes, smallest first; the sample shows each at a size
- *  a viewer can compare at a glance. */
+/** The named text sizes, smallest first; the glyph shows each at a size a
+ *  viewer can compare at a glance. */
 export const TEXT_SIZES = [
-    { scale: 0.8, labelKey: 'sizeSmall', samplePx: 16 },
-    { scale: 1, labelKey: 'sizeMedium', samplePx: 21 },
-    { scale: 1.3, labelKey: 'sizeLarge', samplePx: 27 },
-    { scale: 1.6, labelKey: 'sizeExtraLarge', samplePx: 33 },
+    { scale: 0.8, labelKey: 'sizeSmall', glyphPx: 12 },
+    { scale: 1, labelKey: 'sizeMedium', glyphPx: 15 },
+    { scale: 1.3, labelKey: 'sizeLarge', glyphPx: 18 },
+    { scale: 1.6, labelKey: 'sizeExtraLarge', glyphPx: 22 },
 ] as const;
 
 export type TextSize = (typeof TEXT_SIZES)[number];
@@ -47,6 +47,9 @@ export function timingLabel(t: Translate, offset: number): string {
 
 /** Each move of the position buttons, on the 0.1–9.9 position scale. */
 export const POSITION_STEP = 0.7;
+/** Each press of an arrow key on the subtitles themselves: finer than a
+ *  button, coarser with Shift. */
+export const POSITION_KEY_STEPS = { fine: 0.3, coarse: 1 } as const;
 export const POSITION_BOUNDS = { min: 0.1, max: 9.9 } as const;
 
 export function clampPosition(value: number): number {

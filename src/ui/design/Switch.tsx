@@ -8,6 +8,7 @@ export function Switch({
     onChange,
     labelledBy,
     disabled,
+    small = false,
     ref,
 }: {
     checked: boolean;
@@ -16,6 +17,8 @@ export function Switch({
     onChange: (checked: boolean) => Promise<unknown> | void;
     labelledBy: string;
     disabled?: boolean;
+    /** Drawn smaller, for a bar or a compact pane. */
+    small?: boolean;
     ref?: Ref<HTMLButtonElement>;
 }) {
     const [shown, toggle] = useChoice(checked, onChange);
@@ -25,7 +28,7 @@ export function Switch({
             ref={ref}
             type="button"
             role="switch"
-            className="switch"
+            className={small ? 'switch small' : 'switch'}
             aria-checked={shown}
             aria-labelledby={labelledBy}
             disabled={disabled}

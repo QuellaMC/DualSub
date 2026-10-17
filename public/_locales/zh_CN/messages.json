@@ -285,25 +285,22 @@
         "message": "复制被阻止了。请选中文字，自己复制一下。"
     },
     "advancedDownload": {
-        "message": "下载设置"
+        "message": "下载"
     },
     "advancedJsonHelp": {
-        "message": "DualSub 保存的全部内容，不含你的密钥。每个网站只记下不一样的地方。"
+        "message": "不含你的密钥。每个网站只记下不一样的地方。"
     },
     "advancedJsonTitle": {
         "message": "全部设置（JSON 格式）"
-    },
-    "advancedLead": {
-        "message": "备份、原始设置，以及排查问题的工具。"
     },
     "advancedLoadApply": {
         "message": "替换"
     },
     "advancedLoadFile": {
-        "message": "从文件载入设置"
+        "message": "从文件载入"
     },
     "advancedLoadFileHelp": {
-        "message": "替换之前，会先告诉你有几项设置会改变。"
+        "message": "替换之前，会先告诉你哪些会变。"
     },
     "advancedLoadNothing": {
         "message": "这个文件不会改变任何设置。"
@@ -336,7 +333,7 @@
         "message": "复制报告"
     },
     "advancedReportHelp": {
-        "message": "包含版本、浏览器和设置（不含密钥），可以直接粘贴到问题反馈里。"
+        "message": "用于问题反馈，不含密钥。"
     },
     "advancedReportTitle": {
         "message": "诊断报告"
@@ -351,16 +348,16 @@
         "message": "重置"
     },
     "advancedResetHelp": {
-        "message": "把所有设置恢复为推荐值，并删除每个网站的单独设置。你的密钥和每个密钥配套的设置（如地址和模型），以及这些页面的语言会保留不变。"
+        "message": "所有设置恢复为推荐值，也不再保留网站的单独设置。密钥会保留。"
     },
     "advancedResetTitle": {
         "message": "从头开始"
     },
     "advancedSaveFile": {
-        "message": "把我的设置保存成文件"
+        "message": "保存成文件"
     },
     "advancedSaveFileHelp": {
-        "message": "包含每个网站的单独设置。API 密钥只留在这台电脑上，不会放进文件里。"
+        "message": "包含每个网站的设置。密钥只留在这台电脑上。"
     },
     "advancedTroubleshootingTitle": {
         "message": "排查问题"
@@ -394,9 +391,6 @@
     },
     "explainAllowHost": {
         "message": "DualSub 需要你允许它连接这个地址，才能解释单词。"
-    },
-    "explainLead": {
-        "message": "点一下字幕里的任何词，就能看到它的意思、大家怎么用它，以及背后的故事。"
     },
     "explainLimitsTitle": {
         "message": "模型和限制"
@@ -515,29 +509,26 @@
     "helpGoTranslation": {
         "message": "去翻译设置"
     },
-    "helpLead": {
-        "message": "常见问题，以及各自的解决办法。"
-    },
     "helpNoSubtitlesPlaying": {
-        "message": "确认视频正在播放，没有停在开头的标题画面。"
+        "message": "播放视频；停在标题画面时不会显示。"
     },
     "helpNoSubtitlesReload": {
         "message": "刷新一下页面。"
     },
     "helpNoSubtitlesSite": {
-        "message": "在“%s”里检查 DualSub 在这个网站上是否已打开。"
+        "message": "在“%s”里检查 DualSub 已打开。"
     },
     "helpNoSubtitlesTitle": {
         "message": "没有出现字幕"
     },
     "helpNoSubtitlesTracks": {
-        "message": "检查视频有没有字幕：打开网站自带的字幕菜单看一看。"
+        "message": "检查网站自带的字幕菜单里有字幕。"
     },
     "helpPrivacy": {
-        "message": "字幕文字只会发给你选的翻译服务。没有任何跟踪，也不会向我们发送任何内容。"
+        "message": "字幕文字只会发给你选的翻译服务，不会向我们发送任何内容。"
     },
     "helpPrivacyFallback": {
-        "message": "字幕文字只会发给你选的翻译服务，以及它出问题时临时顶上的免费服务。没有任何跟踪，也不会向我们发送任何内容。"
+        "message": "字幕文字只会发给你选的翻译服务，以及临时顶上的免费服务，不会向我们发送任何内容。"
     },
     "helpSource": {
         "message": "源代码"
@@ -545,20 +536,11 @@
     "helpMadeBy": {
         "message": "由 QuellaMC 和 1jifang 制作"
     },
-    "helpTimingHelp": {
-        "message": "把字幕往前或往后挪一点。"
-    },
     "helpTimingTitle": {
         "message": "字幕和听到的话对不上"
     },
-    "helpTranslationHelp": {
-        "message": "换一个翻译服务试试，或者使用节目自带的翻译。"
-    },
     "helpTranslationTitle": {
         "message": "翻译读起来不通顺"
-    },
-    "helpTwiceHelp": {
-        "message": "网站自带的字幕显示在 DualSub 的字幕下面。"
     },
     "helpTwiceTitle": {
         "message": "字幕出现了两遍"
@@ -566,56 +548,50 @@
     "helpVersion": {
         "message": "版本 %s"
     },
-    "languagesLead": {
-        "message": "每行字幕显示哪种语言。"
-    },
     "languagesOfficialHelp": {
-        "message": "Netflix 和 Disney+ 常有人工翻译成你的语言的字幕，比机器翻译读起来更好。节目没有这种字幕时，由 DualSub 来翻译。"
+        "message": "有的时候才用。它是人工翻译的，读起来更好。"
     },
     "languagesOfficialTitle": {
-        "message": "节目有自带翻译时就用它"
-    },
-    "languagesSpeakHelp": {
-        "message": "下行字幕会翻译成这种语言。"
+        "message": "使用节目自带的翻译"
     },
     "languagesSpeakTitle": {
         "message": "我的语言"
     },
     "languagesTopAuto": {
-        "message": "视频里说的语言"
+        "message": "视频的语言"
     },
     "languagesTopAutoHelp": {
-        "message": "DualSub 会根据每个视频来决定。韩剧上面显示韩语；英语电影上面显示英语。"
+        "message": "跟着每个视频变。"
     },
     "languagesTopFixed": {
-        "message": "始终是同一种语言"
+        "message": "固定一种语言"
     },
     "languagesTopFixedHelp": {
-        "message": "适合用所有视频学同一种语言。网站要有这种语言的字幕才行。"
+        "message": "适合学一种语言。"
     },
     "languagesTopFixedMenu": {
         "message": "上行字幕的语言"
     },
     "languagesTopTitle": {
-        "message": "上行字幕显示"
+        "message": "上行字幕"
     },
     "lookArrangementSideBySide": {
-        "message": "左右并排"
+        "message": "并排"
     },
     "lookArrangementStacked": {
-        "message": "上下排列"
+        "message": "上下"
     },
     "lookArrangementTitle": {
         "message": "两行怎么排列"
     },
     "lookBoldLabel": {
-        "message": "粗体字"
+        "message": "粗体"
     },
     "lookBoxColorLabel": {
-        "message": "文字背后的底色"
+        "message": "底色"
     },
     "lookBoxOpacityLabel": {
-        "message": "底色浓淡：%d%"
+        "message": "底色浓淡"
     },
     "lookColorCyan": {
         "message": "青色"
@@ -636,13 +612,13 @@
         "message": "黄色"
     },
     "lookCustomizeButton": {
-        "message": "更改颜色和字体"
+        "message": "颜色和字体"
     },
     "lookEdgeDepressed": {
         "message": "凹陷"
     },
     "lookEdgeLabel": {
-        "message": "文字边缘"
+        "message": "边缘"
     },
     "lookEdgeNone": {
         "message": "无"
@@ -657,13 +633,10 @@
         "message": "柔和阴影"
     },
     "lookExactPosition": {
-        "message": "精确高度：%s（从最底部的 0.1 到正中间的 9.9）"
+        "message": "精确高度"
     },
     "lookExactSize": {
-        "message": "精确文字大小：%s 倍"
-    },
-    "lookFineTuneButton": {
-        "message": "微调大小、高度和间距"
+        "message": "精确文字大小"
     },
     "lookFontCasual": {
         "message": "手写体"
@@ -686,14 +659,8 @@
     "lookFontSmallCaps": {
         "message": "小型大写字母"
     },
-    "lookGap": {
-        "message": "两行之间的距离：%s 倍行高"
-    },
     "lookGapTitle": {
         "message": "两行之间的距离"
-    },
-    "lookLead": {
-        "message": "你一调整，预览就跟着变，视频也会在一秒内跟上。"
     },
     "lookMoveDown": {
         "message": "下移"
@@ -702,28 +669,28 @@
         "message": "上移"
     },
     "lookOrderMineFirst": {
-        "message": "我的语言在上面"
+        "message": "我的在上"
     },
     "lookOrderTitle": {
         "message": "哪一行在上面"
     },
     "lookOrderVideoFirst": {
-        "message": "视频的语言在上面"
+        "message": "视频的在上"
     },
     "lookPositionBottom": {
-        "message": "贴近画面底边"
+        "message": "最底部"
     },
     "lookPositionLower": {
-        "message": "在画面下半部分"
+        "message": "偏高"
     },
     "lookPositionMiddle": {
-        "message": "靠近画面中间"
+        "message": "中间"
     },
     "lookPositionTitle": {
         "message": "屏幕上的位置"
     },
     "lookPositionUsual": {
-        "message": "比底部稍高一点，大多数人喜欢的位置"
+        "message": "常用高度"
     },
     "lookPresetBoxed": {
         "message": "带底色"
@@ -740,47 +707,101 @@
     "lookPresetsLabel": {
         "message": "现成样式"
     },
-    "lookPresetSample": {
-        "message": "你好"
-    },
     "lookSizeTitle": {
         "message": "文字大小"
     },
-    "lookStyleCustom": {
-        "message": "我自己的样式"
-    },
-    "lookStyleCustomHelp": {
-        "message": "先选一个现成样式，喜欢的话再改颜色和字体。"
-    },
     "lookStylePlatform": {
-        "message": "和你正在用的网站一样"
+        "message": "和网站一样"
     },
     "lookStylePlatformSite": {
         "message": "和 %s 一样"
     },
     "lookStylePlatformHelp": {
-        "message": "跟随你在 Netflix 或 Disney+ 个人资料里的字幕设置。"
+        "message": "由你在 Netflix 或 Disney+ 的字幕设置决定。"
     },
     "lookStyleTitle": {
-        "message": "样式"
+        "message": "外观和现成样式"
     },
     "lookTopColorLabel": {
-        "message": "上行字幕的颜色"
-    },
-    "lookTranslationColorHelp": {
-        "message": "两种样式都会用这个颜色，让两行字幕一眼就能分清。"
+        "message": "上行"
     },
     "lookTranslationColorTitle": {
-        "message": "译文的颜色"
+        "message": "译文颜色"
+    },
+    "lookScene": {
+        "message": "场景"
+    },
+    "lookNight": {
+        "message": "夜晚"
+    },
+    "lookDay": {
+        "message": "白天"
+    },
+    "lookFullScreen": {
+        "message": "全屏"
+    },
+    "lookFullScreenTitle": {
+        "message": "按实际大小查看"
+    },
+    "lookStageHint": {
+        "message": "点一行字幕来改它的样式。拖动字幕来移动位置。"
+    },
+    "lookLineTop": {
+        "message": "上行字幕：更改外观"
+    },
+    "lookLineYours": {
+        "message": "你的字幕：更改颜色"
+    },
+    "lookUsualHeight": {
+        "message": "常用高度"
+    },
+    "lookPaneLabel": {
+        "message": "字幕样式"
+    },
+    "lookRowSize": {
+        "message": "大小"
+    },
+    "lookRowPosition": {
+        "message": "位置"
+    },
+    "lookRowLook": {
+        "message": "外观"
+    },
+    "lookRowLines": {
+        "message": "两行"
+    },
+    "lookExact": {
+        "message": "精确"
+    },
+    "lookCustom": {
+        "message": "自定义"
+    },
+    "lookOnTop": {
+        "message": "在上面"
+    },
+    "lookOrderVideoShort": {
+        "message": "视频的"
+    },
+    "lookOrderMineShort": {
+        "message": "我的"
+    },
+    "lookLayout": {
+        "message": "排列"
+    },
+    "lookSpacing": {
+        "message": "间距"
     },
     "navAdvancedSwitch": {
-        "message": "显示高级选项"
+        "message": "高级选项"
     },
-    "navAdvancedSwitchHelp": {
-        "message": "网站单独设置、API 详情、限制和备份。"
+    "toastAdvancedOn": {
+        "message": "已显示高级选项"
+    },
+    "toastAdvancedOff": {
+        "message": "已隐藏高级选项"
     },
     "navExplanations": {
-        "message": "单词解释"
+        "message": "释义"
     },
     "navHelp": {
         "message": "帮助"
@@ -792,7 +813,7 @@
         "message": "语言"
     },
     "navLook": {
-        "message": "字幕外观"
+        "message": "样式"
     },
     "navSites": {
         "message": "网站"
@@ -803,24 +824,6 @@
     "navTiming": {
         "message": "时间"
     },
-    "previewCaptionAuto": {
-        "message": "视频的那行：%s，也就是这个视频里说的语言。你的那行：%s，节目有自带翻译时就用它。"
-    },
-    "previewCaptionFixed": {
-        "message": "视频的那行：%s。你的那行：%s，节目有自带翻译时就用它。"
-    },
-    "previewCaptionAutoTranslated": {
-        "message": "视频的那行：%s，也就是这个视频里说的语言。你的那行：%s，由 DualSub 翻译。"
-    },
-    "previewCaptionAutoOne": {
-        "message": "视频的那行：%s，也就是这个视频里说的语言。"
-    },
-    "previewCaptionFixedTranslated": {
-        "message": "视频的那行：%s。你的那行：%s，由 DualSub 翻译。"
-    },
-    "previewCaptionFixedOne": {
-        "message": "视频的那行：%s。"
-    },
     "previewEnglishFilm": {
         "message": "英语电影"
     },
@@ -830,11 +833,23 @@
     "previewLabel": {
         "message": "字幕预览"
     },
+    "previewLegendSpoken": {
+        "message": "%s · 视频里说的语言"
+    },
+    "previewLegendChosen": {
+        "message": "%s · 你选的语言"
+    },
+    "previewLegendYours": {
+        "message": "%s · 你的语言"
+    },
+    "previewLegendOneLine": {
+        "message": "%s · 已经是你的语言，所以只显示一行"
+    },
+    "previewLinesLabel": {
+        "message": "示例字幕：%s"
+    },
     "previewOff": {
         "message": "双语字幕已关闭"
-    },
-    "previewOneLine": {
-        "message": "这个视频本来就是你的语言，所以 DualSub 只显示一行。"
     },
     "previewSampleVideo": {
         "message": "示例视频"
@@ -842,11 +857,8 @@
     "previewStandIn": {
         "message": "这里没有%s的示例，所以用英语代替。"
     },
-    "previewShownOn": {
-        "message": "显示在"
-    },
-    "previewTitle": {
-        "message": "实时预览"
+    "lookPreviewSite": {
+        "message": "网站样式"
     },
     "providerAi": {
         "message": "AI 翻译"
@@ -885,22 +897,16 @@
         "message": "返回“所有网站”"
     },
     "scopeEditingSite": {
-        "message": "你现在只修改 %s 的设置。"
+        "message": "仅限 %s。"
     },
     "scopeEditingSiteHelp": {
-        "message": "在这里改的每一项都会标上“仅限 %s”。其他的跟随“所有网站”。"
-    },
-    "scopeHelp": {
-        "message": "没有单独设置的网站，使用“所有网站”的设置。"
+        "message": "其他的跟随“所有网站”。"
     },
     "scopeLabel": {
         "message": "设置适用于"
     },
     "scopeOwnCount": {
         "message": "%d 项单独设置"
-    },
-    "scopeSameAsAll": {
-        "message": "和“所有网站”一样"
     },
     "scopeSharedSetting": {
         "message": "每个网站都一样"
@@ -909,7 +915,7 @@
         "message": "仅限 %s"
     },
     "scopeUseShared": {
-        "message": "改用“所有网站”的值"
+        "message": "改用“所有网站”"
     },
     "setupAddress": {
         "message": "服务地址"
@@ -983,9 +989,6 @@
     "sitesHideTitle": {
         "message": "隐藏网站自带的字幕"
     },
-    "sitesLead": {
-        "message": "DualSub 会在这些网站上自动打开。你可以在某个网站上关掉它，或者给某个网站单独设置。"
-    },
     "sitesMoreHelp": {
         "message": "DualSub 支持新网站后，它会出现在这里，并且已经打开，使用“所有网站”的设置。"
     },
@@ -1034,32 +1037,14 @@
     "startFromBrowser": {
         "message": "按浏览器语言选的"
     },
-    "startLead": {
-        "message": "打开 Netflix 或 Disney+，随便播放一个节目。你会看到两行字幕：上面是视频的语言，下面是你的语言。"
+    "startChangeStyle": {
+        "message": "更改样式"
     },
     "startOpenSite": {
         "message": "打开 %s"
     },
     "startProblemsTitle": {
         "message": "哪里不对劲？"
-    },
-    "startProviderAi": {
-        "message": "AI 翻译，使用你的密钥"
-    },
-    "startProviderDeepL": {
-        "message": "DeepL，使用你的密钥"
-    },
-    "startProviderGoogle": {
-        "message": "谷歌翻译，免费，无需设置"
-    },
-    "startProviderMicrosoft": {
-        "message": "微软翻译，免费，无需设置"
-    },
-    "startProviderVertex": {
-        "message": "Google Vertex AI"
-    },
-    "startSetUpTitle": {
-        "message": "这些已经帮你设置好了"
     },
     "startTopTitle": {
         "message": "上行字幕"
@@ -1085,20 +1070,17 @@
     "startStatusReadyHelp": {
         "message": "不用做任何设置，直接播放视频就行。"
     },
-    "startTitle": {
-        "message": "你好！DualSub 已经准备好了。"
-    },
-    "startTopAuto": {
-        "message": "每个视频里说的语言"
-    },
-    "startTopFixed": {
-        "message": "始终是%s"
-    },
     "tagFree": {
         "message": "免费"
     },
     "tagGoogleCloud": {
         "message": "适合 Google Cloud 用户"
+    },
+    "tagYourKey": {
+        "message": "你的密钥"
+    },
+    "tagCloud": {
+        "message": "Google Cloud"
     },
     "tagNeedsKey": {
         "message": "需要密钥"
@@ -1112,9 +1094,6 @@
     "timingEarlierBy": {
         "message": "提前 %s 秒"
     },
-    "timingEarlierHelp": {
-        "message": "每行字幕都会早一点出现。"
-    },
     "timingExactHelp": {
         "message": "单位是秒。正数会让字幕提前出现（保存为 %s）。"
     },
@@ -1127,29 +1106,32 @@
     "timingLaterBy": {
         "message": "推迟 %s 秒"
     },
-    "timingLaterHelp": {
-        "message": "每行字幕都会晚一点出现。"
-    },
-    "timingLead": {
-        "message": "如果字幕和听到的话对不上，可以把字幕稍微调早或调晚。大多数视频都不用调这里。"
-    },
     "timingOnTime": {
         "message": "准时"
-    },
-    "timingOnTimeHelp": {
-        "message": "字幕和视频完全同步。"
     },
     "timingReset": {
         "message": "恢复准时"
     },
     "timingTipHelp": {
-        "message": "浏览器工具栏上的 DualSub 按钮里也有这两个按钮，不用离开视频，就能让字幕和你听到的对上。"
-    },
-    "timingTipTitle": {
-        "message": "边看边调"
+        "message": "工具栏的 DualSub 按钮里也有这两个按钮，边看边调就行。"
     },
     "timingTitle": {
         "message": "字幕时间"
+    },
+    "timingVoice": {
+        "message": "人声"
+    },
+    "timingSubtitles": {
+        "message": "字幕"
+    },
+    "timingTimelineOnTime": {
+        "message": "每句字幕和人声同时出现。"
+    },
+    "timingTimelineEarlier": {
+        "message": "每句字幕比人声早 %s 秒出现。"
+    },
+    "timingTimelineLater": {
+        "message": "每句字幕比人声晚 %s 秒出现。"
     },
     "toastCopied": {
         "message": "已复制"
@@ -1193,6 +1175,15 @@
     "toastMovedUp": {
         "message": "字幕已上移"
     },
+    "toastMoved": {
+        "message": "字幕已移动"
+    },
+    "toastLinesStacked": {
+        "message": "两行：上下"
+    },
+    "toastLinesSideBySide": {
+        "message": "两行：并排"
+    },
     "toastOfficialOff": {
         "message": "始终由 DualSub 翻译"
     },
@@ -1203,7 +1194,7 @@
         "message": "字幕已恢复准时"
     },
     "toastPreset": {
-        "message": "样式：%s"
+        "message": "外观：%s"
     },
     "toastProvider": {
         "message": "翻译服务：%s"
@@ -1235,11 +1226,8 @@
     "toastSpeak": {
         "message": "我的语言：%s"
     },
-    "toastStyleCustom": {
-        "message": "样式：我自己的"
-    },
     "toastStylePlatform": {
-        "message": "样式：和网站一样"
+        "message": "外观：和网站一样"
     },
     "toastSubtitlesOff": {
         "message": "双语字幕已关闭"
@@ -1281,10 +1269,10 @@
         "message": "netflix disney 网飞 奈飞 迪士尼 官方字幕 官方翻译 自带字幕 人工翻译 人工字幕 真人翻译 机器翻译 机翻 平台字幕"
     },
     "searchWordsSize": {
-        "message": "字体大小 字幕大小 字号 字大小 字太小 字太大 看不清 老花眼 放大 缩小 调大 调小 变大 变小 大字 小字 大一点 小一点"
+        "message": "字体大小 字幕大小 字号 字大小 字太小 字太大 看不清 老花眼 放大 缩小 调大 调小 变大 变小 大字 小字 大一点 小一点 精确"
     },
     "searchWordsPosition": {
-        "message": "字幕位置 上下位置 垂直位置 高度 上移 下移 往上 往下 移动 挪动 调高 调低 太高 太低 靠上 靠下 底部 中间 挡住画面 遮住 遮挡"
+        "message": "字幕位置 上下位置 垂直位置 高度 上移 下移 往上 往下 移动 挪动 调高 调低 太高 太低 靠上 靠下 底部 中间 挡住画面 遮住 遮挡 拖动 精确"
     },
     "searchWordsStyle": {
         "message": "字幕样式 字幕外观 风格 样子 预设 现成样式 自定义 我自己的样式 和网站一样 跟随网站 跟随平台 经典 影院 高对比度 带底色"
@@ -1301,8 +1289,11 @@
     "searchWordsArrangement": {
         "message": "布局 排版 排列方式 方向 左右并排 并列 上下排列 两列 横向"
     },
-    "searchWordsFineTune": {
-        "message": "行距 行间距 两行之间 两行距离 空隙 间隔 太挤 挤在一起 太近 太远 精确 精细调整 具体数值"
+    "searchWordsGap": {
+        "message": "行距 行间距 两行之间 两行距离 空隙 间隔 太挤 挤在一起 太近 太远"
+    },
+    "searchWordsFullScreen": {
+        "message": "全屏 实际 真实 大小 检查 预览"
     },
     "searchWordsTiming": {
         "message": "字幕同步 音画不同步 声画不同步 时间轴 时间差 偏移 字幕延迟 字幕提前 推迟 延后 字幕快了 字幕慢了 太快 太慢 字幕早了 字幕晚了 对不上 声音 说话 口型"
@@ -1423,9 +1414,6 @@
     },
     "translationFallbackTitle": {
         "message": "这个服务出问题时继续翻译"
-    },
-    "translationLead": {
-        "message": "节目没有自带翻译时，由谁来翻译下行字幕。"
     },
     "translationServiceTitle": {
         "message": "翻译服务"
@@ -1592,7 +1580,7 @@
     "popupPosition": {
         "message": "位置"
     },
-    "popupExactSize": {
+    "sizeExact": {
         "message": "%s×"
     },
     "positionLowest": {
@@ -1607,10 +1595,10 @@
     "positionMiddle": {
         "message": "中间"
     },
-    "popupSmaller": {
+    "sizeSmaller": {
         "message": "缩小文字"
     },
-    "popupBigger": {
+    "sizeBigger": {
         "message": "放大文字"
     },
     "popupElsewhereTitle": {
