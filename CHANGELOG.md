@@ -7,25 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-17
+
 ### Added
 
 - The popup is a remote control. On a site DualSub works on, it says whether DualSub is working on the video, turns it on or off for that site, picks your language, says which language the top line shows, and moves the text size, timing, and position in steps the video follows at once; a translation service that stopped working is named there, with a way to its settings. Anywhere else, it shows what DualSub does and opens the sites.
 - A welcome page opens once, right after install. It shows the subtitles you will see, in your languages, lets you change the translation language, and walks through pinning DualSub and playing a first video.
-- A new settings page holds every setting, the popup's included, in plain words and a typeface drawn for legibility. It opens on Start, which says where DualSub is working and what it set up for you, followed by Languages, How subtitles look (ready-made looks, fine-tuning, and a live preview over a sample video), Timing, Translation, Word explanations, Sites, and Help, which fixes common problems in one click. Each change saves at once, and the notice that confirms it can undo it, as can Ctrl+Z (⌘Z). A search box finds a setting by everyday words. "Show advanced options" adds the exact timing shift, per-site settings, limits, backup and restore, the stored settings as JSON, the logging level, and a diagnostic report.
+- A new settings page holds every setting, the popup's included, in plain words and a typeface drawn for legibility. A menu beside it names each section: Start, Languages, Style, Timing, Translation, Meanings, Sites, and Help. Start says where DualSub is working, shows a sample of your subtitles, and sets your language, the text size, and the translation service; Help fixes common problems in one click. Each change saves at once, and the notice that confirms it can undo it, as can Ctrl+Z (⌘Z). A search box finds a setting by everyday words. The Advanced options switch in the top bar adds the exact timing shift, per-site settings, limits, backup and restore, the stored settings as JSON, the logging level, and a diagnostic report.
+- The Style section draws the subtitles on a stage at the video's true proportions, with the overlay's own styling. Click a line to style it, drag the subtitles to move them, or open Full screen to see them at their real size. The pane beside the stage holds size, position, look, translation color, and lines, and search opens the row that holds a setting.
+- Timing shows the voice and the subtitles on a timeline that follows each shift.
 - Each site can keep its own settings: whether DualSub runs there, hiding the site's own subtitles, the top line's language, official translations, the look, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The popup edits the value the current site actually uses, and its on/off switch is the site's own.
 - When the translation service you chose stops working (a rejected key, a used-up quota, or a request it refuses), Microsoft Translator covers, then Google Translate, so subtitles keep coming. Your service is tried again after ten minutes or as soon as its settings change, and fallback can be turned off to keep subtitle text with your chosen service only.
 - The top line follows the language spoken in the video. "Automatic" is the new default for fresh installs, and it follows the audio track when you switch it in the player; a fixed language is still there for learning one language with every video.
-
-- Subtitle styles: "Look like the site" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. "My own style" starts from a ready-made look and is edited in the settings page: font, weight, text color, text edge, and background, with a preview drawn by the overlay's own styling for either platform. Size stays DualSub's own setting in both, since the platforms size a single line.
-- The translation line's color is a setting of its own and applies to both styles.
+- Subtitle looks: "Like the site" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. The ready-made looks (Boxed, Classic, High contrast, and Cinema) start your own, whose font, weight, top-line color, edge, and box you can then change. Size stays DualSub's own setting in every look, since the platforms size a single line.
+- The translation line's color is a setting of its own and applies to every look.
 
 ### Changed
 
-- The subtitle style, line order and layout, official translations, and line spacing are set in the settings page; the popup keeps what you change while watching.
-- AI Context is called Word explanations, and it turns on once an AI service key is in.
+- The subtitle look, line order and layout, official translations, and line spacing are set in the settings page; the popup keeps what you change while watching.
+- AI Context is called Word explanations and lives in the settings page's Meanings section; it turns on once an AI service key is in.
 - On a fresh install the translation language is the browser's language instead of Chinese (Simplified).
 - When the video is already in the translation language, one line shows instead of the same text twice.
-
 - Subtitles are sized from the video's rendered height instead of the window width, so they follow fullscreen and window changes the way the platforms' own subtitles do. The font size slider is now a scale factor; stored values migrate to the equivalent scale.
 - The position slider places the lines relative to the picture, letterbox bars excluded, as the platforms place their own subtitles.
 
@@ -177,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.0.2...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/QuellaMC/DualSub/compare/v3.0.2...v3.1.0
 [3.0.2]: https://github.com/QuellaMC/DualSub/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/QuellaMC/DualSub/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/QuellaMC/DualSub/compare/v2.5.0...v3.0.0

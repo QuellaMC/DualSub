@@ -10,12 +10,12 @@
 ## Customization Options
 
 - Flexible Layouts: Vertical (top/bottom) or horizontal (left/right)
-- Appearance Control: Adjustable font size, spacing, display order, and a subtitle style that matches the platform's own look or your own custom look, previewed in the settings page
+- Appearance Control: Adjustable font size, spacing, display order, and a subtitle look that matches the platform's own or your own, edited on a stage at your video's true proportions
 - Vertical Positioning: Precise control over subtitle placement on screen
 - Platform Placement: Cues the platform raises over on-screen text, or shows at the same time, are drawn where the platform puts them
-- Timing Precision: Fine-tune subtitle synchronization with offset controls
+- Timing Precision: Fine-tune subtitle synchronization with offset controls and a voice-and-subtitles timeline
 - Per-Site Settings: Each site can keep its own on/off, languages, look, and timing
-- Plain-Language Settings: Every setting on one page, with search, undo, and a live preview
+- Plain-Language Settings: Every setting on one page, with search, undo, and a sample of your subtitles
 - Multi-Language UI: Interface available in 6 languages (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
 ## Advanced Features

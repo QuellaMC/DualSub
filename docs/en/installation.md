@@ -116,7 +116,7 @@
     - For development: make sure you selected `dist/chrome-mv3` (not the project root!) and ran `npm run build` first
 - Build errors: ensure you have Node.js 24 LTS installed and run `npm ci` before `npm run build`
 - No subtitles: verify the platform provides subtitles and they are enabled in the player
-- Word explanations not working: in the settings page's Word explanations section, check that the key is in and the feature is on; check the request limit and network connectivity
+- Word explanations not working: in the settings page's Meanings section, check that the key is in and the feature is on; check the request limit and network connectivity
 - Provider failures: the settings page's Translation section names a failing service and the one covering for it; verify the credentials and endpoint, try another service, or raise the pause between translation requests (an advanced option)
 
 If issues persist, please open an issue: [GitHub Issues](https://github.com/QuellaMC/DualSub/issues)
