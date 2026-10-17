@@ -30,7 +30,7 @@ export type ConfigReader = {
     get<K extends keyof SettingsValues>(key: K): Promise<SettingsValues[K]>;
 };
 
-/** The session's subtitle languages, all concrete: an automatic top line is
+/** The session's subtitle languages, all concrete: an automatic original line is
  *  already resolved to the language spoken in the video. A change reloads
  *  subtitles in place: the current cues stay on screen until the new set
  *  arrives. */

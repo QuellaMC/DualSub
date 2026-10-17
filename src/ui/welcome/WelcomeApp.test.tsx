@@ -79,11 +79,11 @@ describe('WelcomeApp', () => {
         expect(screen.getByText('Your language: English')).toBeInTheDocument();
         expect(
             screen.getByText(
-                'Taken from your browser. Your line is always in this language.'
+                'Taken from your browser. The translation is always in this language.'
             )
         ).toBeInTheDocument();
         expect(
-            screen.getByText("Video's line: the language spoken in each video")
+            screen.getByText('Original line: the language spoken in each video')
         ).toBeInTheDocument();
         expect(
             screen.getByText('Translation: Microsoft Translator')
@@ -279,7 +279,7 @@ describe('WelcomeApp', () => {
         ).toBeInTheDocument();
         expect(
             screen.getByText(
-                /The video's line is set to it too, so one line shows\./
+                /The original line is set to it too, so one line shows\./
             )
         ).toBeInTheDocument();
     });
@@ -324,7 +324,7 @@ describe('WelcomeApp', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('asks for the service where a site keeps a top line to translate from', async () => {
+    it('asks for the service where a site keeps a original line to translate from', async () => {
         await fakeBrowser.storage.sync.set({
             selectedProvider: 'deepl',
             translationFallback: false,
@@ -360,7 +360,7 @@ describe('WelcomeApp', () => {
         ).not.toBeInTheDocument();
         expect(
             screen.getByText(
-                /The video's line is set to it too, so one line shows\./
+                /The original line is set to it too, so one line shows\./
             )
         ).toBeInTheDocument();
     });
@@ -402,7 +402,7 @@ describe('WelcomeApp', () => {
         );
         expect(
             screen.queryByText(
-                'Taken from your browser. Your line is always in this language.'
+                'Taken from your browser. The translation is always in this language.'
             )
         ).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Done' }));
@@ -422,7 +422,7 @@ describe('WelcomeApp', () => {
         render(<WelcomeApp />);
         expect(await changeLanguage()).toHaveValue('en');
         expect(
-            screen.getByText('Your line is always in this language.')
+            screen.getByText('The translation is always in this language.')
         ).toBeInTheDocument();
     });
 

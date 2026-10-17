@@ -62,8 +62,8 @@ Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: 
 
 ```
 Translation: Microsoft Translator (free)
-Top line: Always one language, the one you are learning
-Lines: Video's on top
+Original line: Always one language, the one you are learning
+Lines: Original on top
 Text size: Large
 Word explanations: On (meaning, culture, history)
 ```

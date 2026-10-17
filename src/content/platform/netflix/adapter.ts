@@ -103,7 +103,7 @@ export class NetflixAdapter implements PlatformAdapter {
         this.requestTracks();
     }
 
-    /** Waits for concrete languages: an automatic top line needs the
+    /** Waits for concrete languages: an automatic original line needs the
      *  spoken language first. */
     private requestTracks(): void {
         const languages = this.context.languages();

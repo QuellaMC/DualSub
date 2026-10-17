@@ -40,7 +40,7 @@ export function sampleVideoLanguage(targetLanguage: string): SubtitleLanguage {
 
 export interface SampleSubtitles {
     /** The languages picked, as the video would show them: the spoken one
-     *  on an automatic top line, else the stored one, and the viewer's. */
+     *  on an automatic original line, else the stored one, and the viewer's. */
     readonly originalLanguage: string;
     readonly targetLanguage: string;
     readonly originalText: string;

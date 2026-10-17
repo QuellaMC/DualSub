@@ -8,7 +8,7 @@ On a site DualSub works on, the popup is a remote control:
 
 - Whether DualSub is working on the video, and a switch that turns it on or off for that site only
 - I speak: the translation language, which starts as your browser's language
-- Top line: the language the top line shows. Automatic, the default, follows the language spoken in the video, including when you switch the audio track in the player; the settings page's Languages section can fix one language instead, to learn it with every video. When the video is already in your translation language, DualSub shows one line.
+- Original line: the language the original line shows. Automatic, the default, follows the language spoken in the video, including when you switch the audio track in the player; the settings page's Languages section can fix one language instead, to learn it with every video. When the video is already in your translation language, DualSub shows one line.
 - Text size, timing, and position, in steps the video follows at once
 - A notice when the translation service you chose stops working, with a way to its settings
 
@@ -21,7 +21,7 @@ The subtitle look is set in the settings page's Style section: Like the site fol
 The settings page holds every setting, the popup's included, with a menu of its sections beside it. Each change saves at once, and the notice that confirms it can undo it, as can Ctrl+Z (⌘Z) outside a text field. The search box finds a setting by everyday words, such as "twice", "late", or "bigger".
 
 - Start: where DualSub is working, a sample of your subtitles, and the language you speak, the text size, and the translation service
-- Languages: the language you speak, which the bottom line is translated into, what the top line shows, and the show's own translation, with a sample over a Korean drama or an English film
+- Languages: the language you speak, which the original line is translated into, what the original line shows, and the show's own translation, with a sample over a Korean drama or an English film
 - Style: the subtitles on a stage at your video's true proportions, at night or by day. Click a line to style it, drag the subtitles to move them, or open Full screen to see them at their real size. The pane beside the stage holds the size, position, look, translation color, and lines (which goes on top, stacked or side by side, and the spacing), each with exact values.
 - Timing: a timeline of the voice and the subtitles; show the subtitles earlier or later in half-second steps
 - Translation: the translation service, its setup, and whether a free service covers when it fails
@@ -35,7 +35,7 @@ API keys stay on this computer: they don't sync and never go into a backup file.
 
 ## Per-Site Settings
 
-Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the top line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.
+Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the original line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.
 
 In the settings page, with advanced options shown, pick a site in the bar at the top: what you change then gets a "Netflix only" tag (in Style, a dot on the row), and "Use All sites" drops the site's own value. The Sites section lists what each site keeps and removes it in one click.
 
@@ -46,7 +46,7 @@ The popup changes the value the current site uses: its own value when it has one
 For language learning:
 
 - Translation: Microsoft Translator (free, nothing to set up)
-- Top line: always one language, the one you are learning
+- Original line: always one language, the one you are learning
 - Word explanations: on, explaining meaning, culture, and history
 
 For speed:

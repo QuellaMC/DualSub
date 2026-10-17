@@ -557,23 +557,23 @@
     "languagesSpeakTitle": {
         "message": "自分の言語"
     },
-    "languagesTopAuto": {
+    "languagesOriginalAuto": {
         "message": "動画の言語"
     },
-    "languagesTopAutoHelp": {
+    "languagesOriginalAutoHelp": {
         "message": "動画ごとに合わせます。"
     },
-    "languagesTopFixed": {
+    "languagesOriginalFixed": {
         "message": "常に同じ言語"
     },
-    "languagesTopFixedHelp": {
+    "languagesOriginalFixedHelp": {
         "message": "ひとつの言語を学ぶときに。"
     },
-    "languagesTopFixedMenu": {
-        "message": "上の行の言語"
+    "languagesOriginalFixedMenu": {
+        "message": "原文の行の言語"
     },
-    "languagesTopTitle": {
-        "message": "上の行"
+    "languagesOriginalTitle": {
+        "message": "原文の行"
     },
     "lookArrangementSideBySide": {
         "message": "横並び"
@@ -668,14 +668,14 @@
     "lookMoveUp": {
         "message": "上へ"
     },
-    "lookOrderMineFirst": {
-        "message": "自分の言語が上"
+    "lookOrderTranslationFirst": {
+        "message": "翻訳が上"
     },
     "lookOrderTitle": {
         "message": "上に表示する行"
     },
-    "lookOrderVideoFirst": {
-        "message": "動画の言語が上"
+    "lookOrderOriginalFirst": {
+        "message": "原文が上"
     },
     "lookPositionBottom": {
         "message": "いちばん下"
@@ -722,8 +722,8 @@
     "lookStyleTitle": {
         "message": "見た目と用意されたスタイル"
     },
-    "lookTopColorLabel": {
-        "message": "上の行"
+    "lookOriginalColorLabel": {
+        "message": "原文"
     },
     "lookTranslationColorTitle": {
         "message": "翻訳の色"
@@ -746,11 +746,11 @@
     "lookStageHint": {
         "message": "行をクリックすると見た目を変えられます。字幕はドラッグで動かせます。"
     },
-    "lookLineTop": {
-        "message": "上の行：見た目を変える"
+    "lookLineOriginal": {
+        "message": "原文の行：見た目を変える"
     },
-    "lookLineYours": {
-        "message": "自分の言語の行：色を変える"
+    "lookLineTranslation": {
+        "message": "翻訳の行：色を変える"
     },
     "lookUsualHeight": {
         "message": "いつもの高さ"
@@ -779,11 +779,11 @@
     "lookOnTop": {
         "message": "上に"
     },
-    "lookOrderVideoShort": {
-        "message": "動画の言語"
+    "lookOrderOriginalShort": {
+        "message": "原文"
     },
-    "lookOrderMineShort": {
-        "message": "自分の言語"
+    "lookOrderTranslationShort": {
+        "message": "翻訳"
     },
     "lookLayout": {
         "message": "並べ方"
@@ -1046,9 +1046,6 @@
     "startProblemsTitle": {
         "message": "うまくいかないときは"
     },
-    "startTopTitle": {
-        "message": "上の行"
-    },
     "startStatusOff": {
         "message": "二言語字幕はオフです"
     },
@@ -1235,11 +1232,11 @@
     "toastSubtitlesOn": {
         "message": "二言語字幕をオンにしました"
     },
-    "toastTopAuto": {
-        "message": "上の行：動画で話されている言語"
+    "toastOriginalAuto": {
+        "message": "原文の行：動画で話されている言語"
     },
-    "toastTopFixed": {
-        "message": "上の行：常に%s"
+    "toastOriginalFixed": {
+        "message": "原文の行：常に%s"
     },
     "toastTranslationColor": {
         "message": "翻訳の色：%s"
@@ -1262,7 +1259,7 @@
     "searchWordsSpeak": {
         "message": "言語 げんご 言葉 ことば わたしの言語 私の言語 母国語 母語 話す言語 使う言語 翻訳先 訳す言語 字幕の言語 下の行 下の字幕 日本語 にほんご ネイティブ 言語設定"
     },
-    "searchWordsTopLine": {
+    "searchWordsOriginalLine": {
         "message": "原語 元の言語 もとの言語 原文 オリジナル 動画の言語 映画の言語 音声 おんせい 話されている言語 自動 じどう 学習 勉強 べんきょう 語学 外国語 英語 えいご 韓国語 上の字幕 字幕の言語"
     },
     "searchWordsOfficial": {
@@ -1284,7 +1281,7 @@
         "message": "翻訳の色 訳の色 いろ カラー 文字色 下の行 2行目 ２行目 二行目 水色 黄色 緑 ピンク 白 区別 見分け 同じ色"
     },
     "searchWordsOrder": {
-        "message": "順番 じゅんばん 順序 並び順 上下 入れ替える 入れかえる 逆 反対 さかさま どちらが上 上の行 下の行"
+        "message": "順番 じゅんばん 順序 並び順 上下 入れ替える 入れかえる 逆 反対 さかさま どちらが上 上の行 下の行 原文 翻訳"
     },
     "searchWordsArrangement": {
         "message": "配置 レイアウト 横並び 横に並べる 左右 縦並び 上下 二段 2段 ２段 ２行 二行 二列 2列"
@@ -1440,21 +1437,21 @@
         "message": "自分の言語：%s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "ブラウザの設定から選びました。自分の行はいつもこの言語です。"
+        "message": "ブラウザの設定から選びました。翻訳はいつもこの言語です。"
     },
     "welcomeLanguageLabel": {
         "message": "自分の言語"
     },
-    "welcomeTopAuto": {
-        "message": "動画の行：それぞれの動画で話されている言語"
+    "welcomeOriginalAuto": {
+        "message": "原文の行：それぞれの動画で話されている言語"
     },
-    "welcomeTopAutoHelp": {
+    "welcomeOriginalAutoHelp": {
         "message": "韓国ドラマなら韓国語、英語の映画なら英語になります。"
     },
-    "welcomeTopFixed": {
-        "message": "動画の行：常に%s"
+    "welcomeOriginalFixed": {
+        "message": "原文の行：常に%s"
     },
-    "welcomeTopFixedHelp": {
+    "welcomeOriginalFixedHelp": {
         "message": "サイトにその言語の字幕があれば、どの動画でも表示します。"
     },
     "welcomeTranslation": {
@@ -1473,7 +1470,7 @@
         "message": "翻訳：不要"
     },
     "welcomeTranslationNoneHelp": {
-        "message": "動画の行がもともと自分の言語なので、何も翻訳しません。"
+        "message": "原文の行がもともと自分の言語なので、何も翻訳しません。"
     },
     "welcomeOpenHelp": {
         "message": "いつもどおりにログインします。"
@@ -1500,7 +1497,7 @@
         "message": "DualSubは、NetflixとDisney+に2つの字幕を横に並べて表示します。動画そのものの言語と、自分の言語です。"
     },
     "welcomeArrangeOneLine": {
-        "message": "DualSubは、NetflixとDisney+に自分の言語の字幕を表示します。動画の行も同じ言語に設定されているので、表示は1行です。"
+        "message": "DualSubは、NetflixとDisney+に自分の言語の字幕を表示します。原文の行も同じ言語に設定されているので、表示は1行です。"
     },
     "welcomeStateReady": {
         "message": "設定は何もいりません。"
@@ -1515,7 +1512,7 @@
         "message": "自分の言語の行を翻訳するには、下の翻訳サービスの設定を済ませてください。"
     },
     "welcomeLanguageHelp": {
-        "message": "自分の行はいつもこの言語です。"
+        "message": "翻訳はいつもこの言語です。"
     },
     "welcomeStepsTitle": {
         "message": "3つの手順で見始めましょう"
@@ -1571,10 +1568,10 @@
     "popupOffHelp": {
         "message": "サイト自体の字幕が戻ります。"
     },
-    "popupTopAutomatic": {
+    "popupOriginalAutomatic": {
         "message": "自動"
     },
-    "popupTopAutomaticIs": {
+    "popupOriginalAutomaticIs": {
         "message": "自動：%s"
     },
     "popupPosition": {

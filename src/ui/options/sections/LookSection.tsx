@@ -118,13 +118,13 @@ const TRANSLATION_COLORS = [
 const ORDERS = [
     {
         order: 'original_top',
-        shortKey: 'lookOrderVideoShort',
-        labelKey: 'lookOrderVideoFirst',
+        shortKey: 'lookOrderOriginalShort',
+        labelKey: 'lookOrderOriginalFirst',
     },
     {
         order: 'translation_top',
-        shortKey: 'lookOrderMineShort',
-        labelKey: 'lookOrderMineFirst',
+        shortKey: 'lookOrderTranslationShort',
+        labelKey: 'lookOrderTranslationFirst',
     },
 ] as const;
 
@@ -724,11 +724,11 @@ export function LookSection({ t, settings, save }: SectionProps) {
                                         />
                                     </div>
                                     <div className="format-control">
-                                        <label htmlFor="look-top-color">
-                                            {t('lookTopColorLabel')}
+                                        <label htmlFor="look-original-color">
+                                            {t('lookOriginalColorLabel')}
                                         </label>
                                         <input
-                                            id="look-top-color"
+                                            id="look-original-color"
                                             type="color"
                                             className="color-field"
                                             value={look.value.originalColor}
@@ -856,8 +856,8 @@ export function LookSection({ t, settings, save }: SectionProps) {
                                     ? 'lookArrangementSideBySide'
                                     : settings.subtitleLayoutOrder ===
                                         'translation_top'
-                                      ? 'lookOrderMineFirst'
-                                      : 'lookOrderVideoFirst'
+                                      ? 'lookOrderTranslationFirst'
+                                      : 'lookOrderOriginalFirst'
                             )}
                             keys={[
                                 'subtitleLayoutOrder',

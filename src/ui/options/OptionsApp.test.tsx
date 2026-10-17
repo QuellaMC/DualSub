@@ -1803,11 +1803,13 @@ describe('OptionsApp', () => {
         location.hash = '#look';
         await renderReady();
         openRow(/^Lines/);
-        const mine = screen.getByRole('button', { name: 'Mine' });
+        const mine = screen.getByRole('button', { name: 'Translation' });
         fireEvent.click(mine);
         fireEvent.click(mine);
         const toasts = document.querySelector<HTMLElement>('.toast-region')!;
-        await waitFor(() => expect(toasts).toHaveTextContent('Mine on top'));
+        await waitFor(() =>
+            expect(toasts).toHaveTextContent('Translation on top')
+        );
         await new Promise((resolve) => setTimeout(resolve, 50));
 
         fireEvent.click(within(toasts).getByRole('button', { name: 'Undo' }));
@@ -1837,10 +1839,12 @@ describe('OptionsApp', () => {
         location.hash = '#look';
         await renderReady();
         openRow(/^Lines/);
-        fireEvent.click(screen.getByRole('button', { name: 'Mine' }));
-        fireEvent.click(screen.getByRole('button', { name: "Video's" }));
+        fireEvent.click(screen.getByRole('button', { name: 'Translation' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Original' }));
         const toasts = document.querySelector<HTMLElement>('.toast-region')!;
-        await waitFor(() => expect(toasts).toHaveTextContent("Video's on top"));
+        await waitFor(() =>
+            expect(toasts).toHaveTextContent('Original on top')
+        );
         fireEvent.click(within(toasts).getByRole('button', { name: 'Undo' }));
         await waitFor(async () =>
             expect(await sync('subtitleLayoutOrder')).toBe('translation_top')
@@ -2366,7 +2370,7 @@ describe('OptionsApp', () => {
         ).not.toBeInTheDocument();
     });
 
-    it('asks for the service where a site keeps a top line to translate from', async () => {
+    it('asks for the service where a site keeps a original line to translate from', async () => {
         await fakeBrowser.storage.sync.set({
             selectedProvider: 'deepl',
             translationFallback: false,

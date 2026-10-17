@@ -30,7 +30,7 @@ const SITE_BADGES: Record<PlatformId, string> = {
 const OWN_SETTING_LABELS: Record<SiteSettingKey, string> = {
     subtitlesEnabled: 'startEnabled',
     hideOfficialSubtitles: 'sitesHideTitle',
-    originalLanguage: 'languagesTopTitle',
+    originalLanguage: 'languagesOriginalTitle',
     useOfficialTranslations: 'languagesOfficialTitle',
     subtitleStyle: 'lookStyleTitle',
     subtitleCustomLook: 'lookStyleTitle',

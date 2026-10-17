@@ -557,23 +557,23 @@
     "languagesSpeakTitle": {
         "message": "I speak"
     },
-    "languagesTopAuto": {
+    "languagesOriginalAuto": {
         "message": "The video's language"
     },
-    "languagesTopAutoHelp": {
+    "languagesOriginalAutoHelp": {
         "message": "Follows each video."
     },
-    "languagesTopFixed": {
+    "languagesOriginalFixed": {
         "message": "Always one language"
     },
-    "languagesTopFixedHelp": {
+    "languagesOriginalFixedHelp": {
         "message": "For learning one language."
     },
-    "languagesTopFixedMenu": {
-        "message": "Top line language"
+    "languagesOriginalFixedMenu": {
+        "message": "Original line language"
     },
-    "languagesTopTitle": {
-        "message": "Top line"
+    "languagesOriginalTitle": {
+        "message": "Original line"
     },
     "lookArrangementSideBySide": {
         "message": "Side by side"
@@ -668,14 +668,14 @@
     "lookMoveUp": {
         "message": "Up"
     },
-    "lookOrderMineFirst": {
-        "message": "Mine on top"
+    "lookOrderTranslationFirst": {
+        "message": "Translation on top"
     },
     "lookOrderTitle": {
         "message": "Which line goes on top"
     },
-    "lookOrderVideoFirst": {
-        "message": "Video's on top"
+    "lookOrderOriginalFirst": {
+        "message": "Original on top"
     },
     "lookPositionBottom": {
         "message": "Bottom edge"
@@ -722,8 +722,8 @@
     "lookStyleTitle": {
         "message": "Look and ready-made styles"
     },
-    "lookTopColorLabel": {
-        "message": "Top line"
+    "lookOriginalColorLabel": {
+        "message": "Original"
     },
     "lookTranslationColorTitle": {
         "message": "Translation color"
@@ -746,11 +746,11 @@
     "lookStageHint": {
         "message": "Click a line to style it. Drag the subtitles to move them."
     },
-    "lookLineTop": {
-        "message": "Top line: change the look"
+    "lookLineOriginal": {
+        "message": "Original line: change the look"
     },
-    "lookLineYours": {
-        "message": "Your line: change its color"
+    "lookLineTranslation": {
+        "message": "Translation: change its color"
     },
     "lookUsualHeight": {
         "message": "Usual height"
@@ -779,11 +779,11 @@
     "lookOnTop": {
         "message": "On top"
     },
-    "lookOrderVideoShort": {
-        "message": "Video's"
+    "lookOrderOriginalShort": {
+        "message": "Original"
     },
-    "lookOrderMineShort": {
-        "message": "Mine"
+    "lookOrderTranslationShort": {
+        "message": "Translation"
     },
     "lookLayout": {
         "message": "Layout"
@@ -1046,9 +1046,6 @@
     "startProblemsTitle": {
         "message": "Something not right?"
     },
-    "startTopTitle": {
-        "message": "Top line"
-    },
     "startStatusOff": {
         "message": "Dual subtitles are off"
     },
@@ -1235,11 +1232,11 @@
     "toastSubtitlesOn": {
         "message": "Dual subtitles are on"
     },
-    "toastTopAuto": {
-        "message": "Top line: the language spoken in the video"
+    "toastOriginalAuto": {
+        "message": "Original line: the language spoken in the video"
     },
-    "toastTopFixed": {
-        "message": "Top line: always %s"
+    "toastOriginalFixed": {
+        "message": "Original line: always %s"
     },
     "toastTranslationColor": {
         "message": "Translation color: %s"
@@ -1262,7 +1259,7 @@
     "searchWordsSpeak": {
         "message": "target translate language native mother tongue speak"
     },
-    "searchWordsTopLine": {
+    "searchWordsOriginalLine": {
         "message": "original video learning learn audio spoken automatic"
     },
     "searchWordsOfficial": {
@@ -1284,7 +1281,7 @@
         "message": "translation color colour cyan yellow second line"
     },
     "searchWordsOrder": {
-        "message": "order top bottom first which line"
+        "message": "order top bottom first which line original translation"
     },
     "searchWordsArrangement": {
         "message": "layout orientation side by side stacked row column"
@@ -1440,21 +1437,21 @@
         "message": "Your language: %s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "Taken from your browser. Your line is always in this language."
+        "message": "Taken from your browser. The translation is always in this language."
     },
     "welcomeLanguageLabel": {
         "message": "Your language"
     },
-    "welcomeTopAuto": {
-        "message": "Video's line: the language spoken in each video"
+    "welcomeOriginalAuto": {
+        "message": "Original line: the language spoken in each video"
     },
-    "welcomeTopAutoHelp": {
+    "welcomeOriginalAutoHelp": {
         "message": "A Korean drama shows Korean, an English film shows English."
     },
-    "welcomeTopFixed": {
-        "message": "Video's line: always %s"
+    "welcomeOriginalFixed": {
+        "message": "Original line: always %s"
     },
-    "welcomeTopFixedHelp": {
+    "welcomeOriginalFixedHelp": {
         "message": "Every video shows it, when the site has subtitles in it."
     },
     "welcomeTranslation": {
@@ -1473,7 +1470,7 @@
         "message": "Translation: none needed"
     },
     "welcomeTranslationNoneHelp": {
-        "message": "The video's line is already in your language, so nothing is translated."
+        "message": "The original line is already in your language, so nothing is translated."
     },
     "welcomeOpenHelp": {
         "message": "Sign in the way you always do."
@@ -1500,7 +1497,7 @@
         "message": "DualSub puts two lines of subtitles side by side on Netflix and Disney+: the video's own language, and yours."
     },
     "welcomeArrangeOneLine": {
-        "message": "DualSub puts subtitles on Netflix and Disney+ in your language. The video's line is set to it too, so one line shows."
+        "message": "DualSub puts subtitles on Netflix and Disney+ in your language. The original line is set to it too, so one line shows."
     },
     "welcomeStateReady": {
         "message": "There is nothing to set up."
@@ -1515,7 +1512,7 @@
         "message": "To translate yours, finish setting up the translation service below."
     },
     "welcomeLanguageHelp": {
-        "message": "Your line is always in this language."
+        "message": "The translation is always in this language."
     },
     "welcomeStepsTitle": {
         "message": "Start watching in three steps"
@@ -1571,10 +1568,10 @@
     "popupOffHelp": {
         "message": "The site's own subtitles are back."
     },
-    "popupTopAutomatic": {
+    "popupOriginalAutomatic": {
         "message": "Automatic"
     },
-    "popupTopAutomaticIs": {
+    "popupOriginalAutomaticIs": {
         "message": "Automatic: %s"
     },
     "popupPosition": {

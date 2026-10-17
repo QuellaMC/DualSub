@@ -70,9 +70,9 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
                 <SharedTag />
             </div>
 
-            <div className="card" id="top-line">
+            <div className="card" id="original-line">
                 <div className="label" id="languages-top">
-                    {t('languagesTopTitle')}
+                    {t('languagesOriginalTitle')}
                 </div>
                 <SiteTag keys={['originalLanguage']} />
                 <div
@@ -87,18 +87,18 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
                         onClick={() =>
                             void save(
                                 { originalLanguage: AUTO_LANGUAGE },
-                                { message: t('toastTopAuto') }
+                                { message: t('toastOriginalAuto') }
                             )
                         }
                     >
                         <span className="choice-title">
-                            {t('languagesTopAuto')}
+                            {t('languagesOriginalAuto')}
                             <span className="tag ok">
                                 {t('commonRecommended')}
                             </span>
                         </span>
                         <span className="help">
-                            {t('languagesTopAutoHelp')}
+                            {t('languagesOriginalAutoHelp')}
                         </span>
                     </button>
                     <button
@@ -110,7 +110,7 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
                                 { originalLanguage: fixedLanguage },
                                 {
                                     message: t(
-                                        'toastTopFixed',
+                                        'toastOriginalFixed',
                                         languageName(t, fixedLanguage)
                                     ),
                                 }
@@ -118,17 +118,17 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
                         }
                     >
                         <span className="choice-title">
-                            {t('languagesTopFixed')}
+                            {t('languagesOriginalFixed')}
                         </span>
                         <span className="help">
-                            {t('languagesTopFixedHelp')}
+                            {t('languagesOriginalFixedHelp')}
                         </span>
                     </button>
                 </div>
                 {!automatic && (
                     <div className="row">
                         <span className="strong" id="languages-top-fixed">
-                            {t('languagesTopFixedMenu')}
+                            {t('languagesOriginalFixedMenu')}
                         </span>
                         <LanguageSelect
                             t={t}
@@ -140,7 +140,7 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
                                     { originalLanguage: language },
                                     {
                                         message: t(
-                                            'toastTopFixed',
+                                            'toastOriginalFixed',
                                             languageName(t, language)
                                         ),
                                     }

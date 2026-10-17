@@ -557,23 +557,23 @@
     "languagesSpeakTitle": {
         "message": "我的語言"
     },
-    "languagesTopAuto": {
+    "languagesOriginalAuto": {
         "message": "影片的語言"
     },
-    "languagesTopAutoHelp": {
+    "languagesOriginalAutoHelp": {
         "message": "跟著每部影片變。"
     },
-    "languagesTopFixed": {
+    "languagesOriginalFixed": {
         "message": "固定一種語言"
     },
-    "languagesTopFixedHelp": {
+    "languagesOriginalFixedHelp": {
         "message": "適合學一種語言。"
     },
-    "languagesTopFixedMenu": {
-        "message": "上行字幕的語言"
+    "languagesOriginalFixedMenu": {
+        "message": "原文字幕的語言"
     },
-    "languagesTopTitle": {
-        "message": "上行字幕"
+    "languagesOriginalTitle": {
+        "message": "原文字幕"
     },
     "lookArrangementSideBySide": {
         "message": "並排"
@@ -668,14 +668,14 @@
     "lookMoveUp": {
         "message": "往上"
     },
-    "lookOrderMineFirst": {
-        "message": "我的在上"
+    "lookOrderTranslationFirst": {
+        "message": "翻譯在上"
     },
     "lookOrderTitle": {
         "message": "哪一行放上面"
     },
-    "lookOrderVideoFirst": {
-        "message": "影片的在上"
+    "lookOrderOriginalFirst": {
+        "message": "原文在上"
     },
     "lookPositionBottom": {
         "message": "最底部"
@@ -722,8 +722,8 @@
     "lookStyleTitle": {
         "message": "外觀和現成樣式"
     },
-    "lookTopColorLabel": {
-        "message": "上行"
+    "lookOriginalColorLabel": {
+        "message": "原文"
     },
     "lookTranslationColorTitle": {
         "message": "翻譯顏色"
@@ -746,11 +746,11 @@
     "lookStageHint": {
         "message": "點一行字幕就能改它的樣式。拖曳字幕就能移動位置。"
     },
-    "lookLineTop": {
-        "message": "上行字幕：更改外觀"
+    "lookLineOriginal": {
+        "message": "原文字幕：更改外觀"
     },
-    "lookLineYours": {
-        "message": "你的字幕：更改顏色"
+    "lookLineTranslation": {
+        "message": "翻譯字幕：更改顏色"
     },
     "lookUsualHeight": {
         "message": "常用高度"
@@ -779,11 +779,11 @@
     "lookOnTop": {
         "message": "在上面"
     },
-    "lookOrderVideoShort": {
-        "message": "影片的"
+    "lookOrderOriginalShort": {
+        "message": "原文"
     },
-    "lookOrderMineShort": {
-        "message": "我的"
+    "lookOrderTranslationShort": {
+        "message": "翻譯"
     },
     "lookLayout": {
         "message": "排列"
@@ -1046,9 +1046,6 @@
     "startProblemsTitle": {
         "message": "有什麼不對勁嗎？"
     },
-    "startTopTitle": {
-        "message": "上行字幕"
-    },
     "startStatusOff": {
         "message": "雙語字幕已關閉"
     },
@@ -1235,11 +1232,11 @@
     "toastSubtitlesOn": {
         "message": "雙語字幕已開啟"
     },
-    "toastTopAuto": {
-        "message": "上行字幕：影片裡說的語言"
+    "toastOriginalAuto": {
+        "message": "原文字幕：影片裡說的語言"
     },
-    "toastTopFixed": {
-        "message": "上行字幕：一律顯示%s"
+    "toastOriginalFixed": {
+        "message": "原文字幕：一律顯示%s"
     },
     "toastTranslationColor": {
         "message": "翻譯字幕顏色：%s"
@@ -1262,7 +1259,7 @@
     "searchWordsSpeak": {
         "message": "我的語言 我說的語言 母語 翻譯成 翻成 目標語言 翻譯語言 中文 繁體中文 繁中 中文字幕 下行 下行字幕"
     },
-    "searchWordsTopLine": {
+    "searchWordsOriginalLine": {
         "message": "上行 上面 原文 原文字幕 原始語言 影片語言 說的語言 外語 外文 學習 學語言 學外語 學英文 學英語 學韓文 學日文 音訊 語音 音軌 原音 自動 自動偵測"
     },
     "searchWordsOfficial": {
@@ -1284,7 +1281,7 @@
         "message": "譯文 翻譯顏色 譯文顏色 字幕顏色 下行 下行字幕 第二行 水藍色 藍色 青色 黃色 綠色 粉紅色 白色 分辨 區分 分不清"
     },
     "searchWordsOrder": {
-        "message": "順序 顯示順序 上下順序 上面 下面 上行 下行 對調 互換 交換 調換 中文在上 中文在下 原文在上 譯文在上 外文在上"
+        "message": "順序 顯示順序 上下順序 上面 下面 上行 下行 對調 互換 交換 調換 中文在上 中文在下 原文在上 譯文在上 外文在上 原文 翻譯"
     },
     "searchWordsArrangement": {
         "message": "排列 排列方式 排版 版面 佈局 布局 並排 左右 左右並排 上下 上下排列 一左一右 一上一下 方向"
@@ -1440,21 +1437,21 @@
         "message": "你的語言：%s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "依瀏覽器的語言選的。你的那一行一律是這種語言。"
+        "message": "依瀏覽器的語言選的。翻譯一律是這種語言。"
     },
     "welcomeLanguageLabel": {
         "message": "你的語言"
     },
-    "welcomeTopAuto": {
-        "message": "影片的那一行：每部影片裡說的語言"
+    "welcomeOriginalAuto": {
+        "message": "原文字幕：每部影片裡說的語言"
     },
-    "welcomeTopAutoHelp": {
+    "welcomeOriginalAutoHelp": {
         "message": "韓劇就顯示韓語，英語電影就顯示英語。"
     },
-    "welcomeTopFixed": {
-        "message": "影片的那一行：固定為%s"
+    "welcomeOriginalFixed": {
+        "message": "原文字幕：固定為%s"
     },
-    "welcomeTopFixedHelp": {
+    "welcomeOriginalFixedHelp": {
         "message": "只要網站有這種語言的字幕，每部影片都會顯示它。"
     },
     "welcomeTranslation": {
@@ -1473,7 +1470,7 @@
         "message": "翻譯：不需要"
     },
     "welcomeTranslationNoneHelp": {
-        "message": "影片的那一行本來就是你的語言，所以不用翻譯。"
+        "message": "原文字幕本來就是你的語言，所以不用翻譯。"
     },
     "welcomeOpenHelp": {
         "message": "像平常一樣登入。"
@@ -1500,7 +1497,7 @@
         "message": "DualSub 會在 Netflix 和 Disney+ 上並排顯示兩行字幕：影片本身的語言，和你的語言。"
     },
     "welcomeArrangeOneLine": {
-        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示你的語言的字幕。影片的那一行也設成了這種語言，所以只顯示一行。"
+        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示你的語言的字幕。原文字幕也設成了這種語言，所以只顯示一行。"
     },
     "welcomeStateReady": {
         "message": "什麼都不用設定。"
@@ -1515,7 +1512,7 @@
         "message": "要翻譯你的那一行，請先設定好下面的翻譯服務。"
     },
     "welcomeLanguageHelp": {
-        "message": "你的那一行一律是這種語言。"
+        "message": "翻譯一律是這種語言。"
     },
     "welcomeStepsTitle": {
         "message": "三個步驟開始觀看"
@@ -1571,10 +1568,10 @@
     "popupOffHelp": {
         "message": "網站本身的字幕回來了。"
     },
-    "popupTopAutomatic": {
+    "popupOriginalAutomatic": {
         "message": "自動"
     },
-    "popupTopAutomaticIs": {
+    "popupOriginalAutomaticIs": {
         "message": "自動：%s"
     },
     "popupPosition": {

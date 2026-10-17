@@ -238,29 +238,29 @@ describe('PlayerSession', () => {
         // The platform has no Japanese track and answers with English.
         stubBackground({ 'zh-CN': '你好' });
         active = startSession({ ...LANGUAGES, originalLanguage: 'ja' });
-        expect(active.session.topLanguage).toBeNull();
+        expect(active.session.originalLanguage).toBeNull();
 
         active.cache.publish('1', resolution(['ja', 'zh-CN']));
         await settle();
-        expect(active.session.topLanguage).toBe('en');
+        expect(active.session.originalLanguage).toBe('en');
     });
 
-    it('names no top line language while subtitles for new languages load', async () => {
+    it('names no original line language while subtitles for new languages load', async () => {
         stubBackground({ 'zh-CN': '你好', ja: 'こんにちは' });
         active = startSession();
         active.cache.publish('1', resolution(['en', 'zh-CN']));
         await settle();
-        expect(active.session.topLanguage).toBe('en');
+        expect(active.session.originalLanguage).toBe('en');
 
         active.session.updateLanguageSettings({
             ...LANGUAGES,
             targetLanguage: 'ja',
         });
-        expect(active.session.topLanguage).toBeNull();
+        expect(active.session.originalLanguage).toBeNull();
 
         active.cache.publish('1', resolution(['en', 'ja']));
         await settle();
-        expect(active.session.topLanguage).toBe('en');
+        expect(active.session.originalLanguage).toBe('en');
     });
 
     it('ignores a languages update that changes nothing', async () => {
@@ -366,7 +366,7 @@ describe('PlayerSession', () => {
     });
 });
 
-describe('PlayerSession with an automatic top line', () => {
+describe('PlayerSession with an automatic original line', () => {
     const AUTO: LanguageSettings = { ...LANGUAGES, originalLanguage: 'auto' };
 
     function trackRequests(): unknown[] {

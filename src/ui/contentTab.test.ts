@@ -14,7 +14,7 @@ function stubTabs(tabs: Browser.tabs.Tab[]) {
     vi.spyOn(browser.tabs, 'query').mockResolvedValue(tabs as never);
     return vi
         .spyOn(browser.tabs, 'sendMessage')
-        .mockResolvedValue({ onPlayer: true, topLanguage: 'ko' } as never);
+        .mockResolvedValue({ onPlayer: true, originalLanguage: 'ko' } as never);
 }
 
 afterEach(() => {
@@ -74,7 +74,7 @@ describe('readTabStatus', () => {
         const send = stubTabs(activeTab(7));
         await expect(readTabStatus(7)).resolves.toEqual({
             kind: 'player',
-            topLanguage: 'ko',
+            originalLanguage: 'ko',
         });
         expect(send).toHaveBeenCalledWith(
             7,
@@ -84,15 +84,15 @@ describe('readTabStatus', () => {
 
         send.mockResolvedValueOnce({
             onPlayer: true,
-            topLanguage: null,
+            originalLanguage: null,
         } as never);
         await expect(readTabStatus(7)).resolves.toEqual({
             kind: 'player',
-            topLanguage: null,
+            originalLanguage: null,
         });
         send.mockResolvedValueOnce({
             onPlayer: false,
-            topLanguage: null,
+            originalLanguage: null,
         } as never);
         await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
     });
@@ -101,11 +101,11 @@ describe('readTabStatus', () => {
         const send = stubTabs(activeTab(7));
         send.mockResolvedValueOnce({
             onPlayer: true,
-            topLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
+            originalLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
         } as never);
         await expect(readTabStatus(7)).resolves.toEqual({
             kind: 'player',
-            topLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
+            originalLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
         });
     });
 

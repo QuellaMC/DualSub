@@ -77,24 +77,24 @@ function Stepper({
     );
 }
 
-/** What DualSub shows over the video playing: the site, the language on
- *  top once the player has told it, and the viewer's line. */
+/** What DualSub shows over the video playing: the site, the original
+ *  line's language once the player has told it, and the translation. */
 function workingHelp(
     t: Translate,
     site: PlatformId,
-    topLanguage: string | null,
+    originalLanguage: string | null,
     targetLanguage: string
 ): string {
     const name = PLATFORM_NAMES[site];
-    if (topLanguage === null) {
+    if (originalLanguage === null) {
         return t('popupWorkingHelpSoon', name);
     }
     return t(
-        isSameLanguage(topLanguage, targetLanguage)
+        isSameLanguage(originalLanguage, targetLanguage)
             ? 'popupWorkingHelpOne'
             : 'popupWorkingHelp',
         name,
-        languageName(t, topLanguage)
+        languageName(t, originalLanguage)
     );
 }
 
@@ -157,7 +157,7 @@ function Status({
                             ? workingHelp(
                                   t,
                                   site,
-                                  status.topLanguage,
+                                  status.originalLanguage,
                                   targetLanguage
                               )
                             : t('popupReadyHelp')
@@ -215,13 +215,17 @@ function SiteControls({
     const size = namedSize(scale.value);
     const bigger = nextSize(scale.value, 1);
     const smaller = nextSize(scale.value, -1);
-    const topLanguage = status.kind === 'player' ? status.topLanguage : null;
-    const topLine =
+    const originalLanguage =
+        status.kind === 'player' ? status.originalLanguage : null;
+    const originalLine =
         settings.originalLanguage !== AUTO_LANGUAGE
             ? languageName(t, settings.originalLanguage)
-            : topLanguage === null
-              ? t('popupTopAutomatic')
-              : t('popupTopAutomaticIs', languageName(t, topLanguage));
+            : originalLanguage === null
+              ? t('popupOriginalAutomatic')
+              : t(
+                    'popupOriginalAutomaticIs',
+                    languageName(t, originalLanguage)
+                );
 
     return (
         <>
@@ -277,9 +281,10 @@ function SiteControls({
                 </div>
                 <div className="row">
                     <span className="strong">
-                        {t('startTopTitle')} {siteTag('originalLanguage')}
+                        {t('languagesOriginalTitle')}{' '}
+                        {siteTag('originalLanguage')}
                     </span>
-                    <span className="help">{topLine}</span>
+                    <span className="help">{originalLine}</span>
                 </div>
             </section>
 

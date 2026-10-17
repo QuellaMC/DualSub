@@ -1,7 +1,7 @@
 import type { SubtitleLanguage } from '@/shared/subtitleLanguages';
 import type { Translate } from '../../hooks/useI18n';
 
-/** What the sample video speaks, to show an automatic top line at work. */
+/** What the sample video speaks, to show an automatic original line at work. */
 const SAMPLE_VIDEOS = [
     { language: 'ko', labelKey: 'previewKoreanDrama' },
     { language: 'en', labelKey: 'previewEnglishFilm' },

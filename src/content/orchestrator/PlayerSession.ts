@@ -115,7 +115,7 @@ export function toLanguageSettings(
 }
 
 /**
- * The concrete languages for the session. An automatic top line takes the
+ * The concrete languages for the session. An automatic original line takes the
  * language the player says is spoken, or English when the player could not
  * tell (`null`); it is null itself while the player has not reported yet
  * (`undefined`).
@@ -307,10 +307,10 @@ export class PlayerSession {
         return this.mediaBinding.current !== null;
     }
 
-    /** The language of the top line on screen, which is the platform's
+    /** The language of the original line on screen, which is the platform's
      *  fallback track when it lacks the one asked for; null until the
      *  subtitles for the current languages arrive. */
-    get topLanguage(): string | null {
+    get originalLanguage(): string | null {
         return this.rendererState.loading ? null : this.rendererState.language;
     }
 
