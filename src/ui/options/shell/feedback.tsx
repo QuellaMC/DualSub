@@ -6,7 +6,7 @@ import {
     type SettingsChange,
 } from '@/config/service';
 import type { PlatformId } from '@/shared/platforms';
-import type { SaveFeedback } from '../types';
+import type { SaveFeedback } from '../../hooks/useDraft';
 
 export type ToastTone = 'done' | 'problem';
 

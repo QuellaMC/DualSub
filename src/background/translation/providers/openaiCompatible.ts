@@ -116,6 +116,7 @@ export const openaiCompatibleProvider: TranslationProvider = {
     async translate(text, sourceLang, targetLang) {
         const settings = await readProviderSettings(PROVIDER, [
             'openaiCompatibleApiKey',
+            'openaiCompatibleApiKeyOrigin',
             'openaiCompatibleBaseUrl',
             'openaiCompatibleModel',
         ]);

@@ -206,6 +206,29 @@ describe('WelcomeApp', () => {
         expect(heading()).toHaveTextContent("You're all set.");
     });
 
+    it('counts an AI translation key only for the address it was entered for', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: new URL(
+                getDefaultValue('openaiCompatibleBaseUrl')
+            ).origin,
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText('Translation: AI translation')
+        ).toBeInTheDocument();
+
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
+        });
+        expect(
+            await screen.findByText("AI translation isn't set up yet")
+        ).toBeInTheDocument();
+    });
+
     it('offers the switch while DualSub is off on one site, and names it', async () => {
         await fakeBrowser.storage.sync.set({
             siteProfiles: { disneyplus: { subtitlesEnabled: false } },

@@ -34,3 +34,7 @@ export const boundedNonBlankString = (maxBytes: number) =>
 
 export const positiveSafeInteger = z.number().int().safe().positive();
 export const nonNegativeSafeInteger = z.number().int().safe().nonnegative();
+
+/** A language tag in a message: canonical tags, extensions included, fit
+ *  in 64 bytes. */
+export const languageTag = boundedNonBlankString(64);

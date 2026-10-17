@@ -1,4 +1,3 @@
-import { PLATFORM_IDS, PLATFORM_NAMES, platformHome } from '@/shared/platforms';
 import { KEYLESS_PROVIDERS } from '@/shared/providers';
 import {
     AUTO_LANGUAGE,
@@ -18,6 +17,7 @@ import {
     useSiteViews,
 } from '../../hooks/useSitesOn';
 import { languageName } from '../../languageLabels';
+import { SiteLinks } from '../../SiteLinks';
 import { LanguageSelect } from '../../design/LanguageSelect';
 import { PROVIDER_NAME_KEYS } from '../../providerNames';
 import { SizePicker } from '../controls/SizePicker';
@@ -146,17 +146,7 @@ export function StartSection({
                     </p>
                 )}
                 <div className="inline wrap">
-                    {PLATFORM_IDS.map((site) => (
-                        <a
-                            key={site}
-                            className="button"
-                            href={platformHome(site)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            {t('startOpenSite', PLATFORM_NAMES[site])}
-                        </a>
-                    ))}
+                    <SiteLinks t={t} className="button" />
                 </div>
             </div>
 

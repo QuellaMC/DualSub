@@ -216,8 +216,9 @@ const PARTS_LOCK = 'dualsub:settingParts';
 /** Run `change` once every earlier write has settled, so each builds on
  *  what the one before it left and reads what it replaces in its turn. The
  *  lock is shared by every extension page and the worker, which share the
- *  extension's origin, so a popup and a settings tab take turns too. */
-function inTurn<T>(change: () => Promise<T>): Promise<T> {
+ *  extension's origin, so a popup, a settings tab, and the boot migration
+ *  take turns too. */
+export function inTurn<T>(change: () => Promise<T>): Promise<T> {
     return navigator.locks.request(PARTS_LOCK, change);
 }
 
@@ -663,7 +664,7 @@ class ConfigService {
      * key/value is invalid), then writes each storage area; when one fails,
      * the others get back what they held, so the write lands whole or not at
      * all. It takes its turn after every earlier write, made in any extension
-     * page, and reads what it replaces in that turn.
+     * page or the worker, and reads what it replaces in that turn.
      */
     setMultiple(
         settings: Partial<SettingsValues>,

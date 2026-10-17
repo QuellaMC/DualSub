@@ -7,20 +7,23 @@ import {
 } from '../languageLabels';
 
 /** A subtitle language menu naming each language in its own words and in
- *  the page's language. A language stored that the menu does not offer,
- *  from a backup or another computer, is still shown as the one picked. */
+ *  the page's language, or, `short` for a narrow menu, in its own words
+ *  only. A language stored that the menu does not offer, from a backup or
+ *  another computer, is still shown as the one picked. */
 export function LanguageSelect({
     t,
     id,
     value,
     onChange,
     labelledBy,
+    short = false,
 }: {
     t: Translate;
     id: string;
     value: string;
     onChange: (language: string) => void;
     labelledBy?: string;
+    short?: boolean;
 }) {
     const name = languageName(t, value);
     return (
@@ -41,7 +44,9 @@ export function LanguageSelect({
                 const native = NATIVE_LANGUAGE_NAMES[code];
                 return (
                     <option key={code} value={code}>
-                        {native === local ? native : `${native} · ${local}`}
+                        {short || native === local
+                            ? native
+                            : `${native} · ${local}`}
                     </option>
                 );
             })}

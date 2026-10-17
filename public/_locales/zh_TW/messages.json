@@ -5,102 +5,6 @@
     "appDesc": {
         "message": "在串流平台上顯示雙語字幕。"
     },
-    "h1Title": {
-        "message": "DualSub"
-    },
-    "enableSubtitlesLabel": {
-        "message": "啟用雙語字幕："
-    },
-    "useNativeSubtitlesLabel": {
-        "message": "使用官方字幕："
-    },
-    "originalLanguageLabel": {
-        "message": "原始語言："
-    },
-    "targetLanguageLabel": {
-        "message": "翻譯為："
-    },
-    "subtitleAppearanceTimingLegend": {
-        "message": "字幕外觀和時序"
-    },
-    "displayOrderLabel": {
-        "message": "顯示順序："
-    },
-    "layoutLabel": {
-        "message": "佈局："
-    },
-    "fontSizeLabel": {
-        "message": "字體大小："
-    },
-    "verticalGapLabel": {
-        "message": "垂直間距："
-    },
-    "subtitleVerticalPositionLabel": {
-        "message": "垂直位置："
-    },
-    "timeOffsetLabel": {
-        "message": "時間偏移(秒)："
-    },
-    "displayOrderOriginalFirst": {
-        "message": "原文在上"
-    },
-    "displayOrderTranslationFirst": {
-        "message": "譯文在上"
-    },
-    "layoutTopBottom": {
-        "message": "上下排列"
-    },
-    "layoutLeftRight": {
-        "message": "左右排列"
-    },
-    "subtitleStyleLabel": {
-        "message": "字幕樣式："
-    },
-    "subtitleStylePlatform": {
-        "message": "跟隨平台"
-    },
-    "statusLanguageSetTo": {
-        "message": "重新整理頁面後生效："
-    },
-    "statusDualEnabled": {
-        "message": "雙語字幕已啟用。（重新整理頁面）"
-    },
-    "statusDualDisabled": {
-        "message": "雙語字幕已停用。（重新整理頁面）"
-    },
-    "statusSmartTranslationEnabled": {
-        "message": "智慧翻譯已啟用。（重新整理頁面）"
-    },
-    "statusSmartTranslationDisabled": {
-        "message": "智慧翻譯已停用。（重新整理頁面）"
-    },
-    "statusOriginalLanguage": {
-        "message": "重新整理頁面後生效："
-    },
-    "statusTimeOffset": {
-        "message": "時間偏移："
-    },
-    "statusDisplayOrderUpdated": {
-        "message": "顯示順序已更新。"
-    },
-    "statusLayoutOrientationUpdated": {
-        "message": "佈局方向已更新。"
-    },
-    "statusSubtitleStyleUpdated": {
-        "message": "字幕樣式已更新。"
-    },
-    "statusFontSize": {
-        "message": "字體大小："
-    },
-    "statusVerticalGap": {
-        "message": "垂直間距："
-    },
-    "statusVerticalPosition": {
-        "message": "垂直位置："
-    },
-    "statusInvalidOffset": {
-        "message": "無效偏移，已還原。"
-    },
     "optionsPageTitle": {
         "message": "DualSub 設定"
     },
@@ -151,9 +55,6 @@
     },
     "lang_hi": {
         "message": "印地語"
-    },
-    "lang_auto": {
-        "message": "自動（跟隨音訊）"
     },
     "deeplApiKeyError": {
         "message": "請先輸入您的 DeepL API 金鑰。"
@@ -370,18 +271,6 @@
     },
     "subtitleLoading": {
         "message": "DualSub：正在載入字幕…"
-    },
-    "subtitleStyleCustom": {
-        "message": "自訂"
-    },
-    "platformLookCaptured": {
-        "message": "「跟隨平台」會採用你的 %s 個人檔案中的字幕設定。"
-    },
-    "platformLookPreset": {
-        "message": "「跟隨平台」在讀取到個人檔案的字幕設定之前，使用 %s 的預設外觀。"
-    },
-    "editCustomLook": {
-        "message": "在設定中編輯自訂外觀"
     },
     "advancedBackupTitle": {
         "message": "備份"
@@ -1663,6 +1552,90 @@
     },
     "welcomeClose": {
         "message": "就這樣。你可以關閉這個分頁了。"
+    },
+    "popupAllSettings": {
+        "message": "所有設定"
+    },
+    "popupOnGitHub": {
+        "message": "GitHub 上的 DualSub"
+    },
+    "popupWorkingTitle": {
+        "message": "正在這部影片上運作"
+    },
+    "popupWorkingHelpOne": {
+        "message": "%s · %s，本來就是你的語言"
+    },
+    "popupWorkingHelpSoon": {
+        "message": "%s，附上你的翻譯"
+    },
+    "popupWorkingHelp": {
+        "message": "%s · %s，附上你的翻譯"
+    },
+    "popupReadyTitle": {
+        "message": "已在 %s 準備好"
+    },
+    "popupReadyHelp": {
+        "message": "播放影片後，兩行字幕就會自動出現。"
+    },
+    "popupOffTitle": {
+        "message": "%s 的雙語字幕已關閉"
+    },
+    "popupOffHelp": {
+        "message": "網站本身的字幕回來了。"
+    },
+    "popupTopAutomatic": {
+        "message": "自動"
+    },
+    "popupTopAutomaticIs": {
+        "message": "自動：%s"
+    },
+    "popupPosition": {
+        "message": "位置"
+    },
+    "popupExactSize": {
+        "message": "%s×"
+    },
+    "positionLowest": {
+        "message": "最低"
+    },
+    "positionUsual": {
+        "message": "常用位置"
+    },
+    "positionHigher": {
+        "message": "偏高"
+    },
+    "positionMiddle": {
+        "message": "中間"
+    },
+    "popupSmaller": {
+        "message": "縮小文字"
+    },
+    "popupBigger": {
+        "message": "放大文字"
+    },
+    "popupElsewhereTitle": {
+        "message": "DualSub 可以在 %s 上使用"
+    },
+    "popupElsewhereHelp": {
+        "message": "這個頁面不在其中。打開其中一個網站，隨便播放一部影片，兩行字幕就會自動出現。"
+    },
+    "popupAlreadyTitle": {
+        "message": "已經在 %s 上了嗎？"
+    },
+    "popupAlreadyPlay": {
+        "message": "播放一部影片，開始播放後字幕就會出現。"
+    },
+    "popupAlreadyNone": {
+        "message": "沒有字幕？這部影片可能沒有任何語言的字幕。"
+    },
+    "popupReloadTitle": {
+        "message": "重新整理頁面，啟動 DualSub"
+    },
+    "popupReloadHelp": {
+        "message": "這個頁面是在安裝或更新 DualSub 之前打開的。"
+    },
+    "popupReload": {
+        "message": "重新整理頁面"
     },
     "startNeedsSetupTitle": {
         "message": "%s 還沒設定好"

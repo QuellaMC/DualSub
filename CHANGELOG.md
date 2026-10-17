@@ -9,17 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The popup is a remote control. On a site DualSub works on, it says whether DualSub is working on the video, turns it on or off for that site, picks your language, says which language the top line shows, and moves the text size, timing, and position in steps the video follows at once; a translation service that stopped working is named there, with a way to its settings. Anywhere else, it shows what DualSub does and opens the sites.
 - A welcome page opens once, right after install. It shows the subtitles you will see, in your languages, lets you change the translation language, and walks through pinning DualSub and playing a first video.
 - A new settings page holds every setting, the popup's included, in plain words and a typeface drawn for legibility. It opens on Start, which says where DualSub is working and what it set up for you, followed by Languages, How subtitles look (ready-made looks, fine-tuning, and a live preview over a sample video), Timing, Translation, Word explanations, Sites, and Help, which fixes common problems in one click. Each change saves at once, and the notice that confirms it can undo it, as can Ctrl+Z (⌘Z). A search box finds a setting by everyday words. "Show advanced options" adds the exact timing shift, per-site settings, limits, backup and restore, the stored settings as JSON, the logging level, and a diagnostic report.
-- Each site can keep its own settings: whether DualSub runs there, hiding the site's own subtitles, the top line's language, official translations, the look, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The popup edits the value the current site actually uses.
+- Each site can keep its own settings: whether DualSub runs there, hiding the site's own subtitles, the top line's language, official translations, the look, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The popup edits the value the current site actually uses, and its on/off switch is the site's own.
 - When the translation service you chose stops working (a rejected key, a used-up quota, or a request it refuses), Microsoft Translator covers, then Google Translate, so subtitles keep coming. Your service is tried again after ten minutes or as soon as its settings change, and fallback can be turned off to keep subtitle text with your chosen service only.
 - The top line follows the language spoken in the video. "Automatic" is the new default for fresh installs, and it follows the audio track when you switch it in the player; a fixed language is still there for learning one language with every video.
 
-- Subtitle styles: "Match Platform" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. "Custom" starts as DualSub's own look and is edited in the settings page: font, weight, text color, text edge, and background, with a preview drawn by the overlay's own styling for either platform. Size stays DualSub's own slider in both, since the platforms size a single line.
-- The translation line's color is a setting of its own and applies to both styles. The popup says whether Match Platform is following your profile's settings or the platform's preset on the current tab.
+- Subtitle styles: "Look like the site" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. "My own style" starts from a ready-made look and is edited in the settings page: font, weight, text color, text edge, and background, with a preview drawn by the overlay's own styling for either platform. Size stays DualSub's own setting in both, since the platforms size a single line.
+- The translation line's color is a setting of its own and applies to both styles.
 
 ### Changed
 
+- The subtitle style, line order and layout, official translations, and line spacing are set in the settings page; the popup keeps what you change while watching.
 - AI Context is called Word explanations, and it turns on once an AI service key is in.
 - On a fresh install the translation language is the browser's language instead of Chinese (Simplified).
 - When the video is already in the translation language, one line shows instead of the same text twice.
@@ -29,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An API key goes only to the address it was entered for. When the AI translation or word explanations address moves to another host (on this computer, on another one you sync with, or by loading a backup), the key waits for its own address and the settings page asks for a key for the new one.
 - Cues the platform raises over on-screen text are drawn at the platform's line instead of the bottom, and cues shown at the same time are all drawn, each at its place. Netflix cues sharing a timestamp are no longer merged into one line.
 
 ## [3.0.2] - 2026-09-03

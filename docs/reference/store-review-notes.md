@@ -18,7 +18,8 @@ provider account.
   kind of problem, the covering service, and the time; no subtitle text or
   credentials) stays in `chrome.storage.session` until that service works
   again, its settings change, or the browser session ends.
-- `activeTab`: the popup previews slider changes on the tab it was opened for.
+- `activeTab`: the popup reads which site the current tab is on, to edit
+  that site's settings and say whether DualSub is serving a video there.
 - `sidePanel`: the AI analysis panel. It opens only from the user's click on
   a subtitle word.
 - Host permissions: the two platforms, their subtitle CDNs
@@ -48,6 +49,11 @@ provider account.
   the user's own credentials. When the selected provider fails, Microsoft
   and then Google translate instead, unless the user turned that fallback
   off.
+- An API key for an address the user sets (OpenAI-compatible translation,
+  OpenAI word explanations) is stored with the origin it was entered for
+  and sent only there. An address changed on another synced device or by
+  loading a settings backup leaves the key unused until the user enters
+  one for the new address.
 - With Word explanations (AI context) enabled, the words the user clicked (and the target
   language) go to the user's configured OpenAI or Gemini endpoint. The
   feature is off by default and re-checks its stored enablement before
@@ -72,9 +78,9 @@ provider account.
    browser's languages. Nothing else needs setting up.
 2. Sign in to Netflix or Disney+ and open any title.
 3. Play: two subtitle lines appear (one, for a video already in the
-   translation language). In the DualSub popup, toggle "use
-   official translations" to switch between the platform's own
-   translation track and the provider.
+   translation language). In the options page's Languages section, toggle
+   "Use the show's own translation when it has one" to switch between the
+   platform's own translation track and the provider.
 4. Optional: in the options page's Word explanations section, paste an
    OpenAI or Gemini API key and turn the feature on, then click a subtitle
    word; the side panel opens with the word selected and "Analyze" returns

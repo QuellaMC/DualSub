@@ -6,6 +6,7 @@ import {
 } from '@/config/schema';
 import { configService } from '@/config/service';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
+import { keyEntry, usableCredential } from '@/shared/keyOrigins';
 import { credentialEntered } from '@/shared/providers';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
@@ -15,7 +16,6 @@ import { CommittedField } from '../controls/CommittedField';
 import { GEMINI_MODELS, OPENAI_MODELS } from '../explanations/models';
 import { OpenAIHostPermission } from '../explanations/OpenAIHostPermission';
 import { useHostPermission } from '../../hooks/useHostPermission';
-import { addressChange } from '../providers/address';
 import { useFeedback } from '../shell/feedback';
 import { SharedTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
@@ -94,7 +94,9 @@ export function ExplanationsSection({
     const provider = settings.aiContextProvider;
     const service = AI_SERVICES[provider];
     const apiKey =
-        provider === 'openai' ? settings.openaiApiKey : settings.geminiApiKey;
+        provider === 'openai'
+            ? usableCredential('openaiApiKey', settings)
+            : settings.geminiApiKey;
     // A custom OpenAI address works only once Chrome lets DualSub reach it.
     const access = useHostPermission(settings.openaiBaseUrl);
     const blocked = provider === 'openai' && access.permitted === false;
@@ -118,11 +120,7 @@ export function ExplanationsSection({
     const baseUrl = useCommittedTextField({
         value: settings.openaiBaseUrl,
         validate: (draft) => validateSetting('openaiBaseUrl', draft),
-        onCommit: (draft) =>
-            save(
-                addressChange('openaiBaseUrl', settings.openaiBaseUrl, draft),
-                'quiet'
-            ),
+        onCommit: (draft) => save({ openaiBaseUrl: draft }, 'quiet'),
     });
     const openaiModel = useCommittedTextField({
         value: settings.openaiModel,
@@ -322,22 +320,22 @@ export function ExplanationsSection({
                                         autoComplete="off"
                                         placeholder={service.placeholder}
                                         value={apiKey}
-                                        onChange={(event) =>
-                                            void save(
-                                                provider === 'openai'
-                                                    ? {
-                                                          openaiApiKey:
-                                                              event.target
-                                                                  .value,
-                                                      }
-                                                    : {
-                                                          geminiApiKey:
-                                                              event.target
-                                                                  .value,
-                                                      },
-                                                'quiet'
-                                            )
-                                        }
+                                        onChange={(event) => {
+                                            const key = event.target.value;
+                                            void (provider === 'openai'
+                                                ? save(
+                                                      keyEntry(
+                                                          'openaiApiKey',
+                                                          key,
+                                                          settings.openaiBaseUrl
+                                                      ),
+                                                      'quiet'
+                                                  )
+                                                : save(
+                                                      { geminiApiKey: key },
+                                                      'quiet'
+                                                  ));
+                                        }}
                                     />
                                     {!enabled && (
                                         <button

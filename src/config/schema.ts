@@ -412,6 +412,12 @@ export const configSchema = {
         scope: 'local',
         sensitive: true,
     }),
+    /** The origin the key was entered for; see KEY_ORIGINS. */
+    openaiCompatibleApiKeyOrigin: setting({
+        schema: z.string(),
+        default: '',
+        scope: 'local',
+    }),
     openaiCompatibleBaseUrl: setting({
         schema: providerBaseUrl,
         default: 'https://generativelanguage.googleapis.com/v1beta/openai',
@@ -564,11 +570,6 @@ export const configSchema = {
         default: false,
         scope: 'local',
     }),
-    appearanceAccordionOpen: setting({
-        schema: z.boolean(),
-        default: false,
-        scope: 'local',
-    }),
 
     aiContextEnabled: setting({
         schema: z.boolean(),
@@ -591,6 +592,12 @@ export const configSchema = {
         default: '',
         scope: 'local',
         sensitive: true,
+    }),
+    /** The origin the key was entered for; see KEY_ORIGINS. */
+    openaiApiKeyOrigin: setting({
+        schema: z.string(),
+        default: '',
+        scope: 'local',
     }),
     openaiBaseUrl: setting({
         schema: providerBaseUrl,

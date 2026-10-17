@@ -8,13 +8,9 @@ import {
 } from '@/shared/platforms';
 import type { SubtitleLanguage } from '@/shared/subtitleLanguages';
 import type { Translate } from '../../hooks/useI18n';
-import { languageName } from '../../languageLabels';
 import { LookPreview } from '../../preview/LookPreview';
-import {
-    sampleCaption,
-    sampleSubtitles,
-    sampleVideoLanguage,
-} from '../../preview/sample';
+import { sampleSubtitles, sampleVideoLanguage } from '../../preview/sample';
+import { SampleCaption } from '../../preview/SamplePreview';
 import { PLATFORM_PRESETS } from '../../subtitleStyle';
 import type { OptionsSettings, Scope } from '../types';
 
@@ -129,12 +125,7 @@ export function Preview({
                 {oneLine && settings.subtitlesEnabled && (
                     <p className="notice">{t('previewOneLine')}</p>
                 )}
-                <p className="help">{sampleCaption(t, settings, sample)}</p>
-                {sample.standIns.map((language) => (
-                    <p key={language} className="help">
-                        {t('previewStandIn', languageName(t, language))}
-                    </p>
-                ))}
+                <SampleCaption t={t} settings={settings} sample={sample} />
             </div>
         </aside>
     );

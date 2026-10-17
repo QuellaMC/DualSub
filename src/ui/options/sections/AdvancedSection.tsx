@@ -14,27 +14,29 @@ import {
     type SettingsValues,
 } from '@/config/schema';
 import { configService, type SettingsWrite } from '@/config/service';
+import { usableCredential } from '@/shared/keyOrigins';
 import { credentialEntered } from '@/shared/providers';
 import { useSettings } from '../../hooks/useSettings';
 import { confirmChange, useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
 
-/** Credentials, and the expiry that only means something with its token,
- *  never leave this computer in a backup. */
+/** Credentials, and what only means something with them (the token's
+ *  expiry, the origin each key was entered for), never leave this
+ *  computer in a backup. */
 const NOT_BACKED_UP: readonly SettingsKey[] = [
     ...SENSITIVE_KEYS,
     'vertexTokenExpiresAt',
+    'openaiCompatibleApiKeyOrigin',
+    'openaiApiKeyOrigin',
 ];
 
 const BACKED_UP = SETTINGS_KEYS.filter((key) => !NOT_BACKED_UP.includes(key));
 
-const CREDENTIALS = Object.keys(CREDENTIAL_SETUP) as SettingsKey[];
-
 /** What a reset leaves while everything else goes back to the recommended
  *  values: what is not backed up, how the page itself reads, and the
- *  setup of every key that stays, so a kept key never goes to a host it was
- *  not set up for. A setup without a key is reset with the rest. */
-function keptOnReset(credentials: Partial<SettingsValues>): Set<SettingsKey> {
+ *  setup of every usable key, so a kept key never goes to a host it was
+ *  not set up for. A setup without a usable key is reset with the rest. */
+function keptOnReset(stored: Partial<SettingsValues>): Set<SettingsKey> {
     const kept = new Set<SettingsKey>([
         ...NOT_BACKED_UP,
         'uiLanguage',
@@ -43,7 +45,10 @@ function keptOnReset(credentials: Partial<SettingsValues>): Set<SettingsKey> {
     for (const [credential, setup] of Object.entries(CREDENTIAL_SETUP)) {
         if (
             credentialEntered(
-                credentials[credential as keyof typeof CREDENTIAL_SETUP]
+                usableCredential(
+                    credential as keyof typeof CREDENTIAL_SETUP,
+                    stored
+                )
             )
         ) {
             for (const key of setup) {
@@ -58,8 +63,8 @@ function keptOnReset(credentials: Partial<SettingsValues>): Set<SettingsKey> {
  *  when the reset writes: a key saved just before it keeps the setup it was
  *  entered with. */
 function resetSettings(): Promise<SettingsWrite> {
-    return configService.updateSettings(CREDENTIALS, (credentials) => {
-        const kept = keptOnReset(credentials);
+    return configService.updateSettings(SETTINGS_KEYS, (stored) => {
+        const kept = keptOnReset(stored);
         return Object.fromEntries(
             SETTINGS_KEYS.filter((key) => !kept.has(key)).map((key) => [
                 key,

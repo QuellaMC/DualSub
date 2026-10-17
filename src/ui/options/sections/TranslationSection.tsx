@@ -1,4 +1,5 @@
 import { SETTING_BOUNDS, validateSetting } from '@/config/schema';
+import { usableCredential } from '@/shared/keyOrigins';
 import type { ProviderId } from '@/shared/providers';
 import { Switch } from '../../design/Switch';
 import { HealthNotice } from '../../HealthNotice';
@@ -142,7 +143,10 @@ export function TranslationSection({
             {settings.selectedProvider === 'openai_compatible' && (
                 <OpenAICompatibleProviderCard
                     t={t}
-                    apiKey={settings.openaiCompatibleApiKey}
+                    apiKey={usableCredential(
+                        'openaiCompatibleApiKey',
+                        settings
+                    )}
                     baseUrl={settings.openaiCompatibleBaseUrl}
                     model={settings.openaiCompatibleModel}
                     advanced={advanced}

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MessageActions } from '../actions';
 import { defineContract } from '../registry';
-import { boundedNonBlankString, boundedText } from './primitives';
+import { boundedNonBlankString, boundedText, languageTag } from './primitives';
 
 // Passing this contract is necessary, not sufficient: the background subtitle
 // policy independently re-checks route identity against the classified sender
@@ -10,7 +10,6 @@ import { boundedNonBlankString, boundedText } from './primitives';
 // because it selects and transforms, not merely validates.
 
 const MAX_ROUTE_ID_BYTES = 256;
-const MAX_LANGUAGE_BYTES = 64;
 
 /** Sized for a handful of resolved Netflix tracks with 16 KiB URLs. */
 const FETCH_VTT_BUDGET = Object.freeze({
@@ -32,16 +31,16 @@ export const fetchVtt = defineContract({
             source: z.literal('disneyplus'),
             videoId: boundedNonBlankString(MAX_ROUTE_ID_BYTES),
             url: z.string(),
-            targetLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
-            originalLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
+            targetLanguage: languageTag,
+            originalLanguage: languageTag,
             useOfficialTranslations: z.boolean(),
         }),
         z.strictObject({
             action: z.literal(MessageActions.FETCH_VTT),
             source: z.literal('netflix'),
             videoId: boundedNonBlankString(MAX_ROUTE_ID_BYTES),
-            targetLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
-            originalLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
+            targetLanguage: languageTag,
+            originalLanguage: languageTag,
             useOfficialTranslations: z.boolean(),
             data: z.strictObject({
                 tracks: z.array(z.unknown()).min(1).max(MAX_NETFLIX_TRACKS),

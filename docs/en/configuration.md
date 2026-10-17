@@ -4,10 +4,17 @@ DualSub works on Netflix and Disney+ as soon as it is installed; nothing needs s
 
 ## Popup (Quick Access)
 
-- Enable/Disable dual subtitles
-- Languages: the translation language starts as your browser's language. The top line starts on Automatic and follows the language spoken in the video, including when you switch the audio track in the player; pick a fixed language to learn one language with every video. When the video is already in your translation language, DualSub shows one line.
-- Layout (Top/Bottom, Left/Right), appearance, and timing offset
-- Subtitle style: Match Platform, which follows the subtitle appearance settings of your Netflix or Disney+ profile, or Custom, which starts as DualSub's own look and is edited in the settings page. The translation line's color is a setting of its own for both. Font size is a scale over the look's base size, which follows the video's height.
+On a site DualSub works on, the popup is a remote control:
+
+- Whether DualSub is working on the video, and a switch that turns it on or off for that site only
+- I speak: the translation language, which starts as your browser's language
+- Top line: the language the top line shows. Automatic, the default, follows the language spoken in the video, including when you switch the audio track in the player; the settings page's Languages section can fix one language instead, to learn it with every video. When the video is already in your translation language, DualSub shows one line.
+- Text size, timing, and position, in steps the video follows at once
+- A notice when the translation service you chose stops working, with a way to its settings
+
+Anywhere else, the popup shows what DualSub does and opens the sites it works on.
+
+The subtitle style is set in the settings page: Look like the site follows the subtitle appearance settings of your Netflix or Disney+ profile, and My own style starts from a ready-made look. The translation line's color is a setting of its own for both. Text size is a scale over the look's base size, which follows the video's height.
 
 ## Settings Page
 
@@ -24,13 +31,15 @@ The settings page holds every setting, the popup's included. Each change saves a
 
 "Show advanced options" adds the exact timing shift, the pause between translation requests, per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
 
+API keys stay on this computer: they don't sync and never go into a backup file. A key goes only to the address it was entered for. When that address moves to another host (on this computer, on another one you sync with, or by loading a backup), DualSub treats the key as missing until you enter one for the new address.
+
 ## Per-Site Settings
 
 Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the top line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.
 
 In the settings page, with advanced options shown, pick a site in the bar at the top: what you change then gets a "Netflix only" tag, and "Use the All-sites value" drops the site's own value. The Sites section lists what each site keeps and removes it in one click.
 
-The popup changes the value the current site uses: its own value when it has one, otherwise the shared one.
+The popup changes the value the current site uses: its own value when it has one, otherwise the shared one. Its on/off switch is always the site's own.
 
 ## Examples
 

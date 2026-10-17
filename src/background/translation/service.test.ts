@@ -365,6 +365,7 @@ describe('TranslationService fallback', () => {
         } = {}
     ) {
         const deepl = fakeProvider('deepl');
+        const openai = fakeProvider('openai_compatible');
         const microsoft = fakeProvider('microsoft_edge');
         const google = fakeProvider('google');
         const fake = fakeConfig({
@@ -379,13 +380,13 @@ describe('TranslationService fallback', () => {
             current: memory.current,
         };
         const service = new TranslationService({
-            providers: [deepl, microsoft, google],
+            providers: [deepl, openai, microsoft, google],
             config: fake.config,
             health: health.store,
             logger: silentLogger,
         });
         await service.initialize();
-        return { service, deepl, microsoft, google, fake, health };
+        return { service, deepl, openai, microsoft, google, fake, health };
     }
 
     it('covers a rejected key with Microsoft and pauses the failing provider', async () => {
@@ -941,6 +942,21 @@ describe('TranslationService fallback', () => {
         await expect(service.translate('Fixed', 'auto', 'es')).resolves.toEqual(
             { translatedText: '[deepl:es] Fixed', cached: false }
         );
+    });
+
+    it('lets the same key entered for a new address try again at once', async () => {
+        const { service, openai, fake, health } = await setup({
+            selected: 'openai_compatible',
+        });
+        openai.translate.mockRejectedValueOnce(
+            failing('openai_compatible', 'AUTHENTICATION_ERROR')
+        );
+        await service.translate('Hello', 'auto', 'es');
+        expect(health.current()?.provider).toBe('openai_compatible');
+
+        fake.emit({ openaiCompatibleApiKeyOrigin: 'https://llm.example.com' });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(health.current()).toBeNull();
     });
 
     it('keeps a standing failure across a worker restart, for its own provider only', async () => {

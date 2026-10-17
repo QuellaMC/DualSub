@@ -21,7 +21,11 @@ import type {
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import { netflixDescriptor } from '../platform/netflix/descriptor';
 import { UiRoot } from '../renderer/domLayer';
-import { PlayerSession, type LanguageSettings } from './PlayerSession';
+import {
+    PlayerSession,
+    type ContentSettings,
+    type LanguageSettings,
+} from './PlayerSession';
 
 const LANGUAGES: LanguageSettings = {
     originalLanguage: 'en',
@@ -93,7 +97,10 @@ function resolution(
     };
 }
 
-function startSession(languageSettings: LanguageSettings = LANGUAGES) {
+function startSession(
+    languageSettings: LanguageSettings = LANGUAGES,
+    settings: Partial<ContentSettings> = {}
+) {
     const controller = new AbortController();
     const cache = new SubtitleEventCache();
     const sendControl = vi.fn(() => true);
@@ -110,6 +117,7 @@ function startSession(languageSettings: LanguageSettings = LANGUAGES) {
         platformLook: null,
         settings: {
             subtitlesEnabled: true,
+            hideOfficialSubtitles: true,
             subtitleStyle: 'custom',
             subtitleCustomLook: getDefaultValue('subtitleCustomLook'),
             subtitleTranslationColor: '#00ffff',
@@ -119,6 +127,7 @@ function startSession(languageSettings: LanguageSettings = LANGUAGES) {
             subtitleLayoutOrientation: 'column',
             subtitleLayoutOrder: 'original_top',
             subtitleTimeOffset: 0,
+            ...settings,
         },
         languageSettings,
         interaction: {
@@ -130,6 +139,11 @@ function startSession(languageSettings: LanguageSettings = LANGUAGES) {
         onContextInvalidated: vi.fn(),
     });
     session.start();
+    // The orchestrator hands the session its site's changes.
+    const unsubscribe = configService
+        .forSite('netflix')
+        .onChanged((changes) => session.applySettings(changes));
+    controller.signal.addEventListener('abort', unsubscribe, { once: true });
     const tick = (time: number): void => {
         video.time = time;
         video.dispatchEvent(new Event('timeupdate'));
@@ -220,6 +234,35 @@ describe('PlayerSession', () => {
         expect(texts()).toEqual(['Hello', 'こんにちは']);
     });
 
+    it('names the language of the track it shows, not the one it asked for', async () => {
+        // The platform has no Japanese track and answers with English.
+        stubBackground({ 'zh-CN': '你好' });
+        active = startSession({ ...LANGUAGES, originalLanguage: 'ja' });
+        expect(active.session.topLanguage).toBeNull();
+
+        active.cache.publish('1', resolution(['ja', 'zh-CN']));
+        await settle();
+        expect(active.session.topLanguage).toBe('en');
+    });
+
+    it('names no top line language while subtitles for new languages load', async () => {
+        stubBackground({ 'zh-CN': '你好', ja: 'こんにちは' });
+        active = startSession();
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+        expect(active.session.topLanguage).toBe('en');
+
+        active.session.updateLanguageSettings({
+            ...LANGUAGES,
+            targetLanguage: 'ja',
+        });
+        expect(active.session.topLanguage).toBeNull();
+
+        active.cache.publish('1', resolution(['en', 'ja']));
+        await settle();
+        expect(active.session.topLanguage).toBe('en');
+    });
+
     it('ignores a languages update that changes nothing', async () => {
         stubBackground({ 'zh-CN': '你好' });
         active = startSession();
@@ -233,7 +276,7 @@ describe('PlayerSession', () => {
     it("draws the platform style from the viewer's reported appearance", async () => {
         stubBackground({ 'zh-CN': '你好' });
         active = startSession();
-        active.session.applySettings({ subtitleStyle: 'platform' });
+        await configService.setMultiple({ subtitleStyle: 'platform' });
         active.cache.publish('1', resolution(['en', 'zh-CN']));
         await settle();
         active.tick(1.5);
@@ -290,6 +333,20 @@ describe('PlayerSession', () => {
         );
         await settle();
         expect(stageHidden()).toBe(true);
+    });
+
+    it("hides the site's own subtitles only while DualSub shows its lines", async () => {
+        stubBackground({});
+        active = startSession(LANGUAGES, { subtitlesEnabled: false });
+        const cue = document.createElement('div');
+        cue.className = 'player-timedtext';
+        document.querySelector('.watch-video')!.append(cue);
+        await settle(150);
+        expect(cue.getAttribute('data-dualsub-hidden')).toBeNull();
+
+        await fakeBrowser.storage.sync.set({ subtitlesEnabled: true });
+        await settle(150);
+        expect(cue.getAttribute('data-dualsub-hidden')).toBe('true');
     });
 
     it('watches the spoken language for its whole life', () => {

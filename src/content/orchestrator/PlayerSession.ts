@@ -54,8 +54,7 @@ export type SessionEndReason =
  *  evidently has nothing coming. */
 const SUBTITLE_LOADING_TIMEOUT_MS = 20_000;
 
-export const CONTENT_SETTINGS_KEYS = [
-    'subtitlesEnabled',
+const DISPLAY_SETTINGS_KEYS = [
     'subtitleStyle',
     'subtitleCustomLook',
     'subtitleTranslationColor',
@@ -65,6 +64,12 @@ export const CONTENT_SETTINGS_KEYS = [
     'subtitleLayoutOrientation',
     'subtitleLayoutOrder',
     'subtitleTimeOffset',
+] as const;
+
+export const CONTENT_SETTINGS_KEYS = [
+    'subtitlesEnabled',
+    'hideOfficialSubtitles',
+    ...DISPLAY_SETTINGS_KEYS,
 ] as const;
 
 export type ContentSettings = Pick<
@@ -177,8 +182,9 @@ export interface PlayerSessionDeps {
 /**
  * Everything that lives exactly as long as one video is on the player
  * route. One AbortSignal is the lifetime: listeners, timers, the frame
- * loop, in-flight requests, and config subscriptions all die with it, so a
- * stale continuation cannot touch a successor session.
+ * loop, and in-flight requests all die with it, so a stale continuation
+ * cannot touch a successor session. Settings changes come in through
+ * `applySettings` from whoever read its settings.
  */
 export class PlayerSession {
     readonly id: number;
@@ -194,8 +200,10 @@ export class PlayerSession {
     /** Which words of the current line are selected; the panel mirrors it. */
     readonly selection: SelectionAuthority;
     private mediaScope: AbortController | null = null;
+    /** Shows or hides the site's own subtitles in the bound media. */
+    private hideNativeSubs: ((hidden: boolean) => void) | null = null;
     private settings: ContentSettings;
-    private languageSettingsValue: LanguageSettings;
+    private languageSettings: LanguageSettings;
     /** What the player reported as spoken: undefined until it reports,
      *  null when it could not tell. */
     private spokenLanguage: string | null | undefined;
@@ -219,7 +227,7 @@ export class PlayerSession {
         this.videoId = deps.videoId;
         this.signal = this.controller.signal;
         this.settings = deps.settings;
-        this.languageSettingsValue = deps.languageSettings;
+        this.languageSettings = deps.languageSettings;
         this.languagesValue = resolveSubtitleLanguages(
             deps.languageSettings,
             undefined
@@ -264,7 +272,6 @@ export class PlayerSession {
             onOriginalPainted: (revision) =>
                 this.selection.onSubtitleChange(revision),
             onWordIntent: (intent) => this.onWordIntent(intent),
-            wordLanguage: () => this.languagesValue?.originalLanguage ?? 'en',
         });
         this.mediaBinding = new MediaBinding({
             adapter: this.adapter,
@@ -276,16 +283,18 @@ export class PlayerSession {
                 this.mediaScope = childScope(this.signal);
                 this.adapter.onClockInvalidated();
                 this.renderer.attachMedia(media);
-                installNativeSubHider(this.adapter.nativeSubRecipe, media, {
-                    signal: this.mediaScope.signal,
-                    config: this.deps.config,
-                    logger: this.logger,
-                });
+                this.hideNativeSubs = installNativeSubHider(
+                    this.adapter.nativeSubRecipe,
+                    media,
+                    { signal: this.mediaScope.signal, logger: this.logger },
+                    this.nativeSubsHidden()
+                );
                 this.translation?.scheduler.kick();
             },
             onLost: () => {
                 this.mediaScope?.abort();
                 this.mediaScope = null;
+                this.hideNativeSubs = null;
                 this.renderer.detachMedia();
             },
             signal: this.signal,
@@ -293,17 +302,21 @@ export class PlayerSession {
         });
     }
 
-    get languageSettings(): LanguageSettings {
-        return this.languageSettingsValue;
+    /** Its video is bound, so its subtitles can show there. */
+    get hasMedia(): boolean {
+        return this.mediaBinding.current !== null;
+    }
+
+    /** The language of the top line on screen, which is the platform's
+     *  fallback track when it lacks the one asked for; null until the
+     *  subtitles for the current languages arrive. */
+    get topLanguage(): string | null {
+        return this.rendererState.loading ? null : this.rendererState.language;
     }
 
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
         this.renderer.setInteractive(this.interaction.aiContextEnabled);
-        const unsubscribe = this.deps.config.onChanged((changes) =>
-            this.applySettings(changes)
-        );
-        this.signal.addEventListener('abort', unsubscribe, { once: true });
         this.setLoading(true);
 
         // Replays retained events synchronously — anything the page bridge
@@ -357,7 +370,7 @@ export class PlayerSession {
     }
 
     updateLanguageSettings(next: LanguageSettings): void {
-        this.languageSettingsValue = next;
+        this.languageSettings = next;
         this.applyLanguages();
     }
 
@@ -373,7 +386,7 @@ export class PlayerSession {
      *  stay on screen behind a placeholder until the new set arrives. */
     private applyLanguages(): void {
         const next = resolveSubtitleLanguages(
-            this.languageSettingsValue,
+            this.languageSettings,
             this.spokenLanguage
         );
         if (sameSubtitleLanguages(next, this.languagesValue)) {
@@ -419,19 +432,37 @@ export class PlayerSession {
         }
     }
 
-    /** Display settings from storage or from a popup live preview. */
+    /** The site's own subtitles hide only while DualSub shows its lines. */
+    private nativeSubsHidden(): boolean {
+        return (
+            this.settings.hideOfficialSubtitles &&
+            this.settings.subtitlesEnabled
+        );
+    }
+
+    /** Follow a change to the settings as the site sees them. */
     applySettings(changes: Partial<SettingsValues>): void {
-        let displayChanged = false;
+        if (FETCH_SETTINGS_KEYS.some((key) => changes[key] !== undefined)) {
+            this.updateLanguageSettings(
+                toLanguageSettings({
+                    ...this.languageSettings,
+                    ...changes,
+                })
+            );
+        }
         for (const key of CONTENT_SETTINGS_KEYS) {
             if (changes[key] !== undefined) {
                 (this.settings as Record<string, unknown>)[key] = changes[key];
-                if (key !== 'subtitlesEnabled') {
-                    displayChanged = true;
-                }
             }
         }
-        if (displayChanged) {
+        if (DISPLAY_SETTINGS_KEYS.some((key) => changes[key] !== undefined)) {
             this.renderer.setDisplay(toDisplaySettings(this.settings));
+        }
+        if (
+            changes.subtitlesEnabled !== undefined ||
+            changes.hideOfficialSubtitles !== undefined
+        ) {
+            this.hideNativeSubs?.(this.nativeSubsHidden());
         }
         if (changes.subtitlesEnabled !== undefined) {
             this.renderer.setVisible(changes.subtitlesEnabled);

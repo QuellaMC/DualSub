@@ -21,6 +21,7 @@ const PROVIDER_CONFIGURATION = {
     deepl: ['deeplApiKey', 'deeplApiPlan'],
     openai_compatible: [
         'openaiCompatibleApiKey',
+        'openaiCompatibleApiKeyOrigin',
         'openaiCompatibleBaseUrl',
         'openaiCompatibleModel',
     ],

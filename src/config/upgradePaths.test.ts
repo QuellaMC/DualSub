@@ -164,11 +164,15 @@ describe('upgrade paths', () => {
         expect(storage.sync.useOfficialTranslations).toBe(true);
         expect(storage.local.deeplApiKey).toBe('');
         expect(storage.local.vertexTokenExpiresAt).toBe(0);
+        expect(storage.local.openaiApiKeyOrigin).toBe('');
     });
 
     it('2.5.0 → 3: credentials move, retired keys go, the provider id is repaired', async () => {
         await browser.storage.sync.set(V25_SYNC);
-        await browser.storage.local.set({ debugMode: true });
+        await browser.storage.local.set({
+            debugMode: true,
+            appearanceAccordionOpen: true,
+        });
         await boot();
         const storage = await snapshot();
         expectCanonical(storage);
@@ -180,8 +184,13 @@ describe('upgrade paths', () => {
             openaiApiKey: 'oa-sync',
             geminiApiKey: 'gm-sync',
             vertexTokenExpiresAt: 0,
+            openaiCompatibleApiKeyOrigin:
+                'https://generativelanguage.googleapis.com',
+            openaiApiKeyOrigin: 'https://api.openai.com',
         });
         expect(storage.local).not.toHaveProperty('debugMode');
+        expect(storage.local).not.toHaveProperty('appearanceAccordionOpen');
+        expect(storage.sync).not.toHaveProperty('appearanceAccordionOpen');
         expect(storage.sync).toMatchObject({
             selectedProvider: 'microsoft_edge',
             useOfficialTranslations: true,
@@ -225,6 +234,8 @@ describe('upgrade paths', () => {
         expect(storage.local).not.toHaveProperty('aiContextDebugMode');
         expect(storage.local).toMatchObject({
             openaiCompatibleApiKey: 'oc-old',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            openaiApiKeyOrigin: '',
             geminiApiKey: 'gm-old',
         });
     });
@@ -246,11 +257,15 @@ describe('upgrade paths', () => {
             useNativeSubtitles: true,
             sidePanelUseSidePanel: true,
             selectedProvider: 'microsoft_edge_auth',
+            openaiBaseUrl: 'https://proxy.example.com/v1',
         });
         await boot();
         const afterSecondBoot = await snapshot();
         expectCanonical(afterSecondBoot);
         expect(afterSecondBoot.local.deeplApiKey).toBe('deepl-rotated');
+        expect(afterSecondBoot.local.openaiApiKeyOrigin).toBe(
+            'https://api.openai.com'
+        );
         expect(afterSecondBoot.sync).toMatchObject({
             selectedProvider: 'microsoft_edge',
             useOfficialTranslations: true,

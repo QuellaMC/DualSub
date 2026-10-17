@@ -1,10 +1,8 @@
 export { translate } from './translate';
 export { analyzeContext, deriveAnalyzeContextType } from './analyzeContext';
 export {
-    CONFIG_CHANGED_LIMITS,
-    configChanged,
     loggingLevelChanged,
-    platformLookStatus,
+    playerStatus,
     sidePanelPauseVideo,
 } from './control';
 export { checkBackgroundReady, ping } from './readiness';

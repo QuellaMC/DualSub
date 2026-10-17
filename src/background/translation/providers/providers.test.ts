@@ -299,6 +299,13 @@ describe('deepl provider', () => {
 });
 
 describe('openai-compatible provider', () => {
+    /** A key entered for the default address, Google's endpoint. */
+    const geminiKey = {
+        openaiCompatibleApiKey: 'key',
+        openaiCompatibleApiKeyOrigin:
+            'https://generativelanguage.googleapis.com',
+    };
+
     it('strips the models/ prefix only for the Gemini endpoint', () => {
         expect(
             normalizeModelName(
@@ -319,9 +326,22 @@ describe('openai-compatible provider', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it('sends no key to an address it was not entered for', async () => {
+        await fakeBrowser.storage.local.set(geminiKey);
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        const error = await failure(
+            openaiCompatibleProvider.translate('Hi', 'auto', 'fr')
+        );
+        expect(error.code).toBe('AUTHENTICATION_ERROR');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('posts a chat completion with the shared instruction', async () => {
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: 'sk-test',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
         });
         await fakeBrowser.storage.sync.set({
             openaiCompatibleBaseUrl: 'https://api.openai.com/v1',
@@ -355,7 +375,7 @@ describe('openai-compatible provider', () => {
     });
 
     it('normalizes the model for the default Gemini endpoint', async () => {
-        await fakeBrowser.storage.local.set({ openaiCompatibleApiKey: 'key' });
+        await fakeBrowser.storage.local.set(geminiKey);
         await fakeBrowser.storage.sync.set({
             openaiCompatibleModel: 'models/gemini-2.5-flash',
         });
@@ -373,7 +393,7 @@ describe('openai-compatible provider', () => {
     });
 
     it('accepts the Responses API output shape', async () => {
-        await fakeBrowser.storage.local.set({ openaiCompatibleApiKey: 'key' });
+        await fakeBrowser.storage.local.set(geminiKey);
         fetchMock.mockResolvedValueOnce(
             jsonResponse({
                 output: [{ content: [{ type: 'output_text', text: 'Ciao' }] }],
@@ -385,7 +405,7 @@ describe('openai-compatible provider', () => {
     });
 
     it('rejects an empty completion', async () => {
-        await fakeBrowser.storage.local.set({ openaiCompatibleApiKey: 'key' });
+        await fakeBrowser.storage.local.set(geminiKey);
         fetchMock.mockResolvedValueOnce(
             jsonResponse({ choices: [{ message: { content: '   ' } }] })
         );
@@ -396,7 +416,7 @@ describe('openai-compatible provider', () => {
     });
 
     it('maps 429 to a retryable rate limit', async () => {
-        await fakeBrowser.storage.local.set({ openaiCompatibleApiKey: 'key' });
+        await fakeBrowser.storage.local.set(geminiKey);
         fetchMock.mockResolvedValueOnce(textResponse('', 429));
         const error = await failure(
             openaiCompatibleProvider.translate('Hello', 'auto', 'it')

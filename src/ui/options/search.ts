@@ -18,7 +18,7 @@ export interface SearchEntry {
 
 /** Where the custom look's editor is: its disclosure when the custom look
  *  is chosen, else the choice of it. */
-export const LOOK_EDITOR_ANCHORS: readonly string[] = [
+const LOOK_EDITOR_ANCHORS: readonly string[] = [
     'look-customize',
     'look-style-custom',
 ];

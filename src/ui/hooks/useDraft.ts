@@ -6,7 +6,9 @@ import {
     useState,
 } from 'react';
 import { sameSettingValue } from '@/config/schema';
-import type { SaveFeedback } from '../types';
+
+/** How a write is confirmed to the viewer: a named change, or nothing. */
+export type SaveFeedback = { readonly message: string } | 'quiet';
 
 /** Sliders and color pickers report every movement; one write per pause
  *  keeps a drag within the sync storage write quota. */
@@ -39,8 +41,9 @@ export interface Draft<T> {
  * flight settles, or when the editor goes away; a write that fails snaps
  * the draft back to the stored value unless a newer edit is waiting. A
  * value arriving from storage (another window, a synced device) is adopted
- * unless an edit is waiting. `onTake` hears of each value the draft takes,
- * before it is written.
+ * unless an edit is waiting; while a write is out, it is adopted once the
+ * last write settles. `onTake` hears of each value the draft takes, before
+ * it is written.
  */
 export function useDraft<T>(
     saved: T,
@@ -51,6 +54,9 @@ export function useDraft<T>(
     /** How to confirm the edit storage has not seen yet; null when none. */
     const pending = useRef<SaveFeedback | null>(null);
     const inFlight = useRef(false);
+    /** Counts the writes that settled with nothing waiting, so the stored
+     *  value is looked at again then. */
+    const [settled, setSettled] = useState(0);
     const latest = useRef({ draft, write, saved });
 
     // As a render commits, before a press on what it shows can land: run
@@ -60,10 +66,13 @@ export function useDraft<T>(
     });
 
     useLayoutEffect(() => {
-        if (pending.current === null) {
+        // While a write is out, a value arriving from storage is the echo of
+        // an older write, not news; once the last write settles, what storage
+        // holds then is what to show.
+        if (pending.current === null && !inFlight.current) {
             setDraft(saved);
         }
-    }, [saved]);
+    }, [saved, settled]);
 
     const flush = useCallback(function flush(): void {
         const notice = pending.current;
@@ -72,16 +81,14 @@ export function useDraft<T>(
         }
         pending.current = null;
         inFlight.current = true;
-        void latest.current
-            .write(latest.current.draft, notice)
-            .then((persisted) => {
-                inFlight.current = false;
-                if (pending.current !== null) {
-                    flush();
-                } else if (!persisted) {
-                    setDraft(latest.current.saved);
-                }
-            });
+        void latest.current.write(latest.current.draft, notice).then(() => {
+            inFlight.current = false;
+            if (pending.current !== null) {
+                flush();
+            } else {
+                setSettled((count) => count + 1);
+            }
+        });
     }, []);
 
     useEffect(() => {

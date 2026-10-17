@@ -1,5 +1,4 @@
 import type { Logger } from '@/shared/logger';
-import type { configService } from '@/config/service';
 import type { MediaScope, NativeSubRecipe } from '../types';
 import { scopedTimeout } from '../../orchestrator/scope';
 
@@ -7,8 +6,6 @@ const ROOT_RETRY_DELAY_MS = 250;
 const MAX_ROOT_RETRIES = 20;
 const REAPPLY_DELAY_MS = 100;
 const HIDDEN_ATTRIBUTE = 'data-dualsub-hidden';
-
-type ConfigSource = Pick<typeof configService, 'get' | 'onChanged'>;
 
 type StyleRoot = Document | ShadowRoot;
 
@@ -61,24 +58,26 @@ function collectTargets(
 }
 
 /**
- * Hides the platform's own subtitle rendering while DualSub is showing
- * subtitles. Targets are marked with `data-dualsub-hidden`; a stylesheet
- * keyed on that attribute does the hiding and is placed in whichever tree
- * holds the target, so cues rendered inside open shadow roots are covered
- * too. Observers re-apply after the site re-renders its cue containers.
- * Fully reversible: abort restores everything.
+ * Hides the platform's own subtitle rendering while `hidden` says so, and
+ * returns the setter that follows later changes; the session decides, from
+ * the settings it runs with. Targets are marked with `data-dualsub-hidden`;
+ * a stylesheet keyed on that attribute does the hiding and is placed in
+ * whichever tree holds the target, so cues rendered inside open shadow
+ * roots are covered too. Observers re-apply after the site re-renders its
+ * cue containers. Fully reversible: abort restores everything.
  */
 export function installNativeSubHider(
     recipe: NativeSubRecipe,
     media: MediaScope,
-    deps: { signal: AbortSignal; config: ConfigSource; logger: Logger }
-): void {
+    deps: { signal: AbortSignal; logger: Logger },
+    hidden: boolean
+): (hidden: boolean) => void {
     const { signal } = deps;
     if (signal.aborted) {
-        return;
+        return () => undefined;
     }
 
-    let hide = false;
+    let hide = hidden;
     const marked = new Set<Element>();
     const styledRoots = new Set<StyleRoot>();
     const observedRoots = new Set<Node>();
@@ -165,17 +164,6 @@ export function installNativeSubHider(
         }
     };
 
-    void deps.config.get('hideOfficialSubtitles').then((value) => {
-        hide = value;
-        apply();
-    });
-    const unsubscribe = deps.config.onChanged((changes) => {
-        if (changes.hideOfficialSubtitles !== undefined) {
-            hide = changes.hideOfficialSubtitles;
-            apply();
-        }
-    });
-
     // The recipe's roots are watched from the start; roots discovered
     // through targets (a cue tree inside a shadow root) join as they appear.
     const watchRecipeRoots = (attempt: number): void => {
@@ -204,7 +192,6 @@ export function installNativeSubHider(
     signal.addEventListener(
         'abort',
         () => {
-            unsubscribe();
             for (const observer of observers) {
                 observer.disconnect();
             }
@@ -215,4 +202,10 @@ export function installNativeSubHider(
         },
         { once: true }
     );
+
+    apply();
+    return (next) => {
+        hide = next;
+        apply();
+    };
 }

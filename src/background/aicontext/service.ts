@@ -45,7 +45,11 @@ const REQUEST_SETTINGS_KEYS = [
 type RequestSettings = ProviderSettings &
     Pick<SettingsValues, 'aiContextTimeout'>;
 
-const CREDENTIAL_KEYS = ['openaiApiKey', 'geminiApiKey'] as const;
+const CREDENTIAL_KEYS = [
+    'openaiApiKey',
+    'openaiApiKeyOrigin',
+    'geminiApiKey',
+] as const;
 
 /** A change to any of these can change an answer or its lifetime. */
 const CACHE_IDENTITY_KEYS = [
@@ -54,6 +58,7 @@ const CACHE_IDENTITY_KEYS = [
     'openaiModel',
     'geminiModel',
     'openaiApiKey',
+    'openaiApiKeyOrigin',
     'geminiApiKey',
     'aiContextCacheEnabled',
     'aiContextCacheTTL',

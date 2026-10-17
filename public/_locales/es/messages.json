@@ -5,102 +5,6 @@
     "appDesc": {
         "message": "Muestra subtítulos en dos idiomas en plataformas de streaming."
     },
-    "h1Title": {
-        "message": "DualSub"
-    },
-    "enableSubtitlesLabel": {
-        "message": "Habilitar Subtítulos Duales:"
-    },
-    "useNativeSubtitlesLabel": {
-        "message": "Usar Subtítulos Oficiales:"
-    },
-    "originalLanguageLabel": {
-        "message": "Idioma Original:"
-    },
-    "targetLanguageLabel": {
-        "message": "Traducir a:"
-    },
-    "subtitleAppearanceTimingLegend": {
-        "message": "Apariencia y Sincronización de Subtítulos"
-    },
-    "displayOrderLabel": {
-        "message": "Orden de Visualización:"
-    },
-    "layoutLabel": {
-        "message": "Diseño:"
-    },
-    "fontSizeLabel": {
-        "message": "Tamaño de Fuente:"
-    },
-    "verticalGapLabel": {
-        "message": "Espaciado Vertical:"
-    },
-    "subtitleVerticalPositionLabel": {
-        "message": "Posición Vertical:"
-    },
-    "timeOffsetLabel": {
-        "message": "Desfase de Tiempo(s):"
-    },
-    "displayOrderOriginalFirst": {
-        "message": "Original Primero"
-    },
-    "displayOrderTranslationFirst": {
-        "message": "Traducción Primero"
-    },
-    "layoutTopBottom": {
-        "message": "Arriba / Abajo"
-    },
-    "layoutLeftRight": {
-        "message": "Izquierda / Derecha"
-    },
-    "subtitleStyleLabel": {
-        "message": "Estilo de subtítulos:"
-    },
-    "subtitleStylePlatform": {
-        "message": "Igual que la plataforma"
-    },
-    "statusLanguageSetTo": {
-        "message": "Idioma Configurado (Recargar Página): "
-    },
-    "statusDualEnabled": {
-        "message": "Subtítulos Duales Habilitados. (Recargar Página)"
-    },
-    "statusDualDisabled": {
-        "message": "Subtítulos Duales Deshabilitados. (Recargar Página)"
-    },
-    "statusSmartTranslationEnabled": {
-        "message": "Traducción Inteligente Habilitada. (Recargar Página)"
-    },
-    "statusSmartTranslationDisabled": {
-        "message": "Traducción Inteligente Deshabilitada. (Recargar Página)"
-    },
-    "statusOriginalLanguage": {
-        "message": "Idioma Configurado (Recargar Página): "
-    },
-    "statusTimeOffset": {
-        "message": "Desfase de tiempo: "
-    },
-    "statusDisplayOrderUpdated": {
-        "message": "Orden de visualización actualizado."
-    },
-    "statusLayoutOrientationUpdated": {
-        "message": "Orientación del diseño actualizada."
-    },
-    "statusSubtitleStyleUpdated": {
-        "message": "Estilo de subtítulos actualizado."
-    },
-    "statusFontSize": {
-        "message": "Tamaño de fuente: "
-    },
-    "statusVerticalGap": {
-        "message": "Espaciado vertical: "
-    },
-    "statusVerticalPosition": {
-        "message": "Posición vertical: "
-    },
-    "statusInvalidOffset": {
-        "message": "Desfase inválido, revirtiendo."
-    },
     "optionsPageTitle": {
         "message": "Configuración de DualSub"
     },
@@ -151,9 +55,6 @@
     },
     "lang_hi": {
         "message": "Hindi"
-    },
-    "lang_auto": {
-        "message": "Automático (según el audio)"
     },
     "deeplApiKeyError": {
         "message": "Por favor ingresa tu clave API de DeepL primero."
@@ -370,18 +271,6 @@
     },
     "subtitleLoading": {
         "message": "DualSub: cargando subtítulos…"
-    },
-    "subtitleStyleCustom": {
-        "message": "Personalizado"
-    },
-    "platformLookCaptured": {
-        "message": "Igual que la plataforma sigue la configuración de subtítulos de tu perfil de %s."
-    },
-    "platformLookPreset": {
-        "message": "Igual que la plataforma usa el ajuste predeterminado de %s hasta que se lea la configuración de subtítulos de tu perfil."
-    },
-    "editCustomLook": {
-        "message": "Editar el estilo personalizado en la configuración"
     },
     "advancedBackupTitle": {
         "message": "Copia de seguridad"
@@ -1663,6 +1552,90 @@
     },
     "welcomeClose": {
         "message": "Eso es todo. Puedes cerrar esta pestaña."
+    },
+    "popupAllSettings": {
+        "message": "Toda la configuración"
+    },
+    "popupOnGitHub": {
+        "message": "DualSub en GitHub"
+    },
+    "popupWorkingTitle": {
+        "message": "Funcionando en este video"
+    },
+    "popupWorkingHelpOne": {
+        "message": "%s · %s, ya en tu idioma"
+    },
+    "popupWorkingHelpSoon": {
+        "message": "%s, con tu traducción"
+    },
+    "popupWorkingHelp": {
+        "message": "%s · %s, con tu traducción"
+    },
+    "popupReadyTitle": {
+        "message": "Listo en %s"
+    },
+    "popupReadyHelp": {
+        "message": "Pon un video y las dos líneas aparecen por sí solas."
+    },
+    "popupOffTitle": {
+        "message": "Subtítulos duales desactivados en %s"
+    },
+    "popupOffHelp": {
+        "message": "Vuelven los subtítulos propios del sitio."
+    },
+    "popupTopAutomatic": {
+        "message": "Automático"
+    },
+    "popupTopAutomaticIs": {
+        "message": "Automático: %s"
+    },
+    "popupPosition": {
+        "message": "Posición"
+    },
+    "popupExactSize": {
+        "message": "%s×"
+    },
+    "positionLowest": {
+        "message": "Más abajo"
+    },
+    "positionUsual": {
+        "message": "Habitual"
+    },
+    "positionHigher": {
+        "message": "Más arriba"
+    },
+    "positionMiddle": {
+        "message": "En medio"
+    },
+    "popupSmaller": {
+        "message": "Texto más pequeño"
+    },
+    "popupBigger": {
+        "message": "Texto más grande"
+    },
+    "popupElsewhereTitle": {
+        "message": "DualSub funciona en %s"
+    },
+    "popupElsewhereHelp": {
+        "message": "Esta página no es ninguno de ellos. Abre uno, pon cualquier video y las dos líneas aparecen por sí solas."
+    },
+    "popupAlreadyTitle": {
+        "message": "¿Ya estás en %s?"
+    },
+    "popupAlreadyPlay": {
+        "message": "Pon un video. Los subtítulos aparecen cuando empieza."
+    },
+    "popupAlreadyNone": {
+        "message": "¿Sin subtítulos? Puede que el video no tenga en ningún idioma."
+    },
+    "popupReloadTitle": {
+        "message": "Recarga la página para iniciar DualSub"
+    },
+    "popupReloadHelp": {
+        "message": "Esta página ya estaba abierta cuando se instaló o actualizó DualSub."
+    },
+    "popupReload": {
+        "message": "Recargar la página"
     },
     "startNeedsSetupTitle": {
         "message": "Falta configurar %s"

@@ -1,11 +1,5 @@
+import { namedSize, TEXT_SIZES } from '../../adjustments';
 import type { Translate } from '../../hooks/useI18n';
-
-const TEXT_SIZES = [
-    { scale: 0.8, labelKey: 'sizeSmall', samplePx: 16 },
-    { scale: 1, labelKey: 'sizeMedium', samplePx: 21 },
-    { scale: 1.3, labelKey: 'sizeLarge', samplePx: 27 },
-    { scale: 1.6, labelKey: 'sizeExtraLarge', samplePx: 33 },
-] as const;
 
 /** Four named sizes; a scale set exactly in fine-tuning selects none. */
 export function SizePicker({
@@ -26,7 +20,7 @@ export function SizePicker({
                     key={size.labelKey}
                     type="button"
                     className="size"
-                    aria-pressed={Math.abs(scale - size.scale) < 0.001}
+                    aria-pressed={namedSize(scale) === size}
                     onClick={() => onPick(size.scale, t(size.labelKey))}
                 >
                     <span

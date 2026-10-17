@@ -27,6 +27,8 @@ export interface PaintedState {
  */
 export class RendererState {
     cues: Cue[] = [];
+    /** The language of the cues' original lines; null before any arrive. */
+    language: string | null = null;
     useNativeTarget = false;
     /** Subtitles for the current languages are still on their way. */
     loading = false;
@@ -45,6 +47,7 @@ export class RendererState {
 
     loadCues(cueSet: CueSet): void {
         this.cues = cueSet.cues;
+        this.language = cueSet.sourceLanguage;
         this.useNativeTarget = cueSet.useNativeTarget;
         this.invalidateMemo();
     }

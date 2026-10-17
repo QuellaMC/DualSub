@@ -3,12 +3,12 @@ import '@testing-library/jest-dom/vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+    act,
     cleanup,
     fireEvent,
     render,
     screen,
     waitFor,
-    within,
 } from '@testing-library/react';
 import {
     afterEach,
@@ -21,14 +21,41 @@ import {
 } from 'vitest';
 import { browser, type Browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
+import {
+    TEST_EXTENSION_ORIGIN,
+    installExtensionRuntimeIdentity,
+} from '@/test-utils/extensionRuntime';
 import { configService } from '@/config/service';
 import { resetCatalogsForTests } from '../hooks/useI18n';
-import { POPUP_SETTINGS_KEYS, PopupApp } from './PopupApp';
+import { PopupApp } from './PopupApp';
 
 const EN = readFileSync(resolve('public/_locales/en/messages.json'), 'utf8');
+const NETFLIX_WATCH = 'https://www.netflix.com/watch/1';
 
-function stubEnglishCatalog(): void {
+/** The active tab at `url`; on a player, its top line shows English. */
+function stubTab(url: string, onPlayer = false) {
+    vi.spyOn(browser.tabs, 'query').mockResolvedValue([
+        { id: 7, url } as unknown as Browser.tabs.Tab,
+    ] as never);
+    vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(
+        player(onPlayer) as never
+    );
+}
+
+function player(onPlayer: boolean, topLanguage: string | null = 'en') {
+    return { onPlayer, topLanguage: onPlayer ? topLanguage : null };
+}
+
+async function sync(key: string): Promise<unknown> {
+    return (await fakeBrowser.storage.sync.get(key))[key];
+}
+
+beforeAll(() => {
+    installExtensionRuntimeIdentity();
+});
+
+beforeEach(async () => {
+    resetCatalogsForTests();
     vi.stubGlobal(
         'fetch',
         vi.fn((input: string | URL) =>
@@ -39,48 +66,9 @@ function stubEnglishCatalog(): void {
             )
         )
     );
-}
-
-function stubTabs(url?: string) {
-    vi.spyOn(browser.tabs, 'query').mockResolvedValue([
-        { id: 7, url } as unknown as Browser.tabs.Tab,
-    ] as never);
-    return vi
-        .spyOn(browser.tabs, 'sendMessage')
-        .mockResolvedValue({ success: true } as never);
-}
-
-/** The live previews among the popup's messages to the tab (the popup
- *  also asks the tab what Match Platform draws from). */
-function previewsSent(
-    send: ReturnType<typeof stubTabs>
-): Record<string, unknown>[] {
-    return send.mock.calls
-        .map(
-            (call) =>
-                call[1] as { action: string; changes?: Record<string, unknown> }
-        )
-        .filter((request) => request.action === 'configChanged')
-        .map((request) => request.changes ?? {});
-}
-
-async function renderReady() {
-    render(<PopupApp />);
-    const enable = await screen.findByRole('checkbox', {
-        name: 'Enable Dual Subtitles:',
-    });
-    return { enable };
-}
-
-beforeAll(() => {
-    installExtensionRuntimeIdentity();
-});
-
-beforeEach(async () => {
-    resetCatalogsForTests();
-    stubEnglishCatalog();
     await fakeBrowser.storage.sync.clear();
     await fakeBrowser.storage.local.clear();
+    await fakeBrowser.storage.session.clear();
 });
 
 afterEach(() => {
@@ -89,140 +77,273 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('PopupApp', () => {
-    it('renders the stored settings', async () => {
-        await fakeBrowser.storage.sync.set({
-            subtitlesEnabled: false,
-            targetLanguage: 'ja',
-            subtitleFontScale: 2,
-        });
-        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
-        stubTabs();
-        const { enable } = await renderReady();
+describe('PopupApp on a site DualSub works on', () => {
+    it('says it is working on the video and turns DualSub off for this site only', async () => {
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'ja' });
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        expect(
+            await screen.findByRole('heading', {
+                name: 'Working on this video',
+            })
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Netflix · English, with your translation')
+        ).toBeInTheDocument();
+        expect(screen.getByText('Automatic: English')).toBeInTheDocument();
 
-        expect(enable).not.toBeChecked();
-        expect(
-            screen.getByRole('checkbox', { name: 'Use Official Subtitles:' })
-        ).toBeChecked();
-        expect(
-            screen.getByRole('combobox', { name: 'Translate to:' })
-        ).toHaveValue('ja');
-        expect(screen.getByRole('slider', { name: 'Font Size:' })).toHaveValue(
-            '2'
+        const enabled = screen.getByRole('switch', {
+            name: 'Dual subtitles',
+        });
+        expect(enabled).toHaveAttribute('aria-checked', 'true');
+        fireEvent.click(enabled);
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { subtitlesEnabled: false },
+            })
         );
-        expect(POPUP_SETTINGS_KEYS).toHaveLength(13);
+        expect(await sync('subtitlesEnabled')).not.toBe(false);
+        expect(
+            await screen.findByRole('heading', {
+                name: 'Dual subtitles are off on Netflix',
+            })
+        ).toBeInTheDocument();
     });
 
-    it('saves a toggle and shows its status', async () => {
-        stubTabs();
-        const { enable } = await renderReady();
-        fireEvent.click(enable);
+    it('turns DualSub back on here when the switch is pressed again while its first change is saved', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        const enabled = await screen.findByRole('switch', {
+            name: 'Dual subtitles',
+        });
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const firstWrite = Promise.withResolvers<void>();
+        vi.spyOn(fakeBrowser.storage.sync, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                firstWrite.promise.then(() => realSet(items)) as never
+        );
+        const writes = vi.spyOn(configService, 'setMultiple');
+        fireEvent.click(enabled);
+        // The second press comes in a later task, before the first is saved.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        fireEvent.click(enabled);
+        firstWrite.resolve();
+        await waitFor(() => expect(writes).toHaveBeenCalledTimes(2));
+        await Promise.all(
+            writes.mock.results.map((write) => write.value as Promise<unknown>)
+        );
 
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'Dual Subtitles Disabled. (Refresh Page)'
+        expect(await sync('siteProfiles')).not.toEqual({
+            netflix: { subtitlesEnabled: false },
+        });
+        expect(enabled).toHaveAttribute('aria-checked', 'true');
+    });
+
+    it('asks for a reload where DualSub is not running in the page yet', async () => {
+        vi.spyOn(browser.tabs, 'query').mockResolvedValue([
+            { id: 7, url: NETFLIX_WATCH } as unknown as Browser.tabs.Tab,
+        ] as never);
+        vi.spyOn(browser.tabs, 'sendMessage').mockRejectedValue(
+            new Error(
+                'Could not establish connection. Receiving end does not exist.'
             )
         );
-        expect(await fakeBrowser.storage.sync.get('subtitlesEnabled')).toEqual({
-            subtitlesEnabled: false,
-        });
-        expect(enable).not.toBeChecked();
-    });
-
-    it('saves a language choice with a localized status', async () => {
-        stubTabs();
-        await renderReady();
-        fireEvent.change(
-            screen.getByRole('combobox', { name: 'Translate to:' }),
-            {
-                target: { value: 'ja' },
-            }
-        );
-
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'Language Set (Refresh Page): Japanese'
-            )
-        );
-        expect(await fakeBrowser.storage.sync.get('targetLanguage')).toEqual({
-            targetLanguage: 'ja',
-        });
-    });
-
-    it('starts the top line on the spoken language and saves a fixed one', async () => {
-        stubTabs();
-        await renderReady();
-        const topLine = screen.getByRole('combobox', { name: 'Language Set:' });
-        expect(topLine).toHaveValue('auto');
+        const reload = vi
+            .spyOn(browser.tabs, 'reload')
+            .mockResolvedValue(undefined);
+        const close = vi.spyOn(window, 'close').mockImplementation(() => {});
+        render(<PopupApp />);
         expect(
-            within(topLine).getByRole('option', {
-                name: 'Automatic (follows the audio)',
+            await screen.findByRole('heading', {
+                name: 'Reload the page to start DualSub',
+            })
+        ).toBeInTheDocument();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reload the page' })
+        );
+        await waitFor(() => expect(reload).toHaveBeenCalledWith(7));
+        await waitFor(() => expect(close).toHaveBeenCalledOnce());
+    });
+
+    it('notices the video once its session starts after the popup opened', async () => {
+        stubTab(NETFLIX_WATCH);
+        render(<PopupApp />);
+        expect(
+            await screen.findByRole('heading', { name: 'Ready on Netflix' })
+        ).toBeInTheDocument();
+
+        vi.mocked(browser.tabs.sendMessage).mockResolvedValue(
+            player(true) as never
+        );
+        expect(
+            await screen.findByRole('heading', {
+                name: 'Working on this video',
+            })
+        ).toBeInTheDocument();
+    });
+
+    it('notices the video going away while the popup is open', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        expect(
+            await screen.findByRole('heading', {
+                name: 'Working on this video',
             })
         ).toBeInTheDocument();
 
-        fireEvent.change(topLine, { target: { value: 'ko' } });
-        await waitFor(async () =>
-            expect(
-                await fakeBrowser.storage.sync.get('originalLanguage')
-            ).toEqual({ originalLanguage: 'ko' })
+        vi.mocked(browser.tabs.sendMessage).mockResolvedValue(
+            player(false) as never
         );
-    });
-
-    it('previews slider movement on the active tab and persists on release', async () => {
-        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
-        const send = stubTabs();
-        await renderReady();
-        const slider = screen.getByRole('slider', { name: 'Font Size:' });
-
-        fireEvent.change(slider, { target: { value: '1.5' } });
-        await waitFor(() =>
-            expect(previewsSent(send)).toEqual([{ subtitleFontScale: 1.5 }])
-        );
-        expect(await fakeBrowser.storage.sync.get('subtitleFontScale')).toEqual(
-            {}
-        );
-
-        fireEvent.pointerUp(slider);
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'Font size: 1.5×.'
+        expect(
+            await screen.findByRole(
+                'heading',
+                { name: 'Ready on Netflix' },
+                { timeout: 3000 }
             )
-        );
-        expect(await fakeBrowser.storage.sync.get('subtitleFontScale')).toEqual(
-            {
-                subtitleFontScale: 1.5,
-            }
-        );
+        ).toBeInTheDocument();
     });
 
-    it('on a site with its own values, edits each where that site gets it from', async () => {
-        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
-        await fakeBrowser.storage.sync.set({
-            subtitleFontScale: 1.2,
-            siteProfiles: { netflix: { subtitleFontScale: 1.8 } },
+    it('controls the site the tab shows once it answers, after moving on while asked', async () => {
+        const query = vi
+            .spyOn(browser.tabs, 'query')
+            .mockResolvedValue([
+                { id: 7, url: NETFLIX_WATCH } as unknown as Browser.tabs.Tab,
+            ] as never);
+        vi.spyOn(browser.tabs, 'sendMessage').mockImplementation(() => {
+            // The tab moves to Disney+ while it answers.
+            query.mockResolvedValue([
+                {
+                    id: 7,
+                    url: 'https://www.disneyplus.com/video/1',
+                } as unknown as Browser.tabs.Tab,
+            ] as never);
+            return Promise.resolve(player(true)) as never;
         });
-        stubTabs('https://www.netflix.com/watch/81');
-        const { enable } = await renderReady();
-        const slider = screen.getByRole('slider', { name: 'Font Size:' });
-        expect(slider).toHaveValue('1.8');
+        render(<PopupApp />);
+        await screen.findByRole('heading', { name: 'Working on this video' });
 
-        fireEvent.change(slider, { target: { value: '2' } });
-        fireEvent.pointerUp(slider);
-        fireEvent.click(enable);
+        fireEvent.click(screen.getByRole('switch', { name: 'Dual subtitles' }));
         await waitFor(async () =>
-            expect(await fakeBrowser.storage.sync.get(null)).toMatchObject({
-                subtitleFontScale: 1.2,
-                subtitlesEnabled: false,
-                siteProfiles: { netflix: { subtitleFontScale: 2 } },
+            expect(await sync('siteProfiles')).toEqual({
+                disneyplus: { subtitlesEnabled: false },
             })
         );
     });
 
-    it('rolls the page back to the persisted value when a slider commit fails', async () => {
-        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
-        const send = stubTabs();
-        await renderReady();
-        // Only the slider's own save fails, not one another test left behind.
+    it('is ready before a video plays', async () => {
+        stubTab('https://www.disneyplus.com/home');
+        render(<PopupApp />);
+        expect(
+            await screen.findByRole('heading', { name: 'Ready on Disney+' })
+        ).toBeInTheDocument();
+    });
+
+    it('steps the size through named sizes, timing by half seconds, and the position', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'Bigger text' })
+        );
+        expect(await screen.findByText('Large')).toBeInTheDocument();
+        await waitFor(async () =>
+            expect(await sync('subtitleFontScale')).toBe(1.3)
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Show earlier' }));
+        expect(await screen.findByText('0.5 s earlier')).toBeInTheDocument();
+        await waitFor(async () =>
+            expect(await sync('subtitleTimeOffset')).toBe(0.5)
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Move up' }));
+        await waitFor(async () =>
+            expect(await sync('subtitleVerticalPosition')).toBe(3.5)
+        );
+    });
+
+    it("edits the value this site uses and marks the site's own", async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+        });
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        expect(await screen.findByText('Extra large')).toBeInTheDocument();
+        expect(screen.getByText('Netflix only')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Smaller text' }));
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { subtitleFontScale: 1.3 },
+            })
+        );
+        expect(await sync('subtitleFontScale')).toBeUndefined();
+    });
+
+    it('changes the language you speak and says what the top line shows', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        fireEvent.change(await screen.findByLabelText('I speak'), {
+            target: { value: 'en' },
+        });
+        await waitFor(async () =>
+            expect(await sync('targetLanguage')).toBe('en')
+        );
+        expect(
+            await screen.findByText(
+                'Netflix · English, already in your language'
+            )
+        ).toBeInTheDocument();
+
+        await fakeBrowser.storage.sync.set({ originalLanguage: 'ko' });
+        expect(await screen.findByText('Korean')).toBeInTheDocument();
+    });
+
+    it('says the top line is automatic until the player names its language', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        vi.mocked(browser.tabs.sendMessage).mockResolvedValue(
+            player(true, null) as never
+        );
+        render(<PopupApp />);
+        expect(await screen.findByText('Automatic')).toBeInTheDocument();
+        expect(
+            screen.getByText('Netflix, with your translation')
+        ).toBeInTheDocument();
+    });
+
+    it('names a failing translation service and leads to its settings', async () => {
+        const create = vi
+            .spyOn(browser.tabs, 'create')
+            .mockResolvedValue({} as never);
+        await fakeBrowser.storage.sync.set({ selectedProvider: 'deepl' });
+        await fakeBrowser.storage.session.set({
+            translationHealth: {
+                provider: 'deepl',
+                problem: 'quota',
+                fallback: 'microsoft_edge',
+                since: 1,
+            },
+        });
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        expect(
+            await screen.findByText('DeepL is not working.')
+        ).toBeInTheDocument();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Go to Translation' })
+        );
+        expect(create).toHaveBeenCalledWith({
+            url: `${TEST_EXTENSION_ORIGIN}/options.html#translation`,
+        });
+    });
+
+    it('shows a banner when a change cannot be saved', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        const bigger = await screen.findByRole('button', {
+            name: 'Bigger text',
+        });
+        // Only this save fails, not one another test left behind.
         const realSave = configService.setMultiple.bind(configService);
         let failed = false;
         vi.spyOn(configService, 'setMultiple').mockImplementation(
@@ -234,164 +355,85 @@ describe('PopupApp', () => {
                 return realSave(settings, siteWrite);
             }
         );
-        const slider = screen.getByRole('slider', { name: 'Font Size:' });
-
-        fireEvent.change(slider, { target: { value: '1.5' } });
-        fireEvent.pointerUp(slider);
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'Failed to save setting. Please try again.'
-            )
+        fireEvent.click(bigger);
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to save setting'
         );
-        await waitFor(() =>
-            expect(previewsSent(send)).toEqual([
-                { subtitleFontScale: 1.5 },
-                { subtitleFontScale: 1 },
-            ])
-        );
-        expect(slider).toHaveValue('1');
     });
 
-    it('saves the subtitle style choice', async () => {
-        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
-        stubTabs();
-        await renderReady();
-        const style = screen.getByRole('combobox', { name: 'Subtitle Style:' });
-        expect(style).toHaveValue('custom');
-
-        fireEvent.change(style, { target: { value: 'platform' } });
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'Subtitle style updated.'
-            )
-        );
-        expect(await fakeBrowser.storage.sync.get('subtitleStyle')).toEqual({
-            subtitleStyle: 'platform',
-        });
-    });
-
-    it.each([
-        [
-            true,
-            "Match Platform follows your Netflix profile's subtitle settings.",
-        ],
-        [
-            false,
-            "Match Platform uses the Netflix preset until your profile's subtitle settings are read.",
-        ],
-    ])(
-        'says what Match Platform draws from on this tab (captured: %s)',
-        async (captured, note) => {
-            await fakeBrowser.storage.local.set({
-                appearanceAccordionOpen: true,
-            });
-            await fakeBrowser.storage.sync.set({ subtitleStyle: 'platform' });
-            stubTabs().mockImplementation(((
-                _tabId: number,
-                message: { action: string }
-            ) =>
-                Promise.resolve(
-                    message.action === 'platformLookStatus'
-                        ? { onPlayer: true, platform: 'netflix', captured }
-                        : { success: true }
-                )) as never);
-            await renderReady();
-            expect(await screen.findByText(note)).toBeInTheDocument();
-        }
-    );
-
-    it('offers the custom style and opens its editor in the options page', async () => {
-        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
-        stubTabs();
-        const create = vi
-            .spyOn(browser.tabs, 'create')
-            .mockResolvedValue({} as never);
-        await renderReady();
-        const style = screen.getByRole('combobox', { name: 'Subtitle Style:' });
-        expect(
-            within(style).getByRole('option', { name: 'Custom' })
-        ).toBeInTheDocument();
-
-        fireEvent.click(
-            await screen.findByRole('button', {
-                name: 'Edit the custom look in settings',
-            })
-        );
-        expect(create).toHaveBeenCalledWith({
-            url: expect.stringMatching(
-                /options\.html#look\/look-customize\/look-style-custom$/
-            ) as string,
-        });
-    });
-
-    it('validates the time offset before saving it', async () => {
-        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
-        stubTabs();
-        await renderReady();
-        const offset = screen.getByRole('spinbutton', {
-            name: 'Time Offset(s):',
-        });
-
-        fireEvent.change(offset, { target: { value: 'abc' } });
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'Invalid offset, reverting.'
-            )
-        );
-
-        fireEvent.change(offset, { target: { value: '1.256' } });
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'Time offset: 1.26s.'
-            )
-        );
-        expect(
-            await fakeBrowser.storage.sync.get('subtitleTimeOffset')
-        ).toEqual({ subtitleTimeOffset: 1.26 });
-    });
-
-    it('blocks the controls when settings cannot be read', async () => {
-        stubTabs();
-        vi.spyOn(browser.storage.sync, 'get').mockRejectedValueOnce(
-            new Error('storage broken')
-        );
-        render(<PopupApp />);
-
-        const alert = await screen.findByRole('alert');
-        await waitFor(() =>
-            expect(alert).toHaveTextContent('Failed to load settings')
-        );
-        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-    });
-
-    it('edits nothing when it cannot tell which site the tab is on', async () => {
-        vi.spyOn(browser.tabs, 'query').mockRejectedValue(
+    it('edits nothing while it cannot tell which site the tab is on, then shows that site', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        vi.mocked(browser.tabs.query).mockRejectedValueOnce(
             new Error('tabs broken')
         );
         render(<PopupApp />);
-
-        const alert = await screen.findByRole('alert');
-        await waitFor(() =>
-            expect(alert).toHaveTextContent('Failed to load settings')
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to load settings'
         );
-        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+
+        expect(
+            await screen.findByRole(
+                'switch',
+                { name: 'Dual subtitles' },
+                { timeout: 3000 }
+            )
+        ).toBeInTheDocument();
     });
 
-    it('opens the options page and the repository from the header', async () => {
-        stubTabs();
+    it('says so when the settings cannot be read', async () => {
+        vi.spyOn(browser.storage.sync, 'get').mockRejectedValue(
+            new Error('broken')
+        );
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to load settings'
+        );
+    });
+});
+
+describe('PopupApp anywhere else', () => {
+    it('shows what DualSub does and opens the sites', async () => {
+        stubTab('https://example.com/');
+        render(<PopupApp />);
+        expect(
+            await screen.findByRole('heading', {
+                name: 'DualSub works on Netflix and Disney+',
+            })
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', {
+                name: 'Already on Netflix or Disney+?',
+            })
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: 'Open Netflix' })
+        ).toHaveAttribute('href', 'https://www.netflix.com/');
+        expect(
+            screen.getByRole('link', { name: 'Open Disney+' })
+        ).toHaveAttribute('href', 'https://www.disneyplus.com/');
+    });
+
+    it('opens the settings and help, and links to the source', async () => {
         const openOptions = vi
             .spyOn(browser.runtime, 'openOptionsPage')
             .mockResolvedValue(undefined);
         const create = vi
             .spyOn(browser.tabs, 'create')
             .mockResolvedValue({} as never);
-        await renderReady();
-
-        fireEvent.click(screen.getByTitle('Open Advanced Settings'));
-        fireEvent.click(screen.getByTitle('View on GitHub'));
-        expect(openOptions).toHaveBeenCalledTimes(1);
+        stubTab('https://example.com/');
+        render(<PopupApp />);
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'All settings' })
+        );
+        expect(openOptions).toHaveBeenCalledOnce();
+        fireEvent.click(screen.getByRole('button', { name: 'Help' }));
         expect(create).toHaveBeenCalledWith({
-            url: 'https://github.com/QuellaMC/DualSub',
+            url: `${TEST_EXTENSION_ORIGIN}/options.html#help`,
         });
+        expect(
+            screen.getByRole('link', { name: 'DualSub on GitHub' })
+        ).toHaveAttribute('href', 'https://github.com/QuellaMC/DualSub');
     });
 });

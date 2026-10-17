@@ -1,155 +1,143 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { browser, type Browser } from 'wxt/browser';
-import {
-    activeTabPlatform,
-    previewContentSettings,
-    readPlatformLookStatus,
-} from './contentTab';
+import { activeTabSite, readTabStatus, reloadActiveTab } from './contentTab';
 
-function activeTab(id: number): Browser.tabs.Tab[] {
-    return [{ id } as unknown as Browser.tabs.Tab];
+function activeTab(
+    id: number,
+    url?: string,
+    pendingUrl?: string
+): Browser.tabs.Tab[] {
+    return [{ id, url, pendingUrl } as unknown as Browser.tabs.Tab];
 }
 
 function stubTabs(tabs: Browser.tabs.Tab[]) {
     vi.spyOn(browser.tabs, 'query').mockResolvedValue(tabs as never);
     return vi
         .spyOn(browser.tabs, 'sendMessage')
-        .mockResolvedValue({ success: true } as never);
+        .mockResolvedValue({ onPlayer: true, topLanguage: 'ko' } as never);
 }
 
 afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('previewContentSettings', () => {
-    it('sends the changes to the active tab as a configChanged request', async () => {
-        const send = stubTabs(activeTab(7));
-        await previewContentSettings({ subtitleFontScale: 1.5 });
-        expect(send).toHaveBeenCalledWith(
-            7,
-            { action: 'configChanged', changes: { subtitleFontScale: 1.5 } },
-            undefined
-        );
-    });
-
-    it('does nothing without an active tab', async () => {
-        const send = stubTabs([]);
-        await previewContentSettings({ subtitleFontScale: 1.5 });
-        expect(send).not.toHaveBeenCalled();
-    });
-
-    it('drops a stale same-key value when tab lookups resolve out of order', async () => {
-        const lookups: ((tabs: Browser.tabs.Tab[]) => void)[] = [];
-        const query = vi.spyOn(browser.tabs, 'query');
-        for (let i = 0; i < 2; i += 1) {
-            const { promise, resolve } =
-                Promise.withResolvers<Browser.tabs.Tab[]>();
-            lookups.push(resolve);
-            query.mockReturnValueOnce(promise as never);
-        }
-        const send = vi
-            .spyOn(browser.tabs, 'sendMessage')
-            .mockResolvedValue({ success: true } as never);
-
-        const first = previewContentSettings({
-            subtitleFontScale: 1.4,
-            subtitleGap: 0.5,
+describe('activeTabSite', () => {
+    it('names the active tab and its site, or no site off the supported ones', async () => {
+        stubTabs(activeTab(7, 'https://www.netflix.com/watch/1'));
+        await expect(activeTabSite()).resolves.toEqual({
+            tabId: 7,
+            site: 'netflix',
         });
-        const second = previewContentSettings({ subtitleFontScale: 1.8 });
-        lookups[1]!(activeTab(7));
-        await second;
-        lookups[0]!(activeTab(7));
-        await first;
 
-        expect(send.mock.calls.map((call) => call[1])).toEqual([
-            { action: 'configChanged', changes: { subtitleFontScale: 1.8 } },
-            { action: 'configChanged', changes: { subtitleGap: 0.5 } },
-        ]);
-    });
-
-    it('swallows delivery failures and declined previews', async () => {
-        const send = stubTabs(activeTab(7));
-        send.mockRejectedValueOnce(new Error('Receiving end does not exist'));
-        await expect(
-            previewContentSettings({ subtitleFontScale: 1.5 })
-        ).resolves.toBeUndefined();
-
-        send.mockResolvedValueOnce({ success: false, error: 'nope' } as never);
-        await expect(
-            previewContentSettings({ subtitleFontScale: 1.5 })
-        ).resolves.toBeUndefined();
-    });
-});
-
-describe('readPlatformLookStatus', () => {
-    it('asks the active tab what Match Platform draws from', async () => {
-        const send = stubTabs(activeTab(7));
-        send.mockResolvedValueOnce({
-            onPlayer: true,
-            platform: 'disneyplus',
-            captured: true,
-        } as never);
-        await expect(readPlatformLookStatus()).resolves.toEqual({
-            onPlayer: true,
-            platform: 'disneyplus',
-            captured: true,
+        stubTabs(activeTab(7, 'https://example.com/'));
+        await expect(activeTabSite()).resolves.toEqual({
+            tabId: 7,
+            site: null,
         });
-        expect(send).toHaveBeenCalledWith(
-            7,
-            { action: 'platformLookStatus' },
-            undefined
-        );
-    });
 
-    it('is null without an active tab, a content script, a player route, or a sound answer', async () => {
         stubTabs([]);
-        await expect(readPlatformLookStatus()).resolves.toBeNull();
-
-        stubTabs(activeTab(7)).mockResolvedValueOnce({
-            onPlayer: false,
-        } as never);
-        await expect(readPlatformLookStatus()).resolves.toBeNull();
-
-        const send = stubTabs(activeTab(7));
-        send.mockRejectedValueOnce(new Error('Receiving end does not exist'));
-        await expect(readPlatformLookStatus()).resolves.toBeNull();
-
-        send.mockResolvedValueOnce({ platform: 'hulu', captured: 1 } as never);
-        await expect(readPlatformLookStatus()).resolves.toBeNull();
-    });
-});
-
-describe('activeTabPlatform', () => {
-    const at = (url?: string, pendingUrl?: string): Browser.tabs.Tab[] => [
-        { id: 7, url, pendingUrl } as unknown as Browser.tabs.Tab,
-    ];
-
-    it('names the site the tab shows, or none where DualSub does not work', async () => {
-        stubTabs(at('https://www.netflix.com/watch/81'));
-        await expect(activeTabPlatform()).resolves.toBe('netflix');
-        stubTabs(at('https://example.com/'));
-        await expect(activeTabPlatform()).resolves.toBeNull();
+        await expect(activeTabSite()).resolves.toEqual({
+            tabId: null,
+            site: null,
+        });
     });
 
     it('names the site a tab navigating within it stays on', async () => {
         stubTabs(
-            at(
+            activeTab(
+                7,
                 'https://www.netflix.com/browse',
                 'https://www.netflix.com/watch/81'
             )
         );
-        await expect(activeTabPlatform()).resolves.toBe('netflix');
+        await expect(activeTabSite()).resolves.toMatchObject({
+            site: 'netflix',
+        });
     });
 
     it('cannot tell the site while the tab is on its way to another', async () => {
         stubTabs(
-            at(
+            activeTab(
+                7,
                 'https://www.netflix.com/watch/81',
                 'https://www.disneyplus.com/'
             )
         );
-        await expect(activeTabPlatform()).rejects.toThrow();
-        stubTabs(at(undefined, 'https://www.netflix.com/'));
-        await expect(activeTabPlatform()).rejects.toThrow();
+        await expect(activeTabSite()).rejects.toThrow();
+        stubTabs(activeTab(7, undefined, 'https://www.netflix.com/'));
+        await expect(activeTabSite()).rejects.toThrow();
+    });
+});
+
+describe('readTabStatus', () => {
+    it('tells a player, with the language on top, from a page that waits for one, asking the tab it is given', async () => {
+        const send = stubTabs(activeTab(7));
+        await expect(readTabStatus(7)).resolves.toEqual({
+            kind: 'player',
+            topLanguage: 'ko',
+        });
+        expect(send).toHaveBeenCalledWith(
+            7,
+            { action: 'playerStatus' },
+            undefined
+        );
+
+        send.mockResolvedValueOnce({
+            onPlayer: true,
+            topLanguage: null,
+        } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({
+            kind: 'player',
+            topLanguage: null,
+        });
+        send.mockResolvedValueOnce({
+            onPlayer: false,
+            topLanguage: null,
+        } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
+    });
+
+    it('takes any language tag settings can hold, extensions included', async () => {
+        const send = stubTabs(activeTab(7));
+        send.mockResolvedValueOnce({
+            onPlayer: true,
+            topLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
+        } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({
+            kind: 'player',
+            topLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
+        });
+    });
+
+    it('knows when DualSub is not running in the page yet', async () => {
+        stubTabs(activeTab(7)).mockRejectedValueOnce(
+            new Error(
+                'Could not establish connection. Receiving end does not exist.'
+            )
+        );
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'notRunning' });
+    });
+
+    it('claims nothing it cannot prove', async () => {
+        await expect(readTabStatus(null)).resolves.toEqual({ kind: 'waiting' });
+
+        const send = stubTabs(activeTab(7));
+        send.mockResolvedValueOnce({ onPlayer: 'yes' } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
+        send.mockResolvedValueOnce({ onPlayer: true } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
+        send.mockRejectedValueOnce(new Error('The message port closed'));
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
+    });
+});
+
+describe('reloadActiveTab', () => {
+    it('reloads the active tab', async () => {
+        stubTabs(activeTab(7));
+        const reload = vi
+            .spyOn(browser.tabs, 'reload')
+            .mockResolvedValue(undefined);
+        await reloadActiveTab();
+        expect(reload).toHaveBeenCalledWith(7);
     });
 });

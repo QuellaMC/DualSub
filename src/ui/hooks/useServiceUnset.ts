@@ -11,6 +11,7 @@ export const SERVICE_SETUP_KEYS = [
     'deeplApiKey',
     'openaiCompatibleApiKey',
     'openaiCompatibleBaseUrl',
+    'openaiCompatibleApiKeyOrigin',
     'vertexAccessToken',
     'vertexProjectId',
     'vertexLocation',

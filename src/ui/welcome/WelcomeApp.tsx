@@ -6,9 +6,7 @@ import {
     type SiteSettingKey,
 } from '@/config/schema';
 import { configService } from '@/config/service';
-import { resolveLook } from '@/content/renderer/looks';
-import { toDisplaySettings } from '@/content/renderer/styling';
-import { PLATFORM_IDS, PLATFORM_NAMES, platformHome } from '@/shared/platforms';
+import { PLATFORM_IDS } from '@/shared/platforms';
 import { KEYLESS_PROVIDERS, type ProviderId } from '@/shared/providers';
 import {
     AUTO_LANGUAGE,
@@ -36,29 +34,18 @@ import {
     sitesTranslating,
 } from '../hooks/useSitesOn';
 import { languageName } from '../languageLabels';
-import { LookPreview } from '../preview/LookPreview';
-import { sampleSubtitles, sampleVideoLanguage } from '../preview/sample';
+import { SamplePreview, SAMPLE_SETTINGS_KEYS } from '../preview/SamplePreview';
 import { PROVIDER_NAME_KEYS } from '../providerNames';
-import { PLATFORM_PRESETS } from '../subtitleStyle';
+import { SiteLinks } from '../SiteLinks';
 
 const WELCOME_KEYS = [
     'uiLanguage',
     'subtitlesEnabled',
-    'targetLanguage',
-    'originalLanguage',
     'useOfficialTranslations',
     'translationFallback',
     'siteProfiles',
     ...SERVICE_SETUP_KEYS,
-    'subtitleStyle',
-    'subtitleCustomLook',
-    'subtitleTranslationColor',
-    'subtitleFontScale',
-    'subtitleGap',
-    'subtitleVerticalPosition',
-    'subtitleLayoutOrientation',
-    'subtitleLayoutOrder',
-    'subtitleTimeOffset',
+    ...SAMPLE_SETTINGS_KEYS,
 ] as const;
 
 type WelcomeKey = (typeof WELCOME_KEYS)[number];
@@ -237,11 +224,6 @@ function Welcome({
     );
 
     const fromBrowser = settings.targetLanguage === browserTargetLanguage();
-    const sample = sampleSubtitles(
-        settings,
-        sampleVideoLanguage(settings.targetLanguage)
-    );
-    const display = toDisplaySettings(settings);
     const automaticTop = settings.originalLanguage === AUTO_LANGUAGE;
     const provider = settings.selectedProvider;
     const pick = (
@@ -301,23 +283,11 @@ function Welcome({
                         </p>
                     </div>
                     <div className="welcome-frame">
-                        <LookPreview
-                            display={display}
-                            look={resolveLook(
-                                display,
-                                PLATFORM_PRESETS[PLATFORM_IDS[0]],
-                                null
-                            )}
+                        <SamplePreview
+                            t={t}
+                            settings={settings}
                             pictureHeight={PICTURE_HEIGHT}
-                            originalText={sample.originalText}
-                            translatedText={sample.translatedText}
-                            label={t('previewLabel')}
                         />
-                        {sample.standIns.map((language) => (
-                            <p key={language} className="help">
-                                {t('previewStandIn', languageName(t, language))}
-                            </p>
-                        ))}
                         {ownSites.length > 0 && (
                             <p className="help">
                                 {t(
@@ -517,17 +487,7 @@ function Welcome({
                         <div className="label">{t('welcomeOpenTitle')}</div>
                         <p className="help">{t('welcomeOpenHelp')}</p>
                         <div className="site-buttons">
-                            {PLATFORM_IDS.map((site) => (
-                                <a
-                                    key={site}
-                                    className="button big"
-                                    href={platformHome(site)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    {t('startOpenSite', PLATFORM_NAMES[site])}
-                                </a>
-                            ))}
+                            <SiteLinks t={t} className="button big" />
                         </div>
                     </li>
                     <li className="card">

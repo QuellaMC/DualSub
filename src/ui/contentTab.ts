@@ -1,16 +1,10 @@
 import { browser } from 'wxt/browser';
-import { sendToTab } from '@/messaging/client';
-import {
-    configChanged,
-    platformLookStatus,
-} from '@/messaging/contracts/control';
-import type { ResponseOf } from '@/messaging/registry';
+import { isProvenMessagingNonDelivery, sendToTab } from '@/messaging/client';
+import { playerStatus } from '@/messaging/contracts/control';
 import { createLogger } from '@/shared/logger';
 import { platformFromUrl, type PlatformId } from '@/shared/platforms';
-import type { ContentSettings } from '@/content/orchestrator/PlayerSession';
 
 const logger = createLogger('ContentTab');
-const generations = new Map<string, number>();
 
 /** The active tab of the current window; where a popup's page lives. */
 async function activeTab(): Promise<{
@@ -29,83 +23,74 @@ async function activeTabId(): Promise<number | null> {
     return (await activeTab())?.id ?? null;
 }
 
-/** The site of the active tab, or null when DualSub does not work there.
- *  Rejects when that is unknown, not none: the tab cannot be read, or it is
- *  on its way to another site than the one it shows. */
-export async function activeTabPlatform(): Promise<PlatformId | null> {
+/** The active tab and the site it shows, read together, so what is asked
+ *  of the tab next is asked of the same page. */
+export interface TabSite {
+    /** null with no active tab. */
+    readonly tabId: number | null;
+    /** null where DualSub does not work. */
+    readonly site: PlatformId | null;
+}
+
+/** The active tab and its site. Rejects when the site is unknown, not none:
+ *  the tab cannot be read, or it is on its way to another site than the
+ *  one it shows. */
+export async function activeTabSite(): Promise<TabSite> {
     const tab = await activeTab();
     const site = platformFromUrl(tab?.url);
     if (tab?.pendingUrl && platformFromUrl(tab.pendingUrl) !== site) {
         throw new Error('The active tab is on its way to another site');
     }
-    return site;
+    return { tabId: tab?.id ?? null, site };
 }
 
 /**
- * Paint un-persisted display values on the active tab right away, so a
- * slider drag is visible before its value is saved. Storage stays the
- * source of truth; delivery is best effort and never surfaces to the user.
- * Out-of-order tab lookups cannot resurrect an older value for a key.
+ * What DualSub is doing in the active tab: serving a video player, with the
+ * language its top line shows once known, waiting on the page for one, or
+ * not running there because the page opened before DualSub was installed
+ * or updated, so only a reload brings it in.
  */
-export async function previewContentSettings(
-    changes: Partial<ContentSettings>
-): Promise<void> {
-    const snapshot: Record<string, unknown> = { ...changes };
-    const stamps = new Map<string, number>();
-    for (const key of Object.keys(snapshot)) {
-        const generation = (generations.get(key) ?? 0) + 1;
-        generations.set(key, generation);
-        stamps.set(key, generation);
+export type TabStatus =
+    | { readonly kind: 'player'; readonly topLanguage: string | null }
+    | { readonly kind: 'waiting' }
+    | { readonly kind: 'notRunning' };
+
+export const WAITING: TabStatus = { kind: 'waiting' };
+
+export function sameTabStatus(left: TabStatus, right: TabStatus): boolean {
+    return (
+        left.kind === right.kind &&
+        (left.kind !== 'player' ||
+            (right.kind === 'player' && left.topLanguage === right.topLanguage))
+    );
+}
+
+export async function readTabStatus(tabId: number | null): Promise<TabStatus> {
+    if (tabId === null) {
+        return WAITING;
     }
     try {
-        const tabId = await activeTabId();
-        const current = Object.fromEntries(
-            Object.entries(snapshot).filter(
-                ([key]) => generations.get(key) === stamps.get(key)
-            )
-        );
-        if (tabId === null || Object.keys(current).length === 0) {
-            return;
-        }
-        const response = await sendToTab(configChanged, tabId, {
-            action: configChanged.action,
-            changes: current,
+        const status = await sendToTab(playerStatus, tabId, {
+            action: playerStatus.action,
         });
-        if (!response.success) {
-            logger.debug('Live preview declined by the page', {
-                error: response.error,
-            });
-        }
+        return status.onPlayer
+            ? { kind: 'player', topLanguage: status.topLanguage }
+            : WAITING;
     } catch (error) {
-        // No DualSub content script on the active tab; the persisted value
-        // still arrives through the storage change.
-        logger.debug('Live preview not delivered', {
+        logger.debug('Player status not available', {
             reason: error instanceof Error ? error.name : 'unknown',
         });
+        return isProvenMessagingNonDelivery(error)
+            ? { kind: 'notRunning' }
+            : WAITING;
     }
 }
 
-export type PlatformLookStatus = Extract<
-    ResponseOf<typeof platformLookStatus>,
-    { onPlayer: true }
->;
-
-/** What Match Platform draws from on the active tab; null off a player
- *  page. */
-export async function readPlatformLookStatus(): Promise<PlatformLookStatus | null> {
-    try {
-        const tabId = await activeTabId();
-        if (tabId === null) {
-            return null;
-        }
-        const status = await sendToTab(platformLookStatus, tabId, {
-            action: platformLookStatus.action,
-        });
-        return status.onPlayer ? status : null;
-    } catch (error) {
-        logger.debug('Platform look status not available', {
-            reason: error instanceof Error ? error.name : 'unknown',
-        });
-        return null;
+/** Reload the active tab, which brings DualSub into a page opened before
+ *  it was installed or updated. */
+export async function reloadActiveTab(): Promise<void> {
+    const tabId = await activeTabId();
+    if (tabId !== null) {
+        await browser.tabs.reload(tabId);
     }
 }

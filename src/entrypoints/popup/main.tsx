@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { configService } from '@/config/service';
 import { PopupApp } from '@/ui/popup/PopupApp';
+import '@/ui/design/design.css';
 import '@/ui/popup/popup.css';
 
 void configService.syncLoggingLevel();

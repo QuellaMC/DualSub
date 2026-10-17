@@ -2,8 +2,8 @@ import { createContext, useContext, useEffect } from 'react';
 import type { SiteSettingKey } from '@/config/schema';
 import { PLATFORM_NAMES } from '@/shared/platforms';
 import type { Translate } from '../../hooks/useI18n';
-import { useDraft, type Draft } from '../controls/useDraft';
-import type { SaveFeedback, Scope } from '../types';
+import { useDraft, type Draft, type SaveFeedback } from '../../hooks/useDraft';
+import type { Scope } from '../types';
 import { useFeedback } from './feedback';
 
 interface ScopeContextValue {
