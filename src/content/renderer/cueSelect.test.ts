@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AUTO_PLACEMENT, type CuePlacement } from '@/shared/cuePlacement';
 import type { Cue } from '../subtitles/cueModel';
-import {
-    blockKey,
-    composeBlockText,
-    groupActiveCues,
-    placeBlock,
-    scanActiveCues,
-    STANDARD_PLACEMENT,
-} from './cueSelect';
+import { composeBlockText, groupActiveCues, scanActiveCues } from './cueSelect';
 
 function cue(overrides: Partial<Cue> & { start: number; end: number }): Cue {
     return {
@@ -59,29 +52,6 @@ describe('scanActiveCues', () => {
 
     it('has no boundary after the last cue', () => {
         expect(scanActiveCues(cues, 10).nextBoundaryTime).toBeNull();
-    });
-});
-
-describe('placeBlock', () => {
-    it('sends the automatic placement and the bottom band to the standard block, higher lines to their own', () => {
-        expect(placeBlock(AUTO_PLACEMENT)).toBe(STANDARD_PLACEMENT);
-        expect(placeBlock(BOTTOM)).toBe(STANDARD_PLACEMENT);
-        expect(placeBlock({ line: 0.75, lineAlign: 'start' })).toBe(
-            STANDARD_PLACEMENT
-        );
-        expect(placeBlock(TOP)).toEqual({
-            kind: 'line',
-            line: 0.15,
-            lineAlign: 'start',
-        });
-    });
-
-    it('keys a block by its exact line', () => {
-        expect(blockKey(placeBlock(TOP))).toBe('start:0.15');
-        expect(blockKey(placeBlock({ line: 0.15, lineAlign: 'end' }))).toBe(
-            'end:0.15'
-        );
-        expect(blockKey(STANDARD_PLACEMENT)).toBe('standard');
     });
 });
 

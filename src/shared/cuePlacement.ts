@@ -28,6 +28,38 @@ export function raisedLine(placement: CuePlacement): number | null {
         : placement.line;
 }
 
+/** Where a block is drawn: at the viewer's own position, where the platform
+ *  draws ordinary dialogue, or on the line the platform chose. */
+export type BlockPlacement =
+    | { readonly kind: 'standard' }
+    | {
+          readonly kind: 'line';
+          readonly line: number;
+          readonly lineAlign: LineAlign;
+      };
+
+export const STANDARD_PLACEMENT: BlockPlacement = { kind: 'standard' };
+
+/** A cue in the dialogue band takes the viewer's position; a raised one is
+ *  drawn where the platform put it. */
+export function placeBlock(placement: CuePlacement): BlockPlacement {
+    const line = raisedLine(placement);
+    return line === null
+        ? STANDARD_PLACEMENT
+        : { kind: 'line', line, lineAlign: placement.lineAlign };
+}
+
+export function blockKey(placement: BlockPlacement): string {
+    return placement.kind === 'standard'
+        ? 'standard'
+        : `${placement.lineAlign}:${placement.line}`;
+}
+
+/** The standard block first, then positioned blocks from the top down. */
+export function placementOrder(placement: BlockPlacement): number {
+    return placement.kind === 'standard' ? -1 : placement.line;
+}
+
 const LINE_ALIGNS: readonly LineAlign[] = ['start', 'center', 'end'];
 
 /** The placement in a cue's settings text (`line:85%,end position:50%`).

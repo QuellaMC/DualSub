@@ -9,13 +9,11 @@ import { overlayText } from '../overlayText';
 import type { Cue, CueSet } from '../subtitles/cueModel';
 import {
     blockKey,
-    composeBlockText,
-    groupActiveCues,
     placementOrder,
-    scanActiveCues,
     STANDARD_PLACEMENT,
     type BlockPlacement,
-} from './cueSelect';
+} from '@/shared/cuePlacement';
+import { composeBlockText, groupActiveCues, scanActiveCues } from './cueSelect';
 import { SessionContainer, type UiRoot } from './domLayer';
 import { startFrameLoop } from './frameLoop';
 import { resolveLook, type SubtitleLook } from './looks';

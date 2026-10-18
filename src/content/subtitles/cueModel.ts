@@ -1,4 +1,9 @@
-import { raisedLine, type CuePlacement } from '@/shared/cuePlacement';
+import {
+    blockKey,
+    placeBlock,
+    raisedLine,
+    type CuePlacement,
+} from '@/shared/cuePlacement';
 import type { FetchVttResponse } from '@/messaging/contracts/fetchVtt';
 import { parseVtt, type VttCue } from './vtt';
 
@@ -168,21 +173,20 @@ function countBelow(
     return low;
 }
 
-/** `track` with each line held until the next one begins when the gap
- *  between them is short and a line of `steady` shows through all of it,
- *  so that line does not blink while the lines beside it change. */
-function holdThroughShortGaps<Line extends Timing>(
-    track: readonly Line[],
+/** The ends of `lines`, each held until the next of them begins when the
+ *  gap between them is short and one of `steady` shows through all of it. */
+function holdEnds(
+    lines: readonly Timing[],
     steady: readonly Timing[]
-): Line[] {
-    const starts = track.map((line) => line.start).sort((a, b) => a - b);
+): number[] {
+    const starts = lines.map((line) => line.start).sort((a, b) => a - b);
     const steadyByStart = [...steady].sort((a, b) => a.start - b.start);
     const steadyStarts = steadyByStart.map((line) => line.start);
     const latestEnds: number[] = [];
     for (const line of steadyByStart) {
         latestEnds.push(Math.max(line.end, latestEnds.at(-1) ?? -Infinity));
     }
-    return track.map((line) => {
+    return lines.map((line) => {
         const next = starts[countBelow(starts, line.end, false)];
         const shownBefore = countBelow(steadyStarts, line.end, true);
         const held =
@@ -191,8 +195,48 @@ function holdThroughShortGaps<Line extends Timing>(
             next - line.end < CHAINED_GAP &&
             shownBefore > 0 &&
             latestEnds[shownBefore - 1]! >= next;
-        return held ? { ...line, end: next } : line;
+        return held ? next : line.end;
     });
+}
+
+/** A line's time on screen and the block it is drawn in. */
+interface PlacedLine extends Timing {
+    readonly block: string;
+}
+
+function blockOf(placement: CuePlacement): string {
+    return blockKey(placeBlock(placement));
+}
+
+/** The ends of `track`, each line held until the next line in its block
+ *  begins when the gap between them is short and a line of `steady` in
+ *  that block shows through all of it: that line does not blink while the
+ *  lines beside it change, and lines in other blocks never hold each
+ *  other. */
+function heldEnds(
+    track: readonly PlacedLine[],
+    steady: readonly PlacedLine[]
+): number[] {
+    const byBlock = new Map<string, number[]>();
+    for (const [index, line] of track.entries()) {
+        const indices = byBlock.get(line.block);
+        if (indices) {
+            indices.push(index);
+        } else {
+            byBlock.set(line.block, [index]);
+        }
+    }
+    const ends = track.map((line) => line.end);
+    for (const [block, indices] of byBlock) {
+        const held = holdEnds(
+            indices.map((index) => track[index]!),
+            steady.filter((line) => line.block === block)
+        );
+        for (const [position, index] of indices.entries()) {
+            ends[index] = held[position]!;
+        }
+    }
+    return ends;
 }
 
 /** The answer's cues. With `pairOfficial`, each line of the show's own
@@ -215,25 +259,37 @@ export function buildCueSet(
         useNativeTarget && pairOfficial
             ? pairOfficialLines(originalCues, targetCues)
             : null;
-    const officialCues = targetCues.map((cue, index) => {
+    const originalLines = originalCues.map((cue) => ({
+        start: cue.start,
+        end: cue.end,
+        block: blockOf(cue.placement),
+    }));
+    const officialLines = targetCues.map((cue, index) => {
         const owners = (belongsWith?.[index] ?? []).map(
             (owner) => originalCues[owner]!
         );
-        return owners.length > 0
+        const [best] = owners;
+        return best
             ? {
-                  ...cue,
                   start: Math.min(...owners.map((owner) => owner.start)),
                   end: Math.max(...owners.map((owner) => owner.end)),
+                  block: blockOf(best.placement),
               }
-            : cue;
+            : { start: cue.start, end: cue.end, block: blockOf(cue.placement) };
     });
-    const originals = holdThroughShortGaps(originalCues, officialCues);
-    const officials = holdThroughShortGaps(officialCues, originals);
+    const originalEnds = heldEnds(originalLines, officialLines);
+    const officialEnds = heldEnds(
+        officialLines,
+        originalLines.map((line, index) => ({
+            ...line,
+            end: originalEnds[index]!,
+        }))
+    );
 
-    const cues: Cue[] = originals.map((cue, index) => ({
+    const cues: Cue[] = originalCues.map((cue, index) => ({
         id: originalId(index),
         start: cue.start,
-        end: cue.end,
+        end: originalEnds[index]!,
         cueType: 'original',
         original: cue.text,
         translated: null,
@@ -243,11 +299,10 @@ export function buildCueSet(
     }));
     if (useNativeTarget) {
         for (const { index, cue } of inTimeOrder(targetCues)) {
-            const shown = officials[index]!;
             cues.push({
                 id: `t${index}`,
-                start: shown.start,
-                end: shown.end,
+                start: officialLines[index]!.start,
+                end: officialEnds[index]!,
                 cueType: 'target',
                 original: null,
                 translated: cue.text,

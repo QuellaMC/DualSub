@@ -239,6 +239,26 @@ describe('buildCueSet pairing the show’s own translation', () => {
         }
     });
 
+    it('never holds a line for the next one in another block', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:12.000 line:15%,start\n3番線',
+                    '00:00:12.100 --> 00:00:14.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText: vtt([
+                    '11.500',
+                    '14.000',
+                    'Where are you going?',
+                ]),
+            },
+            false
+        );
+        expect(set.cues.find((cue) => cue.original === '3番線')?.end).toBe(12);
+    });
+
     it('holds the first of two official lines through the short gap before the second while one original spans both', () => {
         const set = buildCueSet(
             {

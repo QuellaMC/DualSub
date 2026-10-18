@@ -4,7 +4,7 @@ import {
     useState,
     type RefCallback,
 } from 'react';
-import { STANDARD_PLACEMENT } from '@/content/renderer/cueSelect';
+import { STANDARD_PLACEMENT } from '@/shared/cuePlacement';
 import type { SubtitleLook } from '@/content/renderer/looks';
 import {
     applyBlockStyle,
