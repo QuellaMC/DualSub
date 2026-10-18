@@ -2215,15 +2215,19 @@ describe('OptionsApp', () => {
         await waitFor(() => expect(fix()).not.toBeNull());
     });
 
-    it('offers no fix for the show’s translation while it is not used', async () => {
-        await fakeBrowser.storage.sync.set({ useOfficialTranslations: false });
+    it('offers the fix for the show’s translation while pairing is on, even where only a site uses that translation', async () => {
+        await fakeBrowser.storage.sync.set({
+            useOfficialTranslations: false,
+            siteProfiles: { netflix: { useOfficialTranslations: true } },
+        });
         location.hash = '#help';
         await renderReady();
         expect(
-            screen.queryByRole('heading', {
-                name: 'The translation goes with the wrong line',
+            screen.getByRole('button', {
+                name: 'Fix it for me',
+                description: 'The translation goes with the wrong line',
             })
-        ).toBeNull();
+        ).toBeInTheDocument();
     });
 
     it('shows no untranslated text while its catalog loads', async () => {

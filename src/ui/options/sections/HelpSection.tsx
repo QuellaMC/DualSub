@@ -94,29 +94,28 @@ export function HelpSection({
                 </div>
             </div>
 
-            {settings.useOfficialTranslations &&
-                settings.pairOfficialTranslations && (
-                    <div className="card">
-                        <div className="row">
-                            <h2 className="label grow" id="help-pairing">
-                                {t('helpPairTitle')}
-                            </h2>
-                            <button
-                                type="button"
-                                className="button primary"
-                                aria-describedby="help-pairing"
-                                onClick={() =>
-                                    void save(
-                                        { pairOfficialTranslations: false },
-                                        { message: t('toastPairOff') }
-                                    )
-                                }
-                            >
-                                {t('helpFixIt')}
-                            </button>
-                        </div>
+            {settings.pairOfficialTranslations && (
+                <div className="card">
+                    <div className="row">
+                        <h2 className="label grow" id="help-pairing">
+                            {t('helpPairTitle')}
+                        </h2>
+                        <button
+                            type="button"
+                            className="button primary"
+                            aria-describedby="help-pairing"
+                            onClick={() =>
+                                void save(
+                                    { pairOfficialTranslations: false },
+                                    { message: t('toastPairOff') }
+                                )
+                            }
+                        >
+                            {t('helpFixIt')}
+                        </button>
                     </div>
-                )}
+                </div>
+            )}
 
             <div className="card">
                 <h2 className="label">{t('helpAboutTitle')}</h2>
