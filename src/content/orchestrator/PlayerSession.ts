@@ -7,7 +7,11 @@ import {
 } from '@/shared/languageNormalization';
 import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
 import { sendMessage, sendWithRetry } from '@/messaging/client';
-import { fetchVtt, type FetchVttRequest } from '@/messaging/contracts/fetchVtt';
+import {
+    fetchVtt,
+    type FetchVttRequest,
+    type FetchVttResponse,
+} from '@/messaging/contracts/fetchVtt';
 import {
     sidePanelSelectionSync,
     sidePanelWordSelected,
@@ -69,6 +73,7 @@ const DISPLAY_SETTINGS_KEYS = [
 export const CONTENT_SETTINGS_KEYS = [
     'subtitlesEnabled',
     'hideOfficialSubtitles',
+    'pairOfficialTranslations',
     ...DISPLAY_SETTINGS_KEYS,
 ] as const;
 
@@ -212,6 +217,11 @@ export class PlayerSession {
     private latestSubtitleEvent: CapturedEvent | null = null;
     private loadingToken = 0;
     private completedKey: string | null = null;
+    /** The subtitles on screen, as they arrived and as they were built. */
+    private shown: {
+        readonly response: Extract<FetchVttResponse, { success: true }>;
+        readonly cueSet: CueSet;
+    } | null = null;
     /** The request whose answer the session waits for. A newer request or a
      *  languages change replaces it, so a slower earlier answer never
      *  overwrites newer cues. */
@@ -458,6 +468,14 @@ export class PlayerSession {
         if (DISPLAY_SETTINGS_KEYS.some((key) => changes[key] !== undefined)) {
             this.renderer.setDisplay(toDisplaySettings(this.settings));
         }
+        // The official lines pair again from the answer already here, so
+        // the two ways can be compared on the same scene.
+        if (
+            changes.pairOfficialTranslations !== undefined &&
+            this.shown?.cueSet.useNativeTarget
+        ) {
+            this.loadSubtitles(this.shown.response);
+        }
         if (
             changes.subtitlesEnabled !== undefined ||
             changes.hideOfficialSubtitles !== undefined
@@ -617,8 +635,7 @@ export class PlayerSession {
 
             if (response.success) {
                 this.completedKey = key;
-                const cueSet = buildCueSet(response);
-                this.rendererState.loadCues(cueSet);
+                const cueSet = this.loadSubtitles(response);
                 this.setLoading(false);
                 this.startTranslation(cueSet);
                 this.logger.info('Subtitles loaded', {
@@ -649,6 +666,19 @@ export class PlayerSession {
                 this.pendingRequest = null;
             }
         }
+    }
+
+    /** Build `response`'s cues as the settings say and put them on screen. */
+    private loadSubtitles(
+        response: Extract<FetchVttResponse, { success: true }>
+    ): CueSet {
+        const cueSet = buildCueSet(
+            response,
+            this.settings.pairOfficialTranslations
+        );
+        this.shown = { response, cueSet };
+        this.renderer.loadCues(cueSet);
+        return cueSet;
     }
 
     private startTranslation(cueSet: CueSet): void {

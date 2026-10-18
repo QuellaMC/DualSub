@@ -1,22 +1,17 @@
 import { browser } from 'wxt/browser';
 import { PLATFORM_IDS } from '@/shared/platforms';
 import { Interpolate } from '../../design/Interpolate';
-import type { Translate } from '../../hooks/useI18n';
 import { SOURCE_URL } from '../../sourceCode';
 import type { SectionId } from '../sections';
 import { followAllSites, useFeedback } from '../shell/feedback';
+import type { SectionProps } from '../types';
 
 export function HelpSection({
     t,
-    fallback,
+    settings,
+    save,
     go,
-}: {
-    t: Translate;
-    /** Whether free services cover for the chosen one when it fails, which
-     *  sends them subtitle text too. */
-    fallback: boolean;
-    go: (section: SectionId) => void;
-}) {
+}: SectionProps & { go: (section: SectionId) => void }) {
     const feedback = useFeedback();
 
     /** Hide every site's own subtitles in one write: the shared value, and
@@ -59,10 +54,13 @@ export function HelpSection({
 
             <div className="card">
                 <div className="row">
-                    <h2 className="label grow">{t('helpTwiceTitle')}</h2>
+                    <h2 className="label grow" id="help-twice">
+                        {t('helpTwiceTitle')}
+                    </h2>
                     <button
                         type="button"
                         className="button primary"
+                        aria-describedby="help-twice"
                         onClick={hideEverywhere}
                     >
                         {t('helpFixIt')}
@@ -96,6 +94,29 @@ export function HelpSection({
                 </div>
             </div>
 
+            {settings.pairOfficialTranslations && (
+                <div className="card">
+                    <div className="row">
+                        <h2 className="label grow" id="help-pairing">
+                            {t('helpPairTitle')}
+                        </h2>
+                        <button
+                            type="button"
+                            className="button primary"
+                            aria-describedby="help-pairing"
+                            onClick={() =>
+                                void save(
+                                    { pairOfficialTranslations: false },
+                                    { message: t('toastPairOff') }
+                                )
+                            }
+                        >
+                            {t('helpFixIt')}
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="card">
                 <h2 className="label">{t('helpAboutTitle')}</h2>
                 <p className="help">
@@ -110,7 +131,11 @@ export function HelpSection({
                     </a>
                 </p>
                 <p className="help">
-                    {t(fallback ? 'helpPrivacyFallback' : 'helpPrivacy')}
+                    {t(
+                        settings.translationFallback
+                            ? 'helpPrivacyFallback'
+                            : 'helpPrivacy'
+                    )}
                 </p>
             </div>
         </section>

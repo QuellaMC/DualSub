@@ -6,16 +6,14 @@ import type {
 } from '../platform/types';
 import { childScope } from '../orchestrator/scope';
 import { overlayText } from '../overlayText';
-import type { Cue } from '../subtitles/cueModel';
+import type { Cue, CueSet } from '../subtitles/cueModel';
 import {
     blockKey,
-    composeBlockText,
-    groupActiveCues,
     placementOrder,
-    scanActiveCues,
     STANDARD_PLACEMENT,
     type BlockPlacement,
-} from './cueSelect';
+} from '@/shared/cuePlacement';
+import { composeBlockText, groupActiveCues, scanActiveCues } from './cueSelect';
 import { SessionContainer, type UiRoot } from './domLayer';
 import { startFrameLoop } from './frameLoop';
 import { resolveLook, type SubtitleLook } from './looks';
@@ -214,6 +212,12 @@ export class Renderer {
 
     cuesChanged(): void {
         this.deps.state.invalidateMemo();
+        this.render();
+    }
+
+    /** Show a new cue set at once, a paused video's frame included. */
+    loadCues(cueSet: CueSet): void {
+        this.deps.state.loadCues(cueSet);
         this.render();
     }
 

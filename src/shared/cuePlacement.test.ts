@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
     AUTO_PLACEMENT,
+    blockKey,
     formatCueSettings,
+    mayJoin,
     parseCueSettings,
+    placeBlock,
+    STANDARD_PLACEMENT,
     type CuePlacement,
 } from './cuePlacement';
+
+const TOP: CuePlacement = { line: 0.15, lineAlign: 'start' };
+const BOTTOM: CuePlacement = { line: 0.85, lineAlign: 'end' };
 
 function expectPlacement(
     placement: CuePlacement,
@@ -48,5 +55,38 @@ describe('formatCueSettings', () => {
             'start'
         );
         expect(formatCueSettings(AUTO_PLACEMENT)).toBe('');
+    });
+});
+
+describe('placeBlock', () => {
+    it('sends the automatic placement and the bottom band to the standard block, higher lines to their own', () => {
+        expect(placeBlock(AUTO_PLACEMENT)).toBe(STANDARD_PLACEMENT);
+        expect(placeBlock(BOTTOM)).toBe(STANDARD_PLACEMENT);
+        expect(placeBlock({ line: 0.75, lineAlign: 'start' })).toBe(
+            STANDARD_PLACEMENT
+        );
+        expect(placeBlock(TOP)).toEqual({
+            kind: 'line',
+            line: 0.15,
+            lineAlign: 'start',
+        });
+    });
+
+    it('keys a block by its exact line', () => {
+        expect(blockKey(placeBlock(TOP))).toBe('start:0.15');
+        expect(blockKey(placeBlock({ line: 0.15, lineAlign: 'end' }))).toBe(
+            'end:0.15'
+        );
+        expect(blockKey(STANDARD_PLACEMENT)).toBe('standard');
+    });
+});
+
+describe('mayJoin', () => {
+    it('keeps a raised translation out of dialogue, and lets one in the dialogue band join a raised original', () => {
+        expect(mayJoin(TOP, BOTTOM)).toBe(false);
+        expect(mayJoin(TOP, AUTO_PLACEMENT)).toBe(false);
+        expect(mayJoin(TOP, { line: 0.5, lineAlign: 'center' })).toBe(true);
+        expect(mayJoin(BOTTOM, TOP)).toBe(true);
+        expect(mayJoin(AUTO_PLACEMENT, BOTTOM)).toBe(true);
     });
 });

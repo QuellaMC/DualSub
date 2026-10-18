@@ -21,15 +21,15 @@ The subtitle look is set in the settings page's Style section: Like the site fol
 The settings page holds every setting, the popup's included, with a menu of its sections beside it. Each change saves at once, and the notice that confirms it can undo it, as can Ctrl+Z (⌘Z) outside a text field. The search box finds a setting by everyday words, such as "twice", "late", or "bigger".
 
 - Start: where DualSub is working, a sample of your subtitles, and the language you speak, the text size, and the translation service
-- Languages: the language you speak, which the original line is translated into, what the original line shows, and the show's own translation, with a sample over a Korean drama or an English film
+- Languages: the language you speak, which the original line is translated into, what the original line shows, and the show's own translation, each line of which comes and goes with the original line it belongs with, with a sample over a Korean drama or an English film
 - Style: the subtitles on a stage at your video's true proportions, at night or by day. Click a line to style it, drag the subtitles to move them, or open Full screen to see them at their real size. The pane beside the stage holds the size, position, look, translation color, and lines (which goes on top, stacked or side by side, and the spacing), each with exact values.
 - Timing: a timeline of the voice and the subtitles; show the subtitles earlier or later in half-second steps
 - Translation: the translation service, its setup, and whether a free service covers when it fails
 - Meanings: Word explanations; click a word in the subtitles to have an AI service explain it, through your own OpenAI or Gemini key
 - Sites: DualSub on or off for each site, and hiding each site's own subtitles
-- Help: fixes for common problems, one of which hides the sites' own subtitles everywhere
+- Help: fixes for common problems, such as hiding the sites' own subtitles everywhere, or letting the show's own translation keep its own timing when its lines go with the wrong original line
 
-The Advanced options switch in the top bar adds the exact timing shift, the pause between translation requests, per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
+The Advanced options switch in the top bar adds the exact timing shift, the switch that shows the show's own translation with the original line it belongs with, the pause between translation requests, per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
 
 API keys stay on this computer: they don't sync and never go into a backup file. A key goes only to the address it was entered for. When that address moves to another host (on this computer, on another one you sync with, or by loading a backup), DualSub treats the key as missing until you enter one for the new address.
 

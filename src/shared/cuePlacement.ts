@@ -16,6 +16,61 @@ export interface CuePlacement {
 
 export const AUTO_PLACEMENT: CuePlacement = { line: null, lineAlign: 'end' };
 
+/** A cue anchored at or below this fraction of the picture height sits
+ *  where the platform draws ordinary dialogue (Disney+ anchors at 85%,
+ *  Netflix at 90%); anything higher is raised over on-screen text. */
+const DIALOGUE_BAND = 0.75;
+
+/** The line a raised cue hangs on; null for a cue in the dialogue band. */
+export function raisedLine(placement: CuePlacement): number | null {
+    return placement.line === null || placement.line >= DIALOGUE_BAND
+        ? null
+        : placement.line;
+}
+
+/** Whether a translation placed at `translation` may be drawn with an
+ *  original placed at `original`. One the show raises over on-screen text
+ *  never goes with dialogue. One in the dialogue band may go with a raised
+ *  original, since many tracks leave their signs unplaced. */
+export function mayJoin(
+    translation: CuePlacement,
+    original: CuePlacement
+): boolean {
+    return raisedLine(translation) === null || raisedLine(original) !== null;
+}
+
+/** Where a block is drawn: at the viewer's own position, where the platform
+ *  draws ordinary dialogue, or on the line the platform chose. */
+export type BlockPlacement =
+    | { readonly kind: 'standard' }
+    | {
+          readonly kind: 'line';
+          readonly line: number;
+          readonly lineAlign: LineAlign;
+      };
+
+export const STANDARD_PLACEMENT: BlockPlacement = { kind: 'standard' };
+
+/** A cue in the dialogue band takes the viewer's position; a raised one is
+ *  drawn where the platform put it. */
+export function placeBlock(placement: CuePlacement): BlockPlacement {
+    const line = raisedLine(placement);
+    return line === null
+        ? STANDARD_PLACEMENT
+        : { kind: 'line', line, lineAlign: placement.lineAlign };
+}
+
+export function blockKey(placement: BlockPlacement): string {
+    return placement.kind === 'standard'
+        ? 'standard'
+        : `${placement.lineAlign}:${placement.line}`;
+}
+
+/** The standard block first, then positioned blocks from the top down. */
+export function placementOrder(placement: BlockPlacement): number {
+    return placement.kind === 'standard' ? -1 : placement.line;
+}
+
 const LINE_ALIGNS: readonly LineAlign[] = ['start', 'center', 'end'];
 
 /** The placement in a cue's settings text (`line:85%,end position:50%`).

@@ -118,6 +118,7 @@ function startSession(
         settings: {
             subtitlesEnabled: true,
             hideOfficialSubtitles: true,
+            pairOfficialTranslations: false,
             subtitleStyle: 'custom',
             subtitleCustomLook: getDefaultValue('subtitleCustomLook'),
             subtitleTranslationColor: '#00ffff',
@@ -508,5 +509,88 @@ describe('PlayerSession with an automatic original line', () => {
         active.tick(1.5);
         expect(texts()).toEqual(['你好', '']);
         expect(messages.map((message) => message.action)).toEqual(['fetchVTT']);
+    });
+});
+
+describe('PlayerSession pairing the show’s own translation', () => {
+    it('pairs the subtitles already here as the setting turns on, without asking for them again', async () => {
+        const requests: FetchVttRequest[] = [];
+        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(((
+            message: FetchVttRequest
+        ) => {
+            requests.push(message);
+            const response: FetchVttResponse = {
+                success: true,
+                vttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHello\n',
+                targetVttText:
+                    'WEBVTT\n\n00:00:01.400 --> 00:00:02.200\n你好\n',
+                sourceLanguage: 'en',
+                targetLanguage: 'zh-CN',
+                useNativeTarget: true,
+                selectedLanguage: {
+                    normalizedCode: 'en',
+                    displayName: 'English',
+                },
+            };
+            return Promise.resolve(response);
+        }) as never);
+        active = startSession();
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+        active.tick(1.2);
+        expect(texts()).toEqual(['Hello', '']);
+
+        // The video stays paused: the switch alone repaints the frame.
+        await fakeBrowser.storage.sync.set({ pairOfficialTranslations: true });
+        await settle();
+        expect(texts()).toEqual(['Hello', '你好']);
+
+        await fakeBrowser.storage.sync.set({ pairOfficialTranslations: false });
+        await settle();
+        expect(texts()).toEqual(['Hello', '']);
+        expect(
+            requests.filter((request) => request.action === 'fetchVTT')
+        ).toHaveLength(1);
+    });
+
+    it('keeps waiting for new languages when the setting changes meanwhile', async () => {
+        const answers: ((response: FetchVttResponse) => void)[] = [];
+        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(((
+            message: FetchVttRequest
+        ) =>
+            message.action === 'fetchVTT'
+                ? new Promise((resolve) => {
+                      answers.push(resolve);
+                  })
+                : Promise.resolve(undefined)) as never);
+        const answer = (translation: string): FetchVttResponse => ({
+            success: true,
+            vttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHello\n',
+            targetVttText: `WEBVTT\n\n00:00:01.400 --> 00:00:02.200\n${translation}\n`,
+            sourceLanguage: 'en',
+            targetLanguage: 'zh-CN',
+            useNativeTarget: true,
+            selectedLanguage: { normalizedCode: 'en', displayName: 'English' },
+        });
+        active = startSession();
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+        answers[0]!(answer('你好'));
+        await settle();
+
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'ja' });
+        await settle();
+        active.cache.publish('1', resolution(['en', 'ja']));
+        await settle();
+        expect(answers).toHaveLength(2);
+        await fakeBrowser.storage.sync.set({ pairOfficialTranslations: true });
+        await settle();
+        active.tick(1.2);
+        expect(texts()).toEqual(['Hello', 'Loading…']);
+
+        answers[1]!(answer('こんにちは'));
+        await settle();
+        active.tick(1.25);
+        expect(texts()).toEqual(['Hello', 'こんにちは']);
     });
 });

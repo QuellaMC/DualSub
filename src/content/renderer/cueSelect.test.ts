@@ -1,14 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AUTO_PLACEMENT, type CuePlacement } from '@/shared/cuePlacement';
 import type { Cue } from '../subtitles/cueModel';
-import {
-    blockKey,
-    composeBlockText,
-    groupActiveCues,
-    placeBlock,
-    scanActiveCues,
-    STANDARD_PLACEMENT,
-} from './cueSelect';
+import { composeBlockText, groupActiveCues, scanActiveCues } from './cueSelect';
 
 function cue(overrides: Partial<Cue> & { start: number; end: number }): Cue {
     return {
@@ -18,6 +11,7 @@ function cue(overrides: Partial<Cue> & { start: number; end: number }): Cue {
         translated: null,
         useNativeTarget: false,
         placement: AUTO_PLACEMENT,
+        pairedWith: [],
         ...overrides,
     };
 }
@@ -58,29 +52,6 @@ describe('scanActiveCues', () => {
 
     it('has no boundary after the last cue', () => {
         expect(scanActiveCues(cues, 10).nextBoundaryTime).toBeNull();
-    });
-});
-
-describe('placeBlock', () => {
-    it('sends the automatic placement and the bottom band to the standard block, higher lines to their own', () => {
-        expect(placeBlock(AUTO_PLACEMENT)).toBe(STANDARD_PLACEMENT);
-        expect(placeBlock(BOTTOM)).toBe(STANDARD_PLACEMENT);
-        expect(placeBlock({ line: 0.75, lineAlign: 'start' })).toBe(
-            STANDARD_PLACEMENT
-        );
-        expect(placeBlock(TOP)).toEqual({
-            kind: 'line',
-            line: 0.15,
-            lineAlign: 'start',
-        });
-    });
-
-    it('keys a block by its exact line', () => {
-        expect(blockKey(placeBlock(TOP))).toBe('start:0.15');
-        expect(blockKey(placeBlock({ line: 0.15, lineAlign: 'end' }))).toBe(
-            'end:0.15'
-        );
-        expect(blockKey(STANDARD_PLACEMENT)).toBe('standard');
     });
 });
 
@@ -177,6 +148,83 @@ describe('groupActiveCues with official translations', () => {
             originalText: 'A\nB',
             translatedText: 'A translated\nB translated',
         });
+    });
+
+    it('draws a paired translation once, with the first of its own originals on screen, and never without them', () => {
+        const a = cue({ id: 'a', start: 1, end: 2.1, original: 'A' });
+        const b = cue({ id: 'b', start: 2, end: 4, original: 'B' });
+        const sign = cue({
+            id: 'sign',
+            start: 1,
+            end: 4,
+            placement: TOP,
+            original: 'SIGN',
+        });
+        const target = cue({
+            id: 't',
+            start: 1,
+            end: 4,
+            cueType: 'target',
+            original: null,
+            translated: '甲乙',
+            useNativeTarget: true,
+            pairedWith: ['a', 'b'],
+        });
+
+        const handover = groupActiveCues([a, sign, target, b]);
+        expect(handover.map((group) => group.cues)).toEqual([
+            [a, target, b],
+            [sign],
+        ]);
+        expect(composeBlockText(handover[0]!.cues)).toEqual({
+            originalText: 'A\nB',
+            translatedText: '甲乙',
+        });
+
+        expect(
+            groupActiveCues([sign, target]).map((group) => group.cues)
+        ).toEqual([[sign]]);
+    });
+
+    it('draws a paired translation with the first of its originals in its own order, whichever began first', () => {
+        const early = cue({ id: 'early', start: 1, end: 3, original: 'A' });
+        const best = cue({
+            id: 'best',
+            start: 1.5,
+            end: 3,
+            placement: TOP,
+            original: 'B',
+        });
+        const target = cue({
+            id: 't',
+            start: 1,
+            end: 3,
+            cueType: 'target',
+            original: null,
+            translated: '乙',
+            useNativeTarget: true,
+            pairedWith: ['best', 'early'],
+        });
+        expect(
+            groupActiveCues([early, target, best]).map((group) => group.cues)
+        ).toEqual([[early], [best, target]]);
+    });
+
+    it('draws an unpaired translation raised over on-screen text on its own rather than with dialogue', () => {
+        const dialogue = cue({ start: 1, end: 3, original: 'Hi' });
+        const sign = cue({
+            id: 'sign',
+            start: 1,
+            end: 3,
+            cueType: 'target',
+            original: null,
+            translated: '标志',
+            useNativeTarget: true,
+            placement: TOP,
+        });
+        expect(
+            groupActiveCues([dialogue, sign]).map((group) => group.cues)
+        ).toEqual([[dialogue], [sign]]);
     });
 
     it('draws a translation with no active original at its own placement', () => {

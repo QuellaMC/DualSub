@@ -42,6 +42,13 @@ const ENTRIES: readonly SearchEntry[] = [
         anchors: ['official-translation'],
     },
     {
+        labelKey: 'languagesPairTitle',
+        wordsKey: 'searchWordsPair',
+        section: 'languages',
+        advanced: true,
+        anchors: ['official-pairing', 'official-translation'],
+    },
+    {
         labelKey: 'lookSizeTitle',
         wordsKey: 'searchWordsSize',
         section: 'look',

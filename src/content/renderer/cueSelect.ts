@@ -1,4 +1,10 @@
-import type { CuePlacement, LineAlign } from '@/shared/cuePlacement';
+import {
+    blockKey,
+    mayJoin,
+    placeBlock,
+    placementOrder,
+    type BlockPlacement,
+} from '@/shared/cuePlacement';
 import type { Cue } from '../subtitles/cueModel';
 
 export interface ActiveCueScan {
@@ -31,79 +37,55 @@ export function scanActiveCues(
     return { activeCues, nextBoundaryTime };
 }
 
-/** Where a block is drawn: at the viewer's own position, where the platform
- *  draws ordinary dialogue, or on the line the platform chose. */
-export type BlockPlacement =
-    | { readonly kind: 'standard' }
-    | {
-          readonly kind: 'line';
-          readonly line: number;
-          readonly lineAlign: LineAlign;
-      };
-
-export const STANDARD_PLACEMENT: BlockPlacement = { kind: 'standard' };
-
-/** A cue anchored at or below this fraction of the picture height sits
- *  where the platform draws ordinary dialogue (Disney+ anchors at 85%,
- *  Netflix at 90%), so it takes the viewer's position; anything higher is
- *  drawn where the platform put it. */
-export const STANDARD_BAND = 0.75;
-
-export function placeBlock(placement: CuePlacement): BlockPlacement {
-    return placement.line === null || placement.line >= STANDARD_BAND
-        ? STANDARD_PLACEMENT
-        : {
-              kind: 'line',
-              line: placement.line,
-              lineAlign: placement.lineAlign,
-          };
-}
-
-export function blockKey(placement: BlockPlacement): string {
-    return placement.kind === 'standard'
-        ? 'standard'
-        : `${placement.lineAlign}:${placement.line}`;
-}
-
-/** The standard block first, then positioned blocks from the top down. */
-export function placementOrder(placement: BlockPlacement): number {
-    return placement.kind === 'standard' ? -1 : placement.line;
-}
-
 export interface CueGroup {
     readonly key: string;
     readonly placement: BlockPlacement;
     readonly cues: Cue[];
 }
 
-/** An official translation belongs with the original it shares the most
- *  time with; the two tracks need not agree on timing or placement. */
-function sourceOf(target: Cue, originals: readonly Cue[]): Cue | null {
-    let source: Cue | null = null;
+/** The cue an official translation is drawn with. A paired one shows only
+ *  with its own originals, with the first of them, in its order, on
+ *  screen. Any other goes with the original it shares the most time with,
+ *  where it may join it, or on its own: the two tracks need not agree on
+ *  timing or placement. */
+function anchorOf(target: Cue, originals: readonly Cue[]): Cue | null {
+    if (target.pairedWith.length > 0) {
+        for (const id of target.pairedWith) {
+            const original = originals.find((active) => active.id === id);
+            if (original) {
+                return original;
+            }
+        }
+        return null;
+    }
+    let anchor = target;
     let bestOverlap = 0;
-    for (const original of originals) {
+    for (const original of originals.filter((active) =>
+        mayJoin(target.placement, active.placement)
+    )) {
         const overlap =
             Math.min(original.end, target.end) -
             Math.max(original.start, target.start);
         if (overlap > bestOverlap) {
             bestOverlap = overlap;
-            source = original;
+            anchor = original;
         }
     }
-    return source;
+    return anchor;
 }
 
 /** Active cues grouped by the block that draws them, in block order: each
  *  original followed by its translations, at the original's placement, and
- *  a translation with no active original at its own. */
+ *  a translation drawn on its own at its own placement. */
 export function groupActiveCues(activeCues: readonly Cue[]): CueGroup[] {
     const originals = activeCues.filter((cue) => cue.cueType === 'original');
     const translations = new Map<Cue, Cue[]>();
     for (const cue of activeCues) {
-        if (cue.cueType === 'target') {
-            const source = sourceOf(cue, originals) ?? cue;
-            translations.set(source, [
-                ...(translations.get(source) ?? []),
+        const anchor =
+            cue.cueType === 'target' ? anchorOf(cue, originals) : null;
+        if (anchor) {
+            translations.set(anchor, [
+                ...(translations.get(anchor) ?? []),
                 cue,
             ]);
         }

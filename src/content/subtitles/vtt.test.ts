@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { AUTO_PLACEMENT } from '@/shared/cuePlacement';
+import {
+    composeBlockText,
+    groupActiveCues,
+    scanActiveCues,
+} from '../renderer/cueSelect';
+import { buildCueSet, type CueSet } from './cueModel';
 import { parseTimestampToSeconds, parseVtt } from './vtt';
-import { buildCueSet } from './cueModel';
 
 const SAMPLE = [
     'WEBVTT',
@@ -83,12 +88,15 @@ describe('buildCueSet', () => {
     };
 
     it('builds translate-mode cues with empty translations', () => {
-        const set = buildCueSet({
-            ...base,
-            vttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nA',
-            targetVttText: null,
-            useNativeTarget: false,
-        });
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nA',
+                targetVttText: null,
+                useNativeTarget: false,
+            },
+            false
+        );
         expect(set.useNativeTarget).toBe(false);
         expect(set.cues).toEqual([
             {
@@ -100,18 +108,22 @@ describe('buildCueSet', () => {
                 translated: null,
                 useNativeTarget: false,
                 placement: AUTO_PLACEMENT,
+                pairedWith: [],
             },
         ]);
     });
 
     it('interleaves original and target cues sorted by start in native mode, each with its placement', () => {
-        const set = buildCueSet({
-            ...base,
-            vttText:
-                'WEBVTT\n\n00:00:05.000 --> 00:00:06.000 line:15%,start\nA',
-            targetVttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n甲',
-            useNativeTarget: true,
-        });
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText:
+                    'WEBVTT\n\n00:00:05.000 --> 00:00:06.000 line:15%,start\nA',
+                targetVttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n甲',
+                useNativeTarget: true,
+            },
+            false
+        );
         expect(set.useNativeTarget).toBe(true);
         expect(set.cues.map((cue) => cue.id)).toEqual(['t0', 'o0']);
         expect(set.cues[0]).toMatchObject({
@@ -125,13 +137,475 @@ describe('buildCueSet', () => {
     });
 
     it('falls back to translate mode when the native target parses to nothing', () => {
-        const set = buildCueSet({
-            ...base,
-            vttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nA',
-            targetVttText: 'garbage',
-            useNativeTarget: true,
-        });
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nA',
+                targetVttText: 'garbage',
+                useNativeTarget: true,
+            },
+            false
+        );
         expect(set.useNativeTarget).toBe(false);
         expect(set.cues).toHaveLength(1);
+    });
+});
+
+describe('buildCueSet pairing the show’s own translation', () => {
+    const base = {
+        success: true as const,
+        sourceLanguage: 'ja',
+        targetLanguage: 'en',
+        selectedLanguage: { normalizedCode: 'ja', displayName: '日本語' },
+        useNativeTarget: true,
+    };
+
+    function vtt(...lines: readonly [string, string, string][]): string {
+        return [
+            'WEBVTT',
+            ...lines.map(
+                ([start, end, text]) =>
+                    `00:00:${start} --> 00:00:${end}\n${text}`
+            ),
+        ].join('\n\n');
+    }
+
+    function paired(vttText: string, targetVttText: string): CueSet {
+        return buildCueSet({ ...base, vttText, targetVttText }, true);
+    }
+
+    /** Each block on screen at `time`: its original lines and its
+     *  translation lines. */
+    function shownAt(set: CueSet, time: number): [string, string][] {
+        return groupActiveCues(scanActiveCues(set.cues, time).activeCues).map(
+            (group) => {
+                const text = composeBlockText(group.cues);
+                return [text.originalText, text.translatedText];
+            }
+        );
+    }
+
+    it('shows each official line with the original it belongs with, for as long as the original shows', () => {
+        const set = paired(
+            vtt(
+                ['10.000', '12.000', 'どこに行くの？'],
+                ['12.400', '14.000', '駅まで。']
+            ),
+            vtt(
+                ['09.600', '11.200', 'Where are you going?'],
+                ['11.200', '13.500', 'To the station.']
+            )
+        );
+        expect(shownAt(set, 9.8)).toEqual([]);
+        expect(shownAt(set, 11.5)).toEqual([
+            ['どこに行くの？', 'Where are you going?'],
+        ]);
+        expect(shownAt(set, 12.2)).toEqual([]);
+        expect(shownAt(set, 13.8)).toEqual([['駅まで。', 'To the station.']]);
+    });
+
+    it('shows a long official line under both originals it covers, and not in a pause between them', () => {
+        const set = paired(
+            vtt(
+                ['10.000', '12.000', 'どこに'],
+                ['13.000', '15.000', '行くの？']
+            ),
+            vtt(['10.000', '15.000', 'Where are you going?'])
+        );
+        expect(shownAt(set, 11)).toEqual([['どこに', 'Where are you going?']]);
+        expect(shownAt(set, 12.5)).toEqual([]);
+        expect(shownAt(set, 14)).toEqual([
+            ['行くの？', 'Where are you going?'],
+        ]);
+    });
+
+    it('holds the first of two originals through the short gap before the second while one official line spans both, paired or not', () => {
+        const originals = vtt(
+            ['10.000', '12.000', 'どこに'],
+            ['12.083', '14.000', '行くの？']
+        );
+        const official = vtt(['10.000', '14.000', 'Where are you going?']);
+        for (const pairOfficial of [true, false]) {
+            const set = buildCueSet(
+                { ...base, vttText: originals, targetVttText: official },
+                pairOfficial
+            );
+            expect(shownAt(set, 12.04)).toEqual([
+                ['どこに', 'Where are you going?'],
+            ]);
+            expect(shownAt(set, 12.1)).toEqual([
+                ['行くの？', 'Where are you going?'],
+            ]);
+        }
+    });
+
+    it('holds a line for the next in its block while one official line goes with them, whichever block that line began in', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:11.000 line:15%,start\n3番線',
+                    '00:00:11.000 --> 00:00:12.000 line:40%,start\nどこに',
+                    '00:00:12.100 --> 00:00:13.000 line:40%,start\n行くの？',
+                ].join('\n\n'),
+                targetVttText:
+                    'WEBVTT\n\n00:00:10.000 --> 00:00:13.000 line:15%,start\nPLATFORM 3: WHERE TO?',
+            },
+            true
+        );
+        expect(shownAt(set, 12.05)).toEqual([
+            ['どこに', 'PLATFORM 3: WHERE TO?'],
+        ]);
+    });
+
+    it('never holds a line while another in its block still shows', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: vtt(
+                    ['10.000', '12.000', 'どこに'],
+                    ['11.900', '14.000', '行くの？'],
+                    ['12.200', '15.000', '駅まで。']
+                ),
+                targetVttText: vtt([
+                    '11.500',
+                    '12.500',
+                    'Where are you going?',
+                ]),
+            },
+            false
+        );
+        expect(set.cues.find((cue) => cue.original === 'どこに')?.end).toBe(12);
+    });
+
+    it('never holds a line for the next one in another block', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:12.000 line:15%,start\n3番線',
+                    '00:00:12.100 --> 00:00:14.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText: vtt([
+                    '11.500',
+                    '14.000',
+                    'Where are you going?',
+                ]),
+            },
+            false
+        );
+        expect(set.cues.find((cue) => cue.original === '3番線')?.end).toBe(12);
+    });
+
+    it('holds the first of two official lines through the short gap before the second while one original spans both', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: vtt(['10.000', '14.000', 'どこに行くの？駅まで。']),
+                targetVttText: vtt(
+                    ['10.000', '12.000', 'Where are you going?'],
+                    ['12.083', '14.000', 'To the station.']
+                ),
+            },
+            false
+        );
+        expect(shownAt(set, 12.04)).toEqual([
+            ['どこに行くの？駅まで。', 'Where are you going?'],
+        ]);
+        expect(shownAt(set, 12.1)).toEqual([
+            ['どこに行くの？駅まで。', 'To the station.'],
+        ]);
+    });
+
+    it('shows an official line once while the two originals it belongs with hand over', () => {
+        const set = paired(
+            vtt(
+                ['10.000', '12.100', 'どこに'],
+                ['12.000', '14.000', '行くの？']
+            ),
+            vtt(['10.000', '14.000', 'Where are you going?'])
+        );
+        expect(shownAt(set, 11)).toEqual([['どこに', 'Where are you going?']]);
+        expect(shownAt(set, 12.05)).toEqual([
+            ['どこに\n行くの？', 'Where are you going?'],
+        ]);
+        expect(shownAt(set, 13)).toEqual([
+            ['行くの？', 'Where are you going?'],
+        ]);
+    });
+
+    it('gives each of two originals on screen together only the official line that matches its time', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\n3番線',
+                    '00:00:11.000 --> 00:00:13.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\nPLATFORM 3',
+                    '00:00:11.000 --> 00:00:13.000\nWhere are you going?',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(shownAt(set, 12)).toEqual([
+            ['どこに行くの？', 'Where are you going?'],
+            ['3番線', 'PLATFORM 3'],
+        ]);
+    });
+
+    it('keeps an official line, within its own time, with the other original it was on screen with once the first has gone', () => {
+        const set = paired(
+            vtt(
+                ['10.000', '12.000', 'どこに'],
+                ['11.000', '13.000', '行くの？']
+            ),
+            vtt(['10.500', '12.500', 'Where are you going?'])
+        );
+        expect(shownAt(set, 11.5)).toEqual([
+            ['どこに\n行くの？', 'Where are you going?'],
+        ]);
+        expect(shownAt(set, 12.2)).toEqual([
+            ['行くの？', 'Where are you going?'],
+        ]);
+        expect(shownAt(set, 12.7)).toEqual([['行くの？', '']]);
+    });
+
+    it('lets no official line stay with an original that has one of its own', () => {
+        const set = paired(
+            vtt(
+                ['10.000', '12.000', 'どこに'],
+                ['11.000', '13.000', '行くの？']
+            ),
+            vtt(
+                ['10.000', '12.400', 'Where are you going?'],
+                ['11.000', '13.000', 'To the station.']
+            )
+        );
+        expect(shownAt(set, 12.2)).toEqual([['行くの？', 'To the station.']]);
+    });
+
+    it('shows an original with its own official line, stretched over its whole time, rather than keeping the line before', () => {
+        const set = paired(
+            vtt(
+                ['00.000', '02.000', 'どこに'],
+                ['01.000', '04.000', '行くの？']
+            ),
+            vtt(
+                ['00.000', '03.000', 'Where are you going?'],
+                ['03.000', '04.000', 'To the station.']
+            )
+        );
+        expect(shownAt(set, 1.5)).toEqual([
+            ['どこに\n行くの？', 'Where are you going?\nTo the station.'],
+        ]);
+        expect(shownAt(set, 2.5)).toEqual([['行くの？', 'To the station.']]);
+    });
+
+    it('leaves an official line raised over on-screen text on its own when only dialogue is there', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: vtt(['10.000', '14.000', 'どこに行くの？']),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:10%,start\nPLATFORM 3',
+                    '00:00:10.000 --> 00:00:14.000\nWhere are you going?',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(shownAt(set, 12)).toEqual([
+            ['どこに行くの？', 'Where are you going?'],
+            ['', 'PLATFORM 3'],
+        ]);
+    });
+
+    it('never moves an official line to an original in another block', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\n3番線',
+                    '00:00:11.000 --> 00:00:13.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText: vtt([
+                    '11.000',
+                    '13.500',
+                    'Where are you going?',
+                ]),
+            },
+            true
+        );
+        expect(shownAt(set, 13.2)).toEqual([['3番線', '']]);
+    });
+
+    it('tells apart a sign and dialogue timed alike by where each is drawn', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\n3番線',
+                    '00:00:10.000 --> 00:00:14.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000\nWhere are you going?',
+                    '00:00:10.000 --> 00:00:14.000 line:10%,start\nPLATFORM 3',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(shownAt(set, 12)).toEqual([
+            ['どこに行くの？', 'Where are you going?'],
+            ['3番線', 'PLATFORM 3'],
+        ]);
+    });
+
+    it('lets clearly different timing outweigh where a line is drawn', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\n3番線',
+                    '00:00:11.000 --> 00:00:13.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText:
+                    'WEBVTT\n\n00:00:10.000 --> 00:00:14.000\nPLATFORM 3',
+            },
+            true
+        );
+        expect(shownAt(set, 12)).toEqual([
+            ['どこに行くの？', ''],
+            ['3番線', 'PLATFORM 3'],
+        ]);
+    });
+
+    it('tells apart two signs timed alike by how near each official line sits', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:10%,start\n3番線',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,center\n出口',
+                ].join('\n\n'),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:45%,center\nEXIT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\nPLATFORM 3',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(shownAt(set, 12)).toEqual([
+            ['3番線', 'PLATFORM 3'],
+            ['出口', 'EXIT'],
+        ]);
+    });
+
+    it('tells apart two signs on one line by which edge meets it', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,end\n東京駅',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,start\n出口',
+                ].join('\n\n'),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,start\nEXIT',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,end\nTOKYO STATION',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(shownAt(set, 12)).toEqual([
+            ['東京駅', 'TOKYO STATION'],
+            ['出口', 'EXIT'],
+        ]);
+    });
+
+    it('joins, in order, the official lines that fall within one original', () => {
+        const set = paired(
+            vtt(['10.000', '14.000', 'どこに行くの？駅まで。']),
+            vtt(
+                ['10.000', '12.000', 'Where are you going?'],
+                ['12.000', '14.000', 'To the station.']
+            )
+        );
+        const both: [string, string][] = [
+            ['どこに行くの？駅まで。', 'Where are you going?\nTo the station.'],
+        ];
+        expect(shownAt(set, 10.5)).toEqual(both);
+        expect(shownAt(set, 13.5)).toEqual(both);
+    });
+
+    it('pairs tracks listed out of time order, joining lines as they are spoken', () => {
+        const set = paired(
+            vtt(
+                ['20.000', '22.000', 'またね。'],
+                ['10.000', '14.000', 'どこに行くの？駅まで。']
+            ),
+            vtt(
+                ['12.000', '14.000', 'To the station.'],
+                ['20.000', '22.000', 'See you.'],
+                ['10.000', '12.000', 'Where are you going?']
+            )
+        );
+        expect(shownAt(set, 11)).toEqual([
+            ['どこに行くの？駅まで。', 'Where are you going?\nTo the station.'],
+        ]);
+        expect(shownAt(set, 21)).toEqual([['またね。', 'See you.']]);
+    });
+
+    it('leaves an official line that belongs with no original on its own timing', () => {
+        const set = paired(
+            vtt(['10.000', '12.000', 'どこに行くの？']),
+            vtt(
+                ['11.800', '15.000', 'To the station.'],
+                ['20.000', '21.000', 'PLATFORM 3']
+            )
+        );
+        expect(
+            set.cues.map((cue) => [cue.id, cue.cueType, cue.pairedWith])
+        ).toEqual([
+            ['o0', 'original', []],
+            ['t0', 'target', []],
+            ['t1', 'target', []],
+        ]);
+        expect(shownAt(set, 13)).toEqual([['', 'To the station.']]);
+        expect(shownAt(set, 20.5)).toEqual([['', 'PLATFORM 3']]);
+    });
+
+    it('draws both tracks on their own timing while pairing is off', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: vtt(['10.000', '12.000', 'どこに行くの？']),
+                targetVttText: vtt([
+                    '09.600',
+                    '11.200',
+                    'Where are you going?',
+                ]),
+            },
+            false
+        );
+        expect(
+            set.cues.map((cue) => [cue.id, cue.cueType, cue.translated])
+        ).toEqual([
+            ['t0', 'target', 'Where are you going?'],
+            ['o0', 'original', null],
+        ]);
+        expect(shownAt(set, 9.8)).toEqual([['', 'Where are you going?']]);
     });
 });

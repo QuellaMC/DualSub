@@ -1,6 +1,5 @@
 import type { SettingsValues } from '@/config/schema';
-import type { LineAlign } from '@/shared/cuePlacement';
-import type { BlockPlacement } from './cueSelect';
+import type { BlockPlacement, LineAlign } from '@/shared/cuePlacement';
 import { customLook, type SubtitleLook, type SubtitleStyle } from './looks';
 
 /** Font size at scale 1 as a fraction of the picture height, for every

@@ -11,7 +11,12 @@ import { Specimen } from '../preview/Specimen';
 import { SharedTag, SiteTag, useScope } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
-export function LanguagesSection({ t, settings, save }: SectionProps) {
+export function LanguagesSection({
+    t,
+    settings,
+    save,
+    advanced,
+}: SectionProps & { advanced: boolean }) {
     const scope = useScope();
     const [spoken, setSpoken] = useState(() =>
         sampleVideoLanguage(settings.targetLanguage)
@@ -177,6 +182,42 @@ export function LanguagesSection({ t, settings, save }: SectionProps) {
                     />
                 </div>
                 <SiteTag keys={['useOfficialTranslations']} />
+                {advanced && settings.useOfficialTranslations && (
+                    <div className="divided stack" id="official-pairing">
+                        <div className="row">
+                            <div className="grow">
+                                <div className="label">
+                                    <span id="languages-pair">
+                                        {t('languagesPairTitle')}
+                                    </span>{' '}
+                                    <span className="tag advanced">
+                                        {t('commonAdvanced')}
+                                    </span>
+                                </div>
+                                <div className="help">
+                                    {t('languagesPairHelp')}
+                                </div>
+                            </div>
+                            <Switch
+                                checked={settings.pairOfficialTranslations}
+                                labelledBy="languages-pair"
+                                onChange={(pair) =>
+                                    save(
+                                        { pairOfficialTranslations: pair },
+                                        {
+                                            message: t(
+                                                pair
+                                                    ? 'toastPairOn'
+                                                    : 'toastPairOff'
+                                            ),
+                                        }
+                                    )
+                                }
+                            />
+                        </div>
+                        <SharedTag />
+                    </div>
+                )}
             </div>
         </section>
     );

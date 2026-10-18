@@ -524,6 +524,9 @@
     "helpNoSubtitlesTracks": {
         "message": "確認網站本身的字幕選單裡有字幕。"
     },
+    "helpPairTitle": {
+        "message": "翻譯配錯了原文字幕"
+    },
     "helpPrivacy": {
         "message": "字幕文字只會傳給你選的翻譯服務，不會傳送任何資料給我們。"
     },
@@ -550,6 +553,12 @@
     },
     "languagesOfficialHelp": {
         "message": "有的時候才用。那是人工翻譯的，讀起來更自然。"
+    },
+    "languagesPairTitle": {
+        "message": "與原文字幕同步顯示"
+    },
+    "languagesPairHelp": {
+        "message": "官方翻譯的每一行，都會和對應的原文字幕一起出現、一起消失。"
     },
     "languagesOfficialTitle": {
         "message": "使用影片的官方翻譯"
@@ -1184,6 +1193,12 @@
     "toastOfficialOff": {
         "message": "一律由 DualSub 翻譯"
     },
+    "toastPairOn": {
+        "message": "官方翻譯會跟著原文字幕"
+    },
+    "toastPairOff": {
+        "message": "官方翻譯按自己的時間顯示"
+    },
     "toastOfficialOn": {
         "message": "優先使用官方翻譯"
     },
@@ -1264,6 +1279,9 @@
     },
     "searchWordsOfficial": {
         "message": "官方 官方字幕 官方翻譯 人工翻譯 人工字幕 真人翻譯 內建字幕 原生字幕 平台字幕 中文字幕 機器翻譯 機翻 netflix disney 網飛 迪士尼"
+    },
+    "searchWordsPair": {
+        "message": "對齊 同步 時間 錯位 不同步 對應 官方翻譯"
     },
     "searchWordsSize": {
         "message": "大小 字幕大小 文字大小 字體 字型 字體大小 尺寸 放大 縮小 變大 變小 大一點 小一點 字太小 字太大 字幕太小 字幕太大 太小 太大 字大 字小 看不清楚 看不清 精確"

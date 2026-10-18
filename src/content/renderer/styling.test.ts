@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { STANDARD_PLACEMENT } from './cueSelect';
+import { STANDARD_PLACEMENT } from '@/shared/cuePlacement';
 import { getDefaultValue } from '@/config/schema';
 import {
     customLook,
