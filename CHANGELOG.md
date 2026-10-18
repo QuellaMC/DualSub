@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - With the show's own translation, a line that stays on screen while the line beside it changes no longer blinks. In the brief gap a show leaves between two lines, the line before holds until the next one begins.
+- Netflix captions laid out one line per region, as closed captions converted from broadcast are, now show as one caption. Its lines are translated together instead of as half-sentences, a caption raised to the top is drawn as one block whose lines no longer overlap their neighbours' translations, and the show's own translation goes with the whole caption rather than one of its lines.
 
 ## [3.1.1] - 2026-10-17
 
