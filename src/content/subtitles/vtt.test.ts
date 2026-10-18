@@ -326,6 +326,29 @@ describe('buildCueSet pairing the show’s own translation', () => {
         ]);
     });
 
+    it('tells apart two signs on one line by which edge meets it', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,end\n東京駅',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,start\n出口',
+                ].join('\n\n'),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,start\nEXIT',
+                    '00:00:10.000 --> 00:00:14.000 line:50%,end\nTOKYO STATION',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(shownAt(set, 12)).toEqual([
+            ['東京駅', 'TOKYO STATION'],
+            ['出口', 'EXIT'],
+        ]);
+    });
+
     it('joins, in order, the official lines that fall within one original', () => {
         const set = paired(
             vtt(['10.000', '14.000', 'どこに行くの？駅まで。']),

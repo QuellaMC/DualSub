@@ -83,6 +83,18 @@ function inTimeOrder(cues: readonly VttCue[]): TrackCue[] {
         .sort((a, b) => a.cue.start - b.cue.start);
 }
 
+/** Originals in the order an official line matches them, best first: by
+ *  score, then, between originals that score alike, the one whose edge
+ *  meets its line as the official line's does, since a line hanging from
+ *  a mark and one standing on it are drawn in different places. */
+function bestMatchFirst(target: VttCue): (a: TrackCue, b: TrackCue) => number {
+    const sameEdge = ({ cue }: TrackCue): number =>
+        Number(cue.placement.lineAlign === target.placement.lineAlign);
+    return (a, b) =>
+        matchScore(b.cue, target) - matchScore(a.cue, target) ||
+        sameEdge(b) - sameEdge(a);
+}
+
 /**
  * For each official line, the originals it belongs with: each original it
  * is on screen with in turn, but of originals on screen together, such as
@@ -109,9 +121,7 @@ function pairOfficialLines(
         around = around.filter(({ cue }) => cue.end > target.start);
         const candidates = around
             .filter(({ cue }) => together(cue, target))
-            .sort(
-                (a, b) => matchScore(b.cue, target) - matchScore(a.cue, target)
-            );
+            .sort(bestMatchFirst(target));
         const chosen: VttCue[] = [];
         for (const { index, cue } of candidates) {
             if (chosen.some((other) => together(other, cue))) {
