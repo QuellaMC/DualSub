@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-10-17
+
 ### Changed
 
 - Each line of the show's own translation now comes and goes with the original line it belongs with, instead of on its own timing, so the two lines no longer drift apart. If a show's lines go with the wrong original line, Help turns this off in one click, and with advanced options shown, so does a switch in Languages. Either way the change applies at once to the subtitles on screen.
@@ -14,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - With the show's own translation, a line that stays on screen while the line beside it changes no longer blinks. In the brief gap a show leaves between two lines, the line before holds until the next one begins.
-- Netflix captions laid out one line per region, as closed captions converted from broadcast are, now show as one caption. Its lines are translated together instead of as half-sentences, a caption raised to the top is drawn as one block whose lines no longer overlap their neighbours' translations, and the show's own translation goes with the whole caption rather than one of its lines.
+- Netflix captions laid out one line per region, as closed captions converted from broadcast are, now show as one caption. Its lines are translated together instead of as half-sentences, a caption raised to the top is drawn as one block whose lines no longer overlap their neighbors' translations, and the show's own translation goes with the whole caption rather than one of its lines.
 
 ## [3.1.1] - 2026-10-17
 
@@ -194,7 +196,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.1.1...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/QuellaMC/DualSub/compare/v3.1.1...v3.2.0
 [3.1.1]: https://github.com/QuellaMC/DualSub/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/QuellaMC/DualSub/compare/v3.0.2...v3.1.0
 [3.0.2]: https://github.com/QuellaMC/DualSub/compare/v3.0.1...v3.0.2
