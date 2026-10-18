@@ -394,13 +394,7 @@ export function OptionsApp() {
             case 'advanced':
                 return <AdvancedSection {...sectionProps} />;
             case 'help':
-                return (
-                    <HelpSection
-                        t={t}
-                        fallback={sectionProps.settings.translationFallback}
-                        go={go}
-                    />
-                );
+                return <HelpSection {...sectionProps} go={go} />;
         }
     };
 

@@ -396,15 +396,15 @@ describe('OptionsApp', () => {
             screen.getByRole('switch', { name: 'Advanced options' })
         );
         await waitFor(() =>
-            expect(pairing()).toHaveAttribute('aria-checked', 'false')
+            expect(pairing()).toHaveAttribute('aria-checked', 'true')
         );
         fireEvent.click(pairing()!);
         await waitFor(async () =>
-            expect(await sync('pairOfficialTranslations')).toBe(true)
+            expect(await sync('pairOfficialTranslations')).toBe(false)
         );
         expect(
             await screen.findByText(
-                "The show's translation follows the original line"
+                "The show's translation keeps its own timing"
             )
         ).toBeInTheDocument();
 
@@ -2136,7 +2136,12 @@ describe('OptionsApp', () => {
         location.hash = '#help';
         await renderReady();
         const set = vi.spyOn(fakeBrowser.storage.sync, 'set');
-        fireEvent.click(screen.getByRole('button', { name: 'Fix it for me' }));
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Fix it for me',
+                description: 'I see subtitles twice',
+            })
+        );
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({})
         );
@@ -2162,7 +2167,12 @@ describe('OptionsApp', () => {
         });
         location.hash = '#help';
         await renderReady();
-        fireEvent.click(screen.getByRole('button', { name: 'Fix it for me' }));
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Fix it for me',
+                description: 'I see subtitles twice',
+            })
+        );
         const undo = await screen.findByRole('button', { name: 'Undo' });
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({})
@@ -2180,6 +2190,40 @@ describe('OptionsApp', () => {
             })
         );
         expect(await sync('hideOfficialSubtitles')).toBe(false);
+    });
+
+    it('shows the show’s translation on its own timing again from Help, and Undo pairs it back', async () => {
+        location.hash = '#help';
+        await renderReady();
+        const fix = (): HTMLElement | null =>
+            screen.queryByRole('button', {
+                name: 'Fix it for me',
+                description: 'The translation goes with the wrong line',
+            });
+        fireEvent.click(fix()!);
+        await waitFor(async () =>
+            expect(await sync('pairOfficialTranslations')).toBe(false)
+        );
+        expect(
+            await screen.findByText(
+                "The show's translation keeps its own timing"
+            )
+        ).toBeInTheDocument();
+        await waitFor(() => expect(fix()).toBeNull());
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+        await waitFor(() => expect(fix()).not.toBeNull());
+    });
+
+    it('offers no fix for the show’s translation while it is not used', async () => {
+        await fakeBrowser.storage.sync.set({ useOfficialTranslations: false });
+        location.hash = '#help';
+        await renderReady();
+        expect(
+            screen.queryByRole('heading', {
+                name: 'The translation goes with the wrong line',
+            })
+        ).toBeNull();
     });
 
     it('shows no untranslated text while its catalog loads', async () => {

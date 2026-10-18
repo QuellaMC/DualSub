@@ -524,6 +524,9 @@
     "helpNoSubtitlesTracks": {
         "message": "사이트 자막 메뉴에 자막이 있는지 확인하세요."
     },
+    "helpPairTitle": {
+        "message": "번역이 엉뚱한 줄과 함께 나와요"
+    },
     "helpPrivacy": {
         "message": "자막 내용은 내가 고른 번역 서비스로만 보내요. 저희에게는 아무것도 보내지 않아요."
     },

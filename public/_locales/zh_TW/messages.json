@@ -524,6 +524,9 @@
     "helpNoSubtitlesTracks": {
         "message": "確認網站本身的字幕選單裡有字幕。"
     },
+    "helpPairTitle": {
+        "message": "翻譯配錯了原文字幕"
+    },
     "helpPrivacy": {
         "message": "字幕文字只會傳給你選的翻譯服務，不會傳送任何資料給我們。"
     },

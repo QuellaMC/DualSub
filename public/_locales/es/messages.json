@@ -524,6 +524,9 @@
     "helpNoSubtitlesTracks": {
         "message": "Comprueba que el menú de subtítulos del sitio tenga subtítulos."
     },
+    "helpPairTitle": {
+        "message": "La traducción sale con la línea equivocada"
+    },
     "helpPrivacy": {
         "message": "El texto de los subtítulos solo va al servicio de traducción que elijas. No se nos envía nada."
     },

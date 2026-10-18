@@ -524,6 +524,9 @@
     "helpNoSubtitlesTracks": {
         "message": "サイトの字幕メニューに字幕があるか確かめてください。"
     },
+    "helpPairTitle": {
+        "message": "翻訳が違う行と一緒に出る"
+    },
     "helpPrivacy": {
         "message": "字幕の文章は、選んだ翻訳サービスにだけ送られます。私たちには何も送られません。"
     },

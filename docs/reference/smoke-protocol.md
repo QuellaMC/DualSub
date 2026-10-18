@@ -19,10 +19,10 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    player: the original line reloads in the new audio language within a few
    seconds, and the popup names it; pick audio in the translation
    language: one line shows. On a title whose own translation DualSub
-   uses, show advanced options and turn on "Show it with the original
-   line" in Languages while it plays: from the next frame, each
-   translated line comes and goes with its original line. Turn it off:
-   both lines keep their own timing again, with no reload.
+   uses, each translated line comes and goes with its original line.
+   While it plays, press "Fix it for me" under "The translation goes with
+   the wrong line" in Help: from the next frame, both lines keep their own
+   timing, with no reload, and Undo pairs them again.
 3. Next episode (autoplay and manual): no duplicated cues, no cue from the
    previous episode, timing correct from the first line.
 4. Leave the player, come back, and reload the page: subtitles return

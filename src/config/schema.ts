@@ -471,11 +471,10 @@ export const configSchema = {
         scope: 'sync',
     }),
     /** Each line of the show's own translation comes and goes with the
-     *  original line it belongs to, instead of on its own timing. Off until
-     *  it has been compared with the old behavior on real shows. */
+     *  original line it belongs to, instead of on its own timing. */
     pairOfficialTranslations: setting({
         schema: z.boolean(),
-        default: false,
+        default: true,
         scope: 'sync',
     }),
     targetLanguage: setting({
