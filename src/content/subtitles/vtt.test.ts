@@ -350,6 +350,23 @@ describe('buildCueSet pairing the show’s own translation', () => {
         expect(shownAt(set, 12.2)).toEqual([['行くの？', 'To the station.']]);
     });
 
+    it('shows an original with its own official line, stretched over its whole time, rather than keeping the line before', () => {
+        const set = paired(
+            vtt(
+                ['00.000', '02.000', 'どこに'],
+                ['01.000', '04.000', '行くの？']
+            ),
+            vtt(
+                ['00.000', '03.000', 'Where are you going?'],
+                ['03.000', '04.000', 'To the station.']
+            )
+        );
+        expect(shownAt(set, 1.5)).toEqual([
+            ['どこに\n行くの？', 'Where are you going?\nTo the station.'],
+        ]);
+        expect(shownAt(set, 2.5)).toEqual([['行くの？', 'To the station.']]);
+    });
+
     it('never moves an official line to an original in another block', () => {
         const set = buildCueSet(
             {

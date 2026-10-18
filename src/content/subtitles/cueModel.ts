@@ -115,10 +115,11 @@ const UNPAIRED: Pairing = { owners: [], alongside: [] };
  * For each official line, the originals it goes with. It belongs with each
  * original it is on screen with in turn, but of originals on screen
  * together, such as a sign above the dialogue, only with the one it matches
- * best. Another of those, drawn in the same block and with no official line
- * of its own, keeps it within its own time once the best has gone. Both
- * tracks are walked in time order, so each official line is weighed against
- * the originals around it rather than the whole track.
+ * best. Another of those, drawn in the same block, keeps it within its own
+ * time once the best has gone, unless it has an official line of its own:
+ * that line spans its whole time. Both tracks are walked in time order, so
+ * each official line is weighed against the originals around it rather
+ * than the whole track.
  */
 function pairOfficialLines(
     originals: readonly VttCue[],
