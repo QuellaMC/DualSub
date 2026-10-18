@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Each line of the show's own translation now comes and goes with the original line it belongs with, instead of on its own timing, so the two lines no longer drift apart. If a show's lines go with the wrong original line, Help turns this off in one click, and with advanced options shown, so does a switch in Languages. Either way the change applies at once to the subtitles on screen.
 
+### Fixed
+
+- With the show's own translation, a line that stays on screen while the line beside it changes no longer blinks. In the brief gap a show leaves between two lines, the line before holds until the next one begins.
+
 ## [3.1.1] - 2026-10-17
 
 ### Fixed

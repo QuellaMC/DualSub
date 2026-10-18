@@ -138,10 +138,69 @@ function originalId(index: number): CueId {
     return `o${index}`;
 }
 
+/** A gap shorter than this between two lines of a track is no pause:
+ *  subtitle style guides close such gaps to a couple of frames. */
+const CHAINED_GAP = 0.5;
+
+interface Timing {
+    readonly start: number;
+    readonly end: number;
+}
+
+/** How many of the ascending `values` are below `limit`, or also at it
+ *  with `orAt`. */
+function countBelow(
+    values: readonly number[],
+    limit: number,
+    orAt: boolean
+): number {
+    let low = 0;
+    let high = values.length;
+    while (low < high) {
+        const middle = Math.floor((low + high) / 2);
+        const value = values[middle]!;
+        if (value < limit || (orAt && value === limit)) {
+            low = middle + 1;
+        } else {
+            high = middle;
+        }
+    }
+    return low;
+}
+
+/** `track` with each line held until the next one begins when the gap
+ *  between them is short and a line of `steady` shows through all of it,
+ *  so that line does not blink while the lines beside it change. */
+function holdThroughShortGaps<Line extends Timing>(
+    track: readonly Line[],
+    steady: readonly Timing[]
+): Line[] {
+    const starts = track.map((line) => line.start).sort((a, b) => a - b);
+    const steadyByStart = [...steady].sort((a, b) => a.start - b.start);
+    const steadyStarts = steadyByStart.map((line) => line.start);
+    const latestEnds: number[] = [];
+    for (const line of steadyByStart) {
+        latestEnds.push(Math.max(line.end, latestEnds.at(-1) ?? -Infinity));
+    }
+    return track.map((line) => {
+        const next = starts[countBelow(starts, line.end, false)];
+        const shownBefore = countBelow(steadyStarts, line.end, true);
+        const held =
+            next !== undefined &&
+            next > line.end &&
+            next - line.end < CHAINED_GAP &&
+            shownBefore > 0 &&
+            latestEnds[shownBefore - 1]! >= next;
+        return held ? { ...line, end: next } : line;
+    });
+}
+
 /** The answer's cues. With `pairOfficial`, each line of the show's own
  *  translation shows with the original lines it belongs with, for as long
- *  as they show, instead of on its own timing. Official lines go in the
- *  order they are spoken, so lines that come to share a start keep it. */
+ *  as they show, instead of on its own timing. A line that stays on screen
+ *  through a short gap in the other track holds the line before the gap
+ *  until the next begins. Official lines go in the order they are spoken,
+ *  so lines that come to share a start keep it. */
 export function buildCueSet(
     response: Extract<FetchVttResponse, { success: true }>,
     pairOfficial: boolean
@@ -156,8 +215,22 @@ export function buildCueSet(
         useNativeTarget && pairOfficial
             ? pairOfficialLines(originalCues, targetCues)
             : null;
+    const officialCues = targetCues.map((cue, index) => {
+        const owners = (belongsWith?.[index] ?? []).map(
+            (owner) => originalCues[owner]!
+        );
+        return owners.length > 0
+            ? {
+                  ...cue,
+                  start: Math.min(...owners.map((owner) => owner.start)),
+                  end: Math.max(...owners.map((owner) => owner.end)),
+              }
+            : cue;
+    });
+    const originals = holdThroughShortGaps(originalCues, officialCues);
+    const officials = holdThroughShortGaps(officialCues, originals);
 
-    const cues: Cue[] = originalCues.map((cue, index) => ({
+    const cues: Cue[] = originals.map((cue, index) => ({
         id: originalId(index),
         start: cue.start,
         end: cue.end,
@@ -170,21 +243,17 @@ export function buildCueSet(
     }));
     if (useNativeTarget) {
         for (const { index, cue } of inTimeOrder(targetCues)) {
-            const owners = belongsWith?.[index] ?? [];
-            const timedBy =
-                owners.length > 0
-                    ? owners.map((owner) => originalCues[owner]!)
-                    : [cue];
+            const shown = officials[index]!;
             cues.push({
                 id: `t${index}`,
-                start: Math.min(...timedBy.map((timing) => timing.start)),
-                end: Math.max(...timedBy.map((timing) => timing.end)),
+                start: shown.start,
+                end: shown.end,
                 cueType: 'target',
                 original: null,
                 translated: cue.text,
                 useNativeTarget,
                 placement: cue.placement,
-                pairedWith: owners.map(originalId),
+                pairedWith: (belongsWith?.[index] ?? []).map(originalId),
             });
         }
     }

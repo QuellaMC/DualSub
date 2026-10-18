@@ -204,18 +204,58 @@ describe('buildCueSet pairing the show’s own translation', () => {
         expect(shownAt(set, 13.8)).toEqual([['駅まで。', 'To the station.']]);
     });
 
-    it('shows a long official line under both originals it covers, and not between them', () => {
+    it('shows a long official line under both originals it covers, and not in a pause between them', () => {
         const set = paired(
             vtt(
                 ['10.000', '12.000', 'どこに'],
-                ['12.200', '14.000', '行くの？']
+                ['13.000', '15.000', '行くの？']
             ),
-            vtt(['10.000', '14.000', 'Where are you going?'])
+            vtt(['10.000', '15.000', 'Where are you going?'])
         );
         expect(shownAt(set, 11)).toEqual([['どこに', 'Where are you going?']]);
-        expect(shownAt(set, 12.1)).toEqual([]);
-        expect(shownAt(set, 13)).toEqual([
+        expect(shownAt(set, 12.5)).toEqual([]);
+        expect(shownAt(set, 14)).toEqual([
             ['行くの？', 'Where are you going?'],
+        ]);
+    });
+
+    it('holds the first of two originals through the short gap before the second while one official line spans both, paired or not', () => {
+        const originals = vtt(
+            ['10.000', '12.000', 'どこに'],
+            ['12.083', '14.000', '行くの？']
+        );
+        const official = vtt(['10.000', '14.000', 'Where are you going?']);
+        for (const pairOfficial of [true, false]) {
+            const set = buildCueSet(
+                { ...base, vttText: originals, targetVttText: official },
+                pairOfficial
+            );
+            expect(shownAt(set, 12.04)).toEqual([
+                ['どこに', 'Where are you going?'],
+            ]);
+            expect(shownAt(set, 12.1)).toEqual([
+                ['行くの？', 'Where are you going?'],
+            ]);
+        }
+    });
+
+    it('holds the first of two official lines through the short gap before the second while one original spans both', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: vtt(['10.000', '14.000', 'どこに行くの？駅まで。']),
+                targetVttText: vtt(
+                    ['10.000', '12.000', 'Where are you going?'],
+                    ['12.083', '14.000', 'To the station.']
+                ),
+            },
+            false
+        );
+        expect(shownAt(set, 12.04)).toEqual([
+            ['どこに行くの？駅まで。', 'Where are you going?'],
+        ]);
+        expect(shownAt(set, 12.1)).toEqual([
+            ['どこに行くの？駅まで。', 'To the station.'],
         ]);
     });
 
