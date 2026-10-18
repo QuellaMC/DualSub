@@ -239,6 +239,26 @@ describe('buildCueSet pairing the show’s own translation', () => {
         }
     });
 
+    it('holds a line for the next in its block while one official line goes with them, whichever block that line began in', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:11.000 line:15%,start\n3番線',
+                    '00:00:11.000 --> 00:00:12.000 line:40%,start\nどこに',
+                    '00:00:12.100 --> 00:00:13.000 line:40%,start\n行くの？',
+                ].join('\n\n'),
+                targetVttText:
+                    'WEBVTT\n\n00:00:10.000 --> 00:00:13.000 line:15%,start\nPLATFORM 3: WHERE TO?',
+            },
+            true
+        );
+        expect(shownAt(set, 12.05)).toEqual([
+            ['どこに', 'PLATFORM 3: WHERE TO?'],
+        ]);
+    });
+
     it('never holds a line while another in its block still shows', () => {
         const set = buildCueSet(
             {

@@ -281,6 +281,47 @@ function heldEnds(
     return ends;
 }
 
+/** Where and when an official line shows: in each block it is drawn in,
+ *  over the originals it goes with there, or at its own place and time
+ *  when it goes with none. */
+function officialSpans(
+    cue: VttCue,
+    { owners, alongside }: Pairing,
+    originals: readonly VttCue[]
+): PlacedLine[] {
+    if (owners.length === 0) {
+        return [
+            { start: cue.start, end: cue.end, block: blockOf(cue.placement) },
+        ];
+    }
+    const spans = new Map<string, Timing>();
+    const shownWith = (original: VttCue, span: Timing): void => {
+        const block = blockOf(original.placement);
+        const known = spans.get(block);
+        spans.set(
+            block,
+            known
+                ? {
+                      start: Math.min(known.start, span.start),
+                      end: Math.max(known.end, span.end),
+                  }
+                : span
+        );
+    };
+    for (const owner of owners) {
+        const original = originals[owner]!;
+        shownWith(original, { start: original.start, end: original.end });
+    }
+    for (const other of alongside) {
+        const original = originals[other]!;
+        shownWith(original, {
+            start: Math.max(original.start, cue.start),
+            end: Math.min(original.end, cue.end),
+        });
+    }
+    return [...spans].map(([block, span]) => ({ ...span, block }));
+}
+
 /** The answer's cues. With `pairOfficial`, each line of the show's own
  *  translation shows with the original lines it belongs with, for as long
  *  as they show, instead of on its own timing. A line that stays on screen
@@ -306,29 +347,11 @@ export function buildCueSet(
         end: cue.end,
         block: blockOf(cue.placement),
     }));
-    const officialLines = targetCues.map((cue, index) => {
-        const { owners, alongside } = pairings?.[index] ?? UNPAIRED;
-        const best = owners[0];
-        if (best === undefined) {
-            return {
-                start: cue.start,
-                end: cue.end,
-                block: blockOf(cue.placement),
-            };
-        }
-        const shownWith: Timing[] = [
-            ...owners.map((owner) => originalCues[owner]!),
-            ...alongside.map((other) => ({
-                start: Math.max(originalCues[other]!.start, cue.start),
-                end: Math.min(originalCues[other]!.end, cue.end),
-            })),
-        ];
-        return {
-            start: Math.min(...shownWith.map((span) => span.start)),
-            end: Math.max(...shownWith.map((span) => span.end)),
-            block: blockOf(originalCues[best]!.placement),
-        };
-    });
+    const officialLines = targetCues.flatMap((cue, index) =>
+        officialSpans(cue, pairings?.[index] ?? UNPAIRED, originalCues).map(
+            (span) => ({ ...span, target: index })
+        )
+    );
     const originalEnds = heldEnds(originalLines, officialLines);
     const officialEnds = heldEnds(
         officialLines,
@@ -337,6 +360,15 @@ export function buildCueSet(
             end: originalEnds[index]!,
         }))
     );
+    const officialTimes = targetCues.map(() => ({
+        start: Infinity,
+        end: -Infinity,
+    }));
+    for (const [position, line] of officialLines.entries()) {
+        const time = officialTimes[line.target]!;
+        time.start = Math.min(time.start, line.start);
+        time.end = Math.max(time.end, officialEnds[position]!);
+    }
 
     const cues: Cue[] = originalCues.map((cue, index) => ({
         id: originalId(index),
@@ -354,8 +386,8 @@ export function buildCueSet(
             const { owners, alongside } = pairings?.[index] ?? UNPAIRED;
             cues.push({
                 id: `t${index}`,
-                start: officialLines[index]!.start,
-                end: officialEnds[index]!,
+                start: officialTimes[index]!.start,
+                end: officialTimes[index]!.end,
                 cueType: 'target',
                 original: null,
                 translated: cue.text,
