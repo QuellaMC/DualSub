@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Style → Position has a switch, "Put lines where the show does". Turned off, it keeps every line at your position, including the lines the show raises over on-screen text. Use it when raised lines overlap: a caption split into two raised lines can collide once each line carries its translation. Each site can keep its own choice.
+
 ### Changed
 
 - Each line of the show's own translation now comes and goes with the original line it belongs with, instead of on its own timing, so the two lines no longer drift apart. If a show's lines go with the wrong original line, Help turns this off in one click, and with advanced options shown, so does a switch in Languages. Either way the change applies at once to the subtitles on screen.

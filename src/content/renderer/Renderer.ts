@@ -451,7 +451,10 @@ export class Renderer {
         loadingText: string | null
     ): Map<string, BlockContent> {
         const planned = new Map<string, BlockContent>();
-        for (const group of groupActiveCues(activeCues)) {
+        for (const group of groupActiveCues(
+            activeCues,
+            this.deps.state.display.followPlacement
+        )) {
             const text = composeBlockText(group.cues);
             planned.set(group.key, {
                 placement: group.placement,

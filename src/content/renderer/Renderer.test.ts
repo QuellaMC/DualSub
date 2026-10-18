@@ -27,6 +27,7 @@ const display = {
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
+    followPlacement: true,
     orientation: 'column' as const,
     order: 'original_top' as const,
     timeOffset: 0,
@@ -303,6 +304,25 @@ describe('Renderer', () => {
         tick(3);
         expect(blockKeys()).toEqual(['start:0.15']);
         expect(wordsIn('start:0.15')).toBe(1);
+    });
+
+    it('draws a raised cue with the dialogue at the viewer’s position while the platform’s placement is not followed', () => {
+        const { renderer, video, tick, texts, blockKeys, loadCues } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        loadCues([
+            cue(1, 5, 'Dialogue', '对白'),
+            cue(1, 5, 'SIGN', '标志', TOP),
+        ]);
+        tick(1.5);
+        expect(blockKeys()).toEqual(['standard', 'start:0.15']);
+
+        renderer.setDisplay({ ...display, followPlacement: false });
+        expect(blockKeys()).toEqual(['standard']);
+        expect(texts()).toEqual(['Dialogue\nSIGN', '对白\n标志']);
+
+        renderer.setDisplay(display);
+        expect(blockKeys()).toEqual(['standard', 'start:0.15']);
+        expect(texts()).toEqual(['Dialogue', '对白']);
     });
 
     it('draws cues at nearby lines as separate blocks, each at its own line', () => {

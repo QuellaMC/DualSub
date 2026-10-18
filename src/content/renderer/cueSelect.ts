@@ -92,8 +92,12 @@ function sourceOf(target: Cue, originals: readonly Cue[]): Cue | null {
 
 /** Active cues grouped by the block that draws them, in block order: each
  *  original followed by its translations, at the original's placement, and
- *  a translation with no active original at its own. */
-export function groupActiveCues(activeCues: readonly Cue[]): CueGroup[] {
+ *  a translation with no active original at its own. Without
+ *  `followPlacement`, the standard block draws them all. */
+export function groupActiveCues(
+    activeCues: readonly Cue[],
+    followPlacement: boolean
+): CueGroup[] {
     const originals = activeCues.filter((cue) => cue.cueType === 'original');
     const translations = new Map<Cue, Cue[]>();
     for (const cue of activeCues) {
@@ -108,7 +112,9 @@ export function groupActiveCues(activeCues: readonly Cue[]): CueGroup[] {
 
     const groups = new Map<string, CueGroup>();
     const draw = (anchor: Cue, cues: Cue[]): void => {
-        const placement = placeBlock(anchor.placement);
+        const placement = followPlacement
+            ? placeBlock(anchor.placement)
+            : STANDARD_PLACEMENT;
         const key = blockKey(placement);
         const group = groups.get(key);
         if (group) {

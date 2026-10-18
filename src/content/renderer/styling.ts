@@ -18,6 +18,8 @@ export interface DisplaySettings {
     readonly fontScale: number;
     readonly gap: number;
     readonly verticalPosition: number;
+    /** Raised lines are drawn where the platform puts them. */
+    readonly followPlacement: boolean;
     readonly orientation: 'column' | 'row';
     readonly order: 'original_top' | 'translation_top';
     readonly timeOffset: number;
@@ -32,6 +34,7 @@ export type DrawingSettings = Pick<
     | 'subtitleFontScale'
     | 'subtitleGap'
     | 'subtitleVerticalPosition'
+    | 'subtitleFollowPlacement'
     | 'subtitleLayoutOrientation'
     | 'subtitleLayoutOrder'
     | 'subtitleTimeOffset'
@@ -45,6 +48,7 @@ export function toDisplaySettings(settings: DrawingSettings): DisplaySettings {
         fontScale: settings.subtitleFontScale,
         gap: settings.subtitleGap,
         verticalPosition: settings.subtitleVerticalPosition,
+        followPlacement: settings.subtitleFollowPlacement,
         orientation: settings.subtitleLayoutOrientation,
         order: settings.subtitleLayoutOrder,
         timeOffset: settings.subtitleTimeOffset,

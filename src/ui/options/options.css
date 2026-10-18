@@ -909,6 +909,10 @@
     font-weight: 700;
 }
 
+.format-control.format-switch > :first-child {
+    flex: 1;
+}
+
 .format-control input[type='range'] {
     flex: 1;
     width: auto;

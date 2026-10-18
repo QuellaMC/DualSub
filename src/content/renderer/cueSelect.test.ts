@@ -99,7 +99,7 @@ describe('groupActiveCues', () => {
             end: 2,
             placement: { line: 0.5, lineAlign: 'center' },
         });
-        const groups = groupActiveCues([top, dialogue, middle, raised]);
+        const groups = groupActiveCues([top, dialogue, middle, raised], true);
         expect(groups.map((group) => group.key)).toEqual([
             'standard',
             'start:0.15',
@@ -111,6 +111,20 @@ describe('groupActiveCues', () => {
             line: 0.15,
             lineAlign: 'start',
         });
+    });
+
+    it('draws every cue in the standard block while the platform’s placement is not followed', () => {
+        const top = cue({ start: 1, end: 2, placement: TOP, original: 'Sign' });
+        const dialogue = cue({ start: 1, end: 2, original: 'Hi' });
+        const middle = cue({
+            start: 1,
+            end: 2,
+            placement: { line: 0.5, lineAlign: 'center' },
+            original: 'Exit',
+        });
+        const groups = groupActiveCues([top, dialogue, middle], false);
+        expect(groups.map((group) => group.key)).toEqual(['standard']);
+        expect(groups[0]!.cues).toEqual([top, dialogue, middle]);
     });
 });
 
@@ -139,12 +153,10 @@ describe('groupActiveCues with official translations', () => {
             translated: '嗨',
             useNativeTarget: true,
         });
-        const groups = groupActiveCues([
-            raised,
-            signTarget,
-            dialogue,
-            dialogueTarget,
-        ]);
+        const groups = groupActiveCues(
+            [raised, signTarget, dialogue, dialogueTarget],
+            true
+        );
         expect(groups.map((group) => group.key)).toEqual([
             'standard',
             'start:0.15',
@@ -172,7 +184,7 @@ describe('groupActiveCues with official translations', () => {
             translated: 'A translated',
             useNativeTarget: true,
         });
-        const [group] = groupActiveCues([a, bTarget, aTarget, b]);
+        const [group] = groupActiveCues([a, bTarget, aTarget, b], true);
         expect(composeBlockText(group!.cues)).toEqual({
             originalText: 'A\nB',
             translatedText: 'A translated\nB translated',
@@ -189,9 +201,9 @@ describe('groupActiveCues with official translations', () => {
             useNativeTarget: true,
             placement: TOP,
         });
-        expect(groupActiveCues([target]).map((group) => group.key)).toEqual([
-            'start:0.15',
-        ]);
+        expect(
+            groupActiveCues([target], true).map((group) => group.key)
+        ).toEqual(['start:0.15']);
     });
 });
 

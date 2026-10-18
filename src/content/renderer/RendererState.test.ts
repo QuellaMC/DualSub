@@ -10,6 +10,7 @@ const display = {
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
+    followPlacement: true,
     orientation: 'column' as const,
     order: 'original_top' as const,
     timeOffset: 0,

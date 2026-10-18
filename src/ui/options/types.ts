@@ -17,6 +17,7 @@ export const OPTIONS_SETTINGS_KEYS = [
     'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
+    'subtitleFollowPlacement',
     'subtitleLayoutOrder',
     'subtitleLayoutOrientation',
     'subtitleTimeOffset',

@@ -695,6 +695,12 @@
     "lookPositionMiddle": {
         "message": "En el medio"
     },
+    "lookPlacementHelp": {
+        "message": "Una línea que el vídeo aparta del texto en pantalla, como un cartel arriba, aparece donde el vídeo la pone. Desactivado: todas las líneas se quedan en tu posición."
+    },
+    "lookPlacementTitle": {
+        "message": "Poner las líneas donde las pone el vídeo"
+    },
     "lookPositionTitle": {
         "message": "Posición en la pantalla"
     },
@@ -1199,6 +1205,12 @@
     "toastPairOff": {
         "message": "La traducción oficial mantiene su propio tiempo"
     },
+    "toastPlacementOff": {
+        "message": "Todas las líneas se quedan en tu posición"
+    },
+    "toastPlacementOn": {
+        "message": "Las líneas van donde las pone el vídeo"
+    },
     "toastOfficialOn": {
         "message": "La traducción oficial va primero"
     },
@@ -1282,6 +1294,9 @@
     },
     "searchWordsPair": {
         "message": "alinear sincronizar tiempo coincidir emparejar traducción oficial desfase"
+    },
+    "searchWordsPlacement": {
+        "message": "arriba cartel texto en pantalla encima superpuestas solapadas tapan lugar donde lineas líneas video vídeo"
     },
     "searchWordsSize": {
         "message": "tamano subtítulos subtitulos letras fuente grandes más mas pequeños pequeñas pequenos pequenas chicos chicas agrandar ampliar aumentar achicar reducir zoom lupa leer no veo bien exacto preciso"

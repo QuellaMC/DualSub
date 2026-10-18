@@ -564,7 +564,10 @@ export function LookSection({ t, settings, save }: SectionProps) {
                             icon="move"
                             title={t('lookRowPosition')}
                             summary={t(positionLabelKey(shownPosition))}
-                            keys={['subtitleVerticalPosition']}
+                            keys={[
+                                'subtitleVerticalPosition',
+                                'subtitleFollowPlacement',
+                            ]}
                             open={open === 'position'}
                             onToggle={() => toggle('position')}
                         >
@@ -591,6 +594,32 @@ export function LookSection({ t, settings, save }: SectionProps) {
                                     {shownPosition.toFixed(1)}
                                 </span>
                             </div>
+                            <div
+                                className="format-control format-switch"
+                                id="look-placement"
+                            >
+                                <span id="look-placement-title">
+                                    {t('lookPlacementTitle')}
+                                </span>
+                                <Switch
+                                    small
+                                    checked={settings.subtitleFollowPlacement}
+                                    labelledBy="look-placement-title"
+                                    onChange={(follow) =>
+                                        save(
+                                            { subtitleFollowPlacement: follow },
+                                            {
+                                                message: t(
+                                                    follow
+                                                        ? 'toastPlacementOn'
+                                                        : 'toastPlacementOff'
+                                                ),
+                                            }
+                                        )
+                                    }
+                                />
+                            </div>
+                            <p className="help">{t('lookPlacementHelp')}</p>
                         </FormatRow>
 
                         <FormatRow

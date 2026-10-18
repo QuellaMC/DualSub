@@ -695,6 +695,12 @@
     "lookPositionMiddle": {
         "message": "가운데"
     },
+    "lookPlacementHelp": {
+        "message": "작품이 화면 속 글자를 피해 옮긴 줄(위쪽 표지판 등)은 작품이 둔 자리에 나와요. 끄면 모든 줄이 내가 정한 위치에 나와요."
+    },
+    "lookPlacementTitle": {
+        "message": "작품과 같은 위치에 보여 주기"
+    },
     "lookPositionTitle": {
         "message": "화면 위치"
     },
@@ -1199,6 +1205,12 @@
     "toastPairOff": {
         "message": "공식 자막이 자체 타이밍으로 나와요"
     },
+    "toastPlacementOff": {
+        "message": "모든 줄이 내가 정한 위치에 나와요"
+    },
+    "toastPlacementOn": {
+        "message": "줄이 작품이 둔 자리에 나와요"
+    },
     "toastOfficialOn": {
         "message": "공식 자막을 먼저 사용해요"
     },
@@ -1282,6 +1294,9 @@
     },
     "searchWordsPair": {
         "message": "맞추기 정렬 동기화 타이밍 어긋남 일치 공식자막 번역"
+    },
+    "searchWordsPlacement": {
+        "message": "위쪽 표지판 화면 글자 겹침 겹쳐요 가림 위치 자리 작품 위치"
     },
     "searchWordsSize": {
         "message": "자막크기 글자크기 글씨크기 폰트크기 텍스트 사이즈 크게 작게 확대 축소 큰글씨 작은글씨 조절 변경 세밀 정확"

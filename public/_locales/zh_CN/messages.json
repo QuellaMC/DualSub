@@ -695,6 +695,12 @@
     "lookPositionMiddle": {
         "message": "中间"
     },
+    "lookPlacementHelp": {
+        "message": "节目为避开画面文字而移开的字幕（例如顶部的标牌），会显示在节目放置的位置。关闭后，所有字幕都显示在你设定的位置。"
+    },
+    "lookPlacementTitle": {
+        "message": "按节目的位置显示"
+    },
     "lookPositionTitle": {
         "message": "屏幕上的位置"
     },
@@ -1199,6 +1205,12 @@
     "toastPairOff": {
         "message": "节目自带的翻译按自己的时间显示"
     },
+    "toastPlacementOff": {
+        "message": "所有字幕都显示在你设定的位置"
+    },
+    "toastPlacementOn": {
+        "message": "字幕会显示在节目放置的位置"
+    },
     "toastOfficialOn": {
         "message": "优先使用节目自带的翻译"
     },
@@ -1282,6 +1294,9 @@
     },
     "searchWordsPair": {
         "message": "对齐 同步 时间 错位 不同步 匹配 官方翻译 自带翻译"
+    },
+    "searchWordsPlacement": {
+        "message": "顶部 上方 标牌 画面文字 重叠 叠在一起 挡住 位置 节目位置"
     },
     "searchWordsSize": {
         "message": "字体大小 字幕大小 字号 字大小 字太小 字太大 看不清 老花眼 放大 缩小 调大 调小 变大 变小 大字 小字 大一点 小一点 精确"

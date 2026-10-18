@@ -125,6 +125,7 @@ function startSession(
             subtitleFontScale: 1,
             subtitleGap: 0.3,
             subtitleVerticalPosition: 2.8,
+            subtitleFollowPlacement: true,
             subtitleLayoutOrientation: 'column',
             subtitleLayoutOrder: 'original_top',
             subtitleTimeOffset: 0,

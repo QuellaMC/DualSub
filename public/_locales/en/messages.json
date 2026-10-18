@@ -695,6 +695,12 @@
     "lookPositionMiddle": {
         "message": "Middle"
     },
+    "lookPlacementHelp": {
+        "message": "A line the show moves off on-screen text, such as a sign at the top, appears where the show puts it. Off: every line stays at your position."
+    },
+    "lookPlacementTitle": {
+        "message": "Put lines where the show does"
+    },
     "lookPositionTitle": {
         "message": "Position on screen"
     },
@@ -1199,6 +1205,12 @@
     "toastPairOff": {
         "message": "The show's translation keeps its own timing"
     },
+    "toastPlacementOff": {
+        "message": "Every line stays at your position"
+    },
+    "toastPlacementOn": {
+        "message": "Lines go where the show puts them"
+    },
     "toastOfficialOn": {
         "message": "The show's own translation comes first"
     },
@@ -1282,6 +1294,9 @@
     },
     "searchWordsPair": {
         "message": "line up align sync timing match pair official translation mismatch out of step"
+    },
+    "searchWordsPlacement": {
+        "message": "top raised sign on-screen text overlap overlapping cover covered place where show puts lines"
     },
     "searchWordsSize": {
         "message": "font size bigger smaller large small zoom text exact"

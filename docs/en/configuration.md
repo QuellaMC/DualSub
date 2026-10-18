@@ -22,7 +22,7 @@ The settings page holds every setting, the popup's included, with a menu of its 
 
 - Start: where DualSub is working, a sample of your subtitles, and the language you speak, the text size, and the translation service
 - Languages: the language you speak, which the original line is translated into, what the original line shows, and the show's own translation, each line of which comes and goes with the original line it belongs with, with a sample over a Korean drama or an English film
-- Style: the subtitles on a stage at your video's true proportions, at night or by day. Click a line to style it, drag the subtitles to move them, or open Full screen to see them at their real size. The pane beside the stage holds the size, position, look, translation color, and lines (which goes on top, stacked or side by side, and the spacing), each with exact values.
+- Style: the subtitles on a stage at your video's true proportions, at night or by day. Click a line to style it, drag the subtitles to move them, or open Full screen to see them at their real size. The pane beside the stage holds the size, position, look, translation color, and lines (which goes on top, stacked or side by side, and the spacing), each with exact values. Position also has a switch: lines the show raises over on-screen text appear where the show puts them, or, turned off, at your position with the rest.
 - Timing: a timeline of the voice and the subtitles; show the subtitles earlier or later in half-second steps
 - Translation: the translation service, its setup, and whether a free service covers when it fails
 - Meanings: Word explanations; click a word in the subtitles to have an AI service explain it, through your own OpenAI or Gemini key
@@ -35,7 +35,7 @@ API keys stay on this computer: they don't sync and never go into a backup file.
 
 ## Per-Site Settings
 
-Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the original line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.
+Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the original line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, whether lines go where the show puts them, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.
 
 In the settings page, with advanced options shown, pick a site in the bar at the top: what you change then gets a "Netflix only" tag (in Style, a dot on the row), and "Use All sites" drops the site's own value. The Sites section lists what each site keeps and removes it in one click.
 

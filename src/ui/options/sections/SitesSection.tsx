@@ -38,6 +38,7 @@ const OWN_SETTING_LABELS: Record<SiteSettingKey, string> = {
     subtitleFontScale: 'lookSizeTitle',
     subtitleGap: 'lookGapTitle',
     subtitleVerticalPosition: 'lookPositionTitle',
+    subtitleFollowPlacement: 'lookPlacementTitle',
     subtitleLayoutOrder: 'lookOrderTitle',
     subtitleLayoutOrientation: 'lookArrangementTitle',
     subtitleTimeOffset: 'timingTitle',

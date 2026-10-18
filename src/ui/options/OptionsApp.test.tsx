@@ -1418,6 +1418,43 @@ describe('OptionsApp', () => {
         ).toBeNull();
     });
 
+    it('keeps every line at the viewer’s position from the Position row', async () => {
+        location.hash = '#look';
+        await renderReady();
+        openRow(/^Position/);
+        const follow = screen.getByRole('switch', {
+            name: 'Put lines where the show does',
+        });
+        expect(follow).toHaveAttribute('aria-checked', 'true');
+
+        fireEvent.click(follow);
+        await waitFor(async () =>
+            expect(await sync('subtitleFollowPlacement')).toBe(false)
+        );
+        expect(
+            await screen.findByText('Every line stays at your position')
+        ).toBeInTheDocument();
+    });
+
+    it('lands a search for overlapping lines on the switch that keeps them at the viewer’s position', async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'overlap' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: /^Put lines where the show does/,
+            })
+        );
+        await waitFor(() =>
+            expect(
+                screen.getByRole('switch', {
+                    name: 'Put lines where the show does',
+                })
+            ).toHaveFocus()
+        );
+    });
+
     it("lands a search for a site's own settings on that site's editing", async () => {
         await renderReady();
         fireEvent.change(screen.getByRole('searchbox'), {

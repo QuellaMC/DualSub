@@ -61,6 +61,12 @@ const ENTRIES: readonly SearchEntry[] = [
         anchors: ['format-position'],
     },
     {
+        labelKey: 'lookPlacementTitle',
+        wordsKey: 'searchWordsPlacement',
+        section: 'look',
+        anchors: ['look-placement', 'format-position'],
+    },
+    {
         labelKey: 'lookStyleTitle',
         wordsKey: 'searchWordsStyle',
         section: 'look',

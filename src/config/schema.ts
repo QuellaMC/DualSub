@@ -218,6 +218,7 @@ export const SITE_SETTING_KEYS = [
     'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
+    'subtitleFollowPlacement',
     'subtitleLayoutOrder',
     'subtitleLayoutOrientation',
     'subtitleTimeOffset',
@@ -550,6 +551,13 @@ export const configSchema = {
     subtitleVerticalPosition: setting({
         schema: z.number().finite().min(0.1).max(9.9),
         default: 2.8,
+        scope: 'sync',
+    }),
+    /** A line the platform raises over on-screen text is drawn where the
+     *  platform puts it; off, every line takes the viewer's position. */
+    subtitleFollowPlacement: setting({
+        schema: z.boolean(),
+        default: true,
         scope: 'sync',
     }),
 

@@ -10,7 +10,9 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 1. Open a title. Dual subtitles appear; the platform's own subtitle
    container stays hidden. On a title with on-screen text (Disney+ Marvel
    films open with location cards), the cue the platform raises shows at
-   the top with its translation while dialogue stays at the bottom.
+   the top with its translation while dialogue stays at the bottom. Turn
+   off "Put lines where the show does" in Style → Position: the raised
+   cue joins the dialogue at your position at once; turn it back on.
 2. Change your language from the popup, and the original line and the show's
    own translation in the settings page's Languages section: the current line
    stays up behind the loading placeholder, then the new languages take

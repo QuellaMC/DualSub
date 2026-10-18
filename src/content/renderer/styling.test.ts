@@ -24,6 +24,7 @@ const display: DisplaySettings = {
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
+    followPlacement: true,
     orientation: 'column',
     order: 'original_top',
     timeOffset: 0,

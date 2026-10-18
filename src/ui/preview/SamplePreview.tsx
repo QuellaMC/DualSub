@@ -22,6 +22,7 @@ export const SAMPLE_SETTINGS_KEYS = [
     'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
+    'subtitleFollowPlacement',
     'subtitleLayoutOrientation',
     'subtitleLayoutOrder',
     'subtitleTimeOffset',

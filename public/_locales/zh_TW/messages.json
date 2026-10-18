@@ -695,6 +695,12 @@
     "lookPositionMiddle": {
         "message": "中間"
     },
+    "lookPlacementHelp": {
+        "message": "影片為了避開畫面文字而移開的字幕（例如頂部的標示），會顯示在影片放的位置。關閉後，所有字幕都顯示在你設定的位置。"
+    },
+    "lookPlacementTitle": {
+        "message": "依影片的位置顯示"
+    },
     "lookPositionTitle": {
         "message": "在畫面上的位置"
     },
@@ -1199,6 +1205,12 @@
     "toastPairOff": {
         "message": "官方翻譯按自己的時間顯示"
     },
+    "toastPlacementOff": {
+        "message": "所有字幕都顯示在你設定的位置"
+    },
+    "toastPlacementOn": {
+        "message": "字幕會顯示在影片放的位置"
+    },
     "toastOfficialOn": {
         "message": "優先使用官方翻譯"
     },
@@ -1282,6 +1294,9 @@
     },
     "searchWordsPair": {
         "message": "對齊 同步 時間 錯位 不同步 對應 官方翻譯"
+    },
+    "searchWordsPlacement": {
+        "message": "頂部 上方 標示 畫面文字 重疊 疊在一起 擋住 位置 影片位置"
     },
     "searchWordsSize": {
         "message": "大小 字幕大小 文字大小 字體 字型 字體大小 尺寸 放大 縮小 變大 變小 大一點 小一點 字太小 字太大 字幕太小 字幕太大 太小 太大 字大 字小 看不清楚 看不清 精確"
