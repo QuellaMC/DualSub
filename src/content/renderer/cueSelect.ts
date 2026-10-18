@@ -43,16 +43,18 @@ export interface CueGroup {
 }
 
 /** The cue an official translation is drawn with. A paired one shows only
- *  with its own originals, with the first of them on screen. Any other
- *  goes with the original it shares the most time with, or on its own:
- *  the two tracks need not agree on timing or placement. */
+ *  with its own originals, with the first of them, in its order, on
+ *  screen. Any other goes with the original it shares the most time with,
+ *  or on its own: the two tracks need not agree on timing or placement. */
 function anchorOf(target: Cue, originals: readonly Cue[]): Cue | null {
     if (target.pairedWith.length > 0) {
-        return (
-            originals.find((original) =>
-                target.pairedWith.includes(original.id)
-            ) ?? null
-        );
+        for (const id of target.pairedWith) {
+            const original = originals.find((active) => active.id === id);
+            if (original) {
+                return original;
+            }
+        }
+        return null;
     }
     let anchor = target;
     let bestOverlap = 0;

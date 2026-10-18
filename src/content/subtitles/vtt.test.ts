@@ -319,6 +319,57 @@ describe('buildCueSet pairing the show’s own translation', () => {
         ]);
     });
 
+    it('keeps an official line, within its own time, with the other original it was on screen with once the first has gone', () => {
+        const set = paired(
+            vtt(
+                ['10.000', '12.000', 'どこに'],
+                ['11.000', '13.000', '行くの？']
+            ),
+            vtt(['10.500', '12.500', 'Where are you going?'])
+        );
+        expect(shownAt(set, 11.5)).toEqual([
+            ['どこに\n行くの？', 'Where are you going?'],
+        ]);
+        expect(shownAt(set, 12.2)).toEqual([
+            ['行くの？', 'Where are you going?'],
+        ]);
+        expect(shownAt(set, 12.7)).toEqual([['行くの？', '']]);
+    });
+
+    it('lets no official line stay with an original that has one of its own', () => {
+        const set = paired(
+            vtt(
+                ['10.000', '12.000', 'どこに'],
+                ['11.000', '13.000', '行くの？']
+            ),
+            vtt(
+                ['10.000', '12.400', 'Where are you going?'],
+                ['11.000', '13.000', 'To the station.']
+            )
+        );
+        expect(shownAt(set, 12.2)).toEqual([['行くの？', 'To the station.']]);
+    });
+
+    it('never moves an official line to an original in another block', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:15%,start\n3番線',
+                    '00:00:11.000 --> 00:00:13.000\nどこに行くの？',
+                ].join('\n\n'),
+                targetVttText: vtt([
+                    '11.000',
+                    '13.500',
+                    'Where are you going?',
+                ]),
+            },
+            true
+        );
+        expect(shownAt(set, 13.2)).toEqual([['3番線', '']]);
+    });
+
     it('tells apart a sign and dialogue timed alike by where each is drawn', () => {
         const set = buildCueSet(
             {

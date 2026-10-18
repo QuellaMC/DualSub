@@ -186,6 +186,30 @@ describe('groupActiveCues with official translations', () => {
         ).toEqual([[sign]]);
     });
 
+    it('draws a paired translation with the first of its originals in its own order, whichever began first', () => {
+        const early = cue({ id: 'early', start: 1, end: 3, original: 'A' });
+        const best = cue({
+            id: 'best',
+            start: 1.5,
+            end: 3,
+            placement: TOP,
+            original: 'B',
+        });
+        const target = cue({
+            id: 't',
+            start: 1,
+            end: 3,
+            cueType: 'target',
+            original: null,
+            translated: '乙',
+            useNativeTarget: true,
+            pairedWith: ['best', 'early'],
+        });
+        expect(
+            groupActiveCues([early, target, best]).map((group) => group.cues)
+        ).toEqual([[early], [best, target]]);
+    });
+
     it('draws a translation with no active original at its own placement', () => {
         const target = cue({
             start: 1,

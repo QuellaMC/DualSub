@@ -25,10 +25,11 @@ export interface Cue {
     translated: string | null;
     readonly useNativeTarget: boolean;
     readonly placement: CuePlacement;
-    /** The originals an official line belongs with. It spans their time
-     *  and shows while one of them shows, once, with the first of them on
-     *  screen. Empty for an original, and for an official line on its own
-     *  timing. */
+    /** The originals an official line goes with, best first: those it
+     *  belongs with, then any that keep it, within its own time, once those
+     *  have gone. It spans that time and shows while one of them shows,
+     *  once, with the first of them on screen. Empty for an original, and
+     *  for an official line on its own timing. */
     readonly pairedWith: readonly CueId[];
 }
 
@@ -100,18 +101,31 @@ function bestMatchFirst(target: VttCue): (a: TrackCue, b: TrackCue) => number {
         sameEdge(b) - sameEdge(a);
 }
 
+/** The originals an official line goes with, by index, best first. */
+interface Pairing {
+    /** Those it belongs with. */
+    readonly owners: readonly number[];
+    /** Those that keep it, within its own time, once its owners have gone. */
+    readonly alongside: readonly number[];
+}
+
+const UNPAIRED: Pairing = { owners: [], alongside: [] };
+
 /**
- * For each official line, the originals it belongs with: each original it
- * is on screen with in turn, but of originals on screen together, such as
- * a sign above the dialogue, only the one it matches best. Both tracks are
- * walked in time order, so each official line is weighed against the
- * originals around it rather than the whole track.
+ * For each official line, the originals it goes with. It belongs with each
+ * original it is on screen with in turn, but of originals on screen
+ * together, such as a sign above the dialogue, only with the one it matches
+ * best. Another of those, drawn in the same block and with no official line
+ * of its own, keeps it within its own time once the best has gone. Both
+ * tracks are walked in time order, so each official line is weighed against
+ * the originals around it rather than the whole track.
  */
 function pairOfficialLines(
     originals: readonly VttCue[],
     targets: readonly VttCue[]
-): number[][] {
-    const belongsWith = targets.map((): number[] => []);
+): Pairing[] {
+    const owners = targets.map((): number[] => []);
+    const beside = targets.map((): number[] => []);
     const upcoming = inTimeOrder(originals);
     let next = 0;
     let around: TrackCue[] = [];
@@ -129,14 +143,20 @@ function pairOfficialLines(
             .sort(bestMatchFirst(target));
         const chosen: VttCue[] = [];
         for (const { index, cue } of candidates) {
-            if (chosen.some((other) => together(other, cue))) {
-                continue;
+            const better = chosen.find((other) => together(other, cue));
+            if (!better) {
+                chosen.push(cue);
+                owners[targetIndex]!.push(index);
+            } else if (blockOf(better.placement) === blockOf(cue.placement)) {
+                beside[targetIndex]!.push(index);
             }
-            chosen.push(cue);
-            belongsWith[targetIndex]!.push(index);
         }
     }
-    return belongsWith;
+    const owning = new Set(owners.flat());
+    return owners.map((lineOwners, index) => ({
+        owners: lineOwners,
+        alongside: beside[index]!.filter((original) => !owning.has(original)),
+    }));
 }
 
 function originalId(index: number): CueId {
@@ -255,7 +275,7 @@ export function buildCueSet(
             ? parseVtt(response.targetVttText)
             : [];
     const useNativeTarget = response.useNativeTarget && targetCues.length > 0;
-    const belongsWith =
+    const pairings =
         useNativeTarget && pairOfficial
             ? pairOfficialLines(originalCues, targetCues)
             : null;
@@ -265,17 +285,27 @@ export function buildCueSet(
         block: blockOf(cue.placement),
     }));
     const officialLines = targetCues.map((cue, index) => {
-        const owners = (belongsWith?.[index] ?? []).map(
-            (owner) => originalCues[owner]!
-        );
-        const [best] = owners;
-        return best
-            ? {
-                  start: Math.min(...owners.map((owner) => owner.start)),
-                  end: Math.max(...owners.map((owner) => owner.end)),
-                  block: blockOf(best.placement),
-              }
-            : { start: cue.start, end: cue.end, block: blockOf(cue.placement) };
+        const { owners, alongside } = pairings?.[index] ?? UNPAIRED;
+        const best = owners[0];
+        if (best === undefined) {
+            return {
+                start: cue.start,
+                end: cue.end,
+                block: blockOf(cue.placement),
+            };
+        }
+        const shownWith: Timing[] = [
+            ...owners.map((owner) => originalCues[owner]!),
+            ...alongside.map((other) => ({
+                start: Math.max(originalCues[other]!.start, cue.start),
+                end: Math.min(originalCues[other]!.end, cue.end),
+            })),
+        ];
+        return {
+            start: Math.min(...shownWith.map((span) => span.start)),
+            end: Math.max(...shownWith.map((span) => span.end)),
+            block: blockOf(originalCues[best]!.placement),
+        };
     });
     const originalEnds = heldEnds(originalLines, officialLines);
     const officialEnds = heldEnds(
@@ -299,6 +329,7 @@ export function buildCueSet(
     }));
     if (useNativeTarget) {
         for (const { index, cue } of inTimeOrder(targetCues)) {
+            const { owners, alongside } = pairings?.[index] ?? UNPAIRED;
             cues.push({
                 id: `t${index}`,
                 start: officialLines[index]!.start,
@@ -308,7 +339,7 @@ export function buildCueSet(
                 translated: cue.text,
                 useNativeTarget,
                 placement: cue.placement,
-                pairedWith: (belongsWith?.[index] ?? []).map(originalId),
+                pairedWith: [...owners, ...alongside].map(originalId),
             });
         }
     }
