@@ -192,6 +192,8 @@ const ROWS = `
       <region xml:id="row1" tts:displayAlign="center" tts:extent="60.000% 5.330%" tts:origin="20.000% 10.000%"/>
       <region xml:id="row2" tts:displayAlign="center" tts:extent="40.000% 5.330%" tts:origin="30.000% 15.330%"/>
       <region xml:id="row2After" tts:displayAlign="after" tts:extent="40.000% 5.330%" tts:origin="30.000% 15.330%"/>
+      <region xml:id="row1Left" tts:displayAlign="center" tts:extent="35.000% 5.330%" tts:origin="10.000% 10.000%"/>
+      <region xml:id="row1Right" tts:displayAlign="center" tts:extent="35.000% 5.330%" tts:origin="55.000% 10.000%"/>
       <region xml:id="row14" tts:displayAlign="center" tts:extent="50.000% 5.330%" tts:origin="25.000% 79.290%"/>
       <region xml:id="row15" tts:displayAlign="center" tts:extent="55.000% 5.330%" tts:origin="22.500% 84.620%"/>`;
 
@@ -250,5 +252,39 @@ describe('convertTtmlToVtt (captions laid out a region per line)', () => {
         ]) {
             expect(vtt).toContain(`${timing}\n${text}\n`);
         }
+    });
+
+    it('keeps lines side by side in one band as separate cues', () => {
+        expect(
+            convertTtmlToVtt(
+                captions(`
+      <p begin="10000000t" end="30000000t" region="row1Left">- Who is it?</p>
+      <p begin="10000000t" end="30000000t" region="row1Right">- Me.</p>`)
+            )
+        ).toBe(
+            [
+                'WEBVTT',
+                '',
+                '00:00:01.000 --> 00:00:03.000 line:12.66%,center',
+                '- Who is it?',
+                '',
+                '00:00:01.000 --> 00:00:03.000 line:12.66%,center',
+                '- Me.',
+                '',
+                '',
+            ].join('\n')
+        );
+    });
+
+    it('leaves a line in its own row when the line touching it is empty', () => {
+        const vtt = convertTtmlToVtt(
+            captions(`
+      <p begin="10000000t" end="30000000t" region="row1">FINE.</p>
+      <p begin="10000000t" end="30000000t" region="row2"> </p>`)
+        );
+        expect(vtt).toContain(
+            '00:00:01.000 --> 00:00:03.000 line:12.66%,center\nFINE.\n'
+        );
+        expect(vtt).not.toContain('line:15.33%');
     });
 });

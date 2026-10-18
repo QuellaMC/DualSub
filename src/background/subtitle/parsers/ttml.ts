@@ -182,19 +182,21 @@ function placementOf(box: RegionBox | null): CuePlacement {
  *  their percentages to three decimals. */
 const TOUCHING = 0.0001;
 
-/** Whether the text in `lower` goes on from the text in `upper`: the same
- *  box, or one that starts where it ends, with text against the same
- *  edge. */
+/** Whether the text in `lower` goes on from the text in `upper`: its box
+ *  starts where the upper one ends, with text against the same edge.
+ *  Paragraphs side by side in one band stay apart: they may be different
+ *  speakers, and the renderer draws them in one block anyway. */
 function continuesBlock(upper: RegionBox, lower: RegionBox): boolean {
     return (
         upper.displayAlign === lower.displayAlign &&
-        (Math.abs(lower.top - upper.bottom) < TOUCHING ||
-            (lower.top === upper.top && lower.bottom === upper.bottom))
+        Math.abs(lower.top - upper.bottom) < TOUCHING
     );
 }
 
-function isBoxed(cue: IntermediateCue): cue is BoxedCue {
-    return cue.box !== null;
+/** A paragraph that can be a line of a caption: placed in a box, with text
+ *  to show. An empty one never moves the lines it touches. */
+function isCaptionLine(cue: IntermediateCue): cue is BoxedCue {
+    return cue.box !== null && cue.text !== '';
 }
 
 /**
@@ -207,7 +209,7 @@ function isBoxed(cue: IntermediateCue): cue is BoxedCue {
  */
 function joinCaptionLines(cues: readonly IntermediateCue[]): IntermediateCue[] {
     const bySpan = new Map<string, BoxedCue[]>();
-    for (const cue of cues.filter(isBoxed)) {
+    for (const cue of cues.filter(isCaptionLine)) {
         const span = `${cue.startMs}-${cue.endMs}`;
         bySpan.set(span, [...(bySpan.get(span) ?? []), cue]);
     }
@@ -235,10 +237,7 @@ function joinCaptionLines(cues: readonly IntermediateCue[]): IntermediateCue[] {
                             ...below.map((line) => line.box.bottom)
                         ),
                     },
-                    text: [top, ...below]
-                        .map((line) => line.text)
-                        .filter((text) => text !== '')
-                        .join('\n'),
+                    text: [top, ...below].map((line) => line.text).join('\n'),
                 });
                 for (const line of below) {
                     absorbed.add(line);
