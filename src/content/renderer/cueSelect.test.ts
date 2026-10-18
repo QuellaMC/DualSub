@@ -18,6 +18,7 @@ function cue(overrides: Partial<Cue> & { start: number; end: number }): Cue {
         translated: null,
         useNativeTarget: false,
         placement: AUTO_PLACEMENT,
+        pairedWith: [],
         ...overrides,
     };
 }
@@ -177,6 +178,42 @@ describe('groupActiveCues with official translations', () => {
             originalText: 'A\nB',
             translatedText: 'A translated\nB translated',
         });
+    });
+
+    it('draws a paired translation once, with the first of its own originals on screen, and never without them', () => {
+        const a = cue({ id: 'a', start: 1, end: 2.1, original: 'A' });
+        const b = cue({ id: 'b', start: 2, end: 4, original: 'B' });
+        const sign = cue({
+            id: 'sign',
+            start: 1,
+            end: 4,
+            placement: TOP,
+            original: 'SIGN',
+        });
+        const target = cue({
+            id: 't',
+            start: 1,
+            end: 4,
+            cueType: 'target',
+            original: null,
+            translated: '甲乙',
+            useNativeTarget: true,
+            pairedWith: ['a', 'b'],
+        });
+
+        const handover = groupActiveCues([a, sign, target, b]);
+        expect(handover.map((group) => group.cues)).toEqual([
+            [a, target, b],
+            [sign],
+        ]);
+        expect(composeBlockText(handover[0]!.cues)).toEqual({
+            originalText: 'A\nB',
+            translatedText: '甲乙',
+        });
+
+        expect(
+            groupActiveCues([sign, target]).map((group) => group.cues)
+        ).toEqual([[sign]]);
     });
 
     it('draws a translation with no active original at its own placement', () => {

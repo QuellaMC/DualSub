@@ -73,10 +73,19 @@ export interface CueGroup {
     readonly cues: Cue[];
 }
 
-/** An official translation belongs with the original it shares the most
- *  time with; the two tracks need not agree on timing or placement. */
-function sourceOf(target: Cue, originals: readonly Cue[]): Cue | null {
-    let source: Cue | null = null;
+/** The cue an official translation is drawn with. A paired one shows only
+ *  with its own originals, with the first of them on screen. Any other
+ *  goes with the original it shares the most time with, or on its own:
+ *  the two tracks need not agree on timing or placement. */
+function anchorOf(target: Cue, originals: readonly Cue[]): Cue | null {
+    if (target.pairedWith.length > 0) {
+        return (
+            originals.find((original) =>
+                target.pairedWith.includes(original.id)
+            ) ?? null
+        );
+    }
+    let anchor = target;
     let bestOverlap = 0;
     for (const original of originals) {
         const overlap =
@@ -84,23 +93,24 @@ function sourceOf(target: Cue, originals: readonly Cue[]): Cue | null {
             Math.max(original.start, target.start);
         if (overlap > bestOverlap) {
             bestOverlap = overlap;
-            source = original;
+            anchor = original;
         }
     }
-    return source;
+    return anchor;
 }
 
 /** Active cues grouped by the block that draws them, in block order: each
  *  original followed by its translations, at the original's placement, and
- *  a translation with no active original at its own. */
+ *  a translation drawn on its own at its own placement. */
 export function groupActiveCues(activeCues: readonly Cue[]): CueGroup[] {
     const originals = activeCues.filter((cue) => cue.cueType === 'original');
     const translations = new Map<Cue, Cue[]>();
     for (const cue of activeCues) {
-        if (cue.cueType === 'target') {
-            const source = sourceOf(cue, originals) ?? cue;
-            translations.set(source, [
-                ...(translations.get(source) ?? []),
+        const anchor =
+            cue.cueType === 'target' ? anchorOf(cue, originals) : null;
+        if (anchor) {
+            translations.set(anchor, [
+                ...(translations.get(anchor) ?? []),
                 cue,
             ]);
         }

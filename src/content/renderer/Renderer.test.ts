@@ -64,6 +64,7 @@ function cue(
         translated,
         useNativeTarget: false,
         placement,
+        pairedWith: [],
     };
 }
 

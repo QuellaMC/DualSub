@@ -9,9 +9,7 @@ export type CueId = string;
  * - Translate mode: cueType 'original' carrying `original`; `translated` is
  *   filled in by the translation loop.
  * - Native-target mode: separate 'original' and 'target' cues whose timings
- *   may not align; the renderer draws the active ones together. Paired, an
- *   original carries the official lines it belongs with as `translated`,
- *   and only the official lines that belong with no original stay 'target'.
+ *   may not align; the renderer draws the active ones together.
  */
 export interface Cue {
     readonly id: CueId;
@@ -22,6 +20,11 @@ export interface Cue {
     translated: string | null;
     readonly useNativeTarget: boolean;
     readonly placement: CuePlacement;
+    /** The originals an official line belongs with. It spans their time
+     *  and shows while one of them shows, once, with the first of them on
+     *  screen. Empty for an original, and for an official line on its own
+     *  timing. */
+    readonly pairedWith: readonly CueId[];
 }
 
 export interface CueSet {
@@ -81,20 +84,17 @@ function inTimeOrder(cues: readonly VttCue[]): TrackCue[] {
 }
 
 /**
- * Each original's official lines, in the order they are spoken, and which
- * official lines belong with some original. An official line belongs with
- * each original it is on screen with in turn; of originals on screen
- * together, such as a sign above the dialogue, only with the one it matches
- * best, so no official line shows twice. Both tracks are walked in time
- * order, so each official line is weighed against the originals around it
- * rather than the whole track.
+ * For each official line, the originals it belongs with: each original it
+ * is on screen with in turn, but of originals on screen together, such as
+ * a sign above the dialogue, only the one it matches best. Both tracks are
+ * walked in time order, so each official line is weighed against the
+ * originals around it rather than the whole track.
  */
 function pairOfficialLines(
     originals: readonly VttCue[],
     targets: readonly VttCue[]
-): { translations: (string | null)[]; paired: Set<number> } {
-    const lines = originals.map((): string[] => []);
-    const paired = new Set<number>();
+): number[][] {
+    const belongsWith = targets.map((): number[] => []);
     const upcoming = inTimeOrder(originals);
     let next = 0;
     let around: TrackCue[] = [];
@@ -118,21 +118,20 @@ function pairOfficialLines(
                 continue;
             }
             chosen.push(cue);
-            lines[index]!.push(target.text);
-            paired.add(targetIndex);
+            belongsWith[targetIndex]!.push(index);
         }
     }
-    return {
-        translations: lines.map((texts) =>
-            texts.length > 0 ? texts.join('\n') : null
-        ),
-        paired,
-    };
+    return belongsWith;
+}
+
+function originalId(index: number): CueId {
+    return `o${index}`;
 }
 
 /** The answer's cues. With `pairOfficial`, each line of the show's own
  *  translation shows with the original lines it belongs with, for as long
- *  as they show, instead of on its own timing. */
+ *  as they show, instead of on its own timing. Official lines go in the
+ *  order they are spoken, so lines that come to share a start keep it. */
 export function buildCueSet(
     response: Extract<FetchVttResponse, { success: true }>,
     pairOfficial: boolean
@@ -143,35 +142,39 @@ export function buildCueSet(
             ? parseVtt(response.targetVttText)
             : [];
     const useNativeTarget = response.useNativeTarget && targetCues.length > 0;
-    const pairing =
+    const belongsWith =
         useNativeTarget && pairOfficial
             ? pairOfficialLines(originalCues, targetCues)
             : null;
 
     const cues: Cue[] = originalCues.map((cue, index) => ({
-        id: `o${index}`,
+        id: originalId(index),
         start: cue.start,
         end: cue.end,
         cueType: 'original',
         original: cue.text,
-        translated: pairing?.translations[index] ?? null,
+        translated: null,
         useNativeTarget,
         placement: cue.placement,
+        pairedWith: [],
     }));
     if (useNativeTarget) {
-        for (const [index, cue] of targetCues.entries()) {
-            if (pairing?.paired.has(index)) {
-                continue;
-            }
+        for (const { index, cue } of inTimeOrder(targetCues)) {
+            const owners = belongsWith?.[index] ?? [];
+            const timedBy =
+                owners.length > 0
+                    ? owners.map((owner) => originalCues[owner]!)
+                    : [cue];
             cues.push({
                 id: `t${index}`,
-                start: cue.start,
-                end: cue.end,
+                start: Math.min(...timedBy.map((timing) => timing.start)),
+                end: Math.max(...timedBy.map((timing) => timing.end)),
                 cueType: 'target',
                 original: null,
                 translated: cue.text,
                 useNativeTarget,
                 placement: cue.placement,
+                pairedWith: owners.map(originalId),
             });
         }
     }

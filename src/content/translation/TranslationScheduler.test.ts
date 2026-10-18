@@ -31,6 +31,7 @@ function cue(
         translated: null,
         useNativeTarget: false,
         placement: AUTO_PLACEMENT,
+        pairedWith: [],
         ...overrides,
     };
 }
