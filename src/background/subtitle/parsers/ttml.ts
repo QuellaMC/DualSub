@@ -9,7 +9,7 @@ import { normalizeCueText } from '@/shared/cueTextNormalizer';
 // against the document's ttp:tickRate, ruby readings are dropped so furigana
 // never inlines into the cue, and each paragraph's region becomes the cue's
 // line setting, so a cue the platform raises over on-screen text keeps its
-// place.
+// place. A caption laid out a region per line becomes one cue.
 
 export class TTMLConversionError extends Error {
     override readonly name = 'TTMLConversionError';
@@ -24,12 +24,23 @@ export const DEFAULT_TICK_RATE = 10_000_000;
 
 type Attributes = Record<string, string>;
 
-interface IntermediateCue {
-    startMs: number;
-    endMs: number;
-    placement: CuePlacement;
-    text: string;
+/** A region's box, top and bottom as fractions of the picture height, and
+ *  the edge of it that tts:displayAlign puts the text against. */
+interface RegionBox {
+    readonly top: number;
+    readonly bottom: number;
+    readonly displayAlign: 'before' | 'center' | 'after';
 }
+
+interface IntermediateCue {
+    readonly startMs: number;
+    readonly endMs: number;
+    /** Null for the automatic placement. */
+    readonly box: RegionBox | null;
+    readonly text: string;
+}
+
+type BoxedCue = IntermediateCue & { readonly box: RegionBox };
 
 function parseAttributes(attributeText: string): Attributes {
     const attributes = Object.create(null) as Attributes;
@@ -103,10 +114,9 @@ function parsePercentPair(value: string): [number, number] | null {
         : null;
 }
 
-/** A region's vertical anchor: the edge of its box that tts:displayAlign
- *  puts the text against. A region declaring no layout, or a length the
- *  model cannot read, leaves its cues at the automatic placement. */
-function parseRegionPlacement(attributes: Attributes): CuePlacement {
+/** A region's box. A region declaring no layout, or a length the model
+ *  cannot read, has none, and its cues take the automatic placement. */
+function parseRegionBox(attributes: Attributes): RegionBox | null {
     const originText = attributes['tts:origin'];
     const extentText = attributes['tts:extent'];
     const origin =
@@ -119,38 +129,126 @@ function parseRegionPlacement(attributes: Attributes): CuePlacement {
         extent === null ||
         (!origin && !extent && !displayAlign)
     ) {
-        return AUTO_PLACEMENT;
+        return null;
     }
     const top = (origin?.[1] ?? 0) / 100;
-    const bottom = extent ? top + extent[1] / 100 : 1;
-    switch (displayAlign) {
-        case 'after':
-            return { line: bottom, lineAlign: 'end' };
-        case 'center':
-            return { line: (top + bottom) / 2, lineAlign: 'center' };
-        default:
-            return { line: top, lineAlign: 'start' };
-    }
+    return {
+        top,
+        bottom: extent ? top + extent[1] / 100 : 1,
+        displayAlign:
+            displayAlign === 'after' || displayAlign === 'center'
+                ? displayAlign
+                : 'before',
+    };
 }
 
-function parseRegionPlacements(
+function parseRegionBoxes(
     ttmlText: string,
     styles: ReadonlyMap<string, Attributes>
-): Map<string, CuePlacement> {
-    const placements = new Map<string, CuePlacement>();
+): Map<string, RegionBox | null> {
+    const boxes = new Map<string, RegionBox | null>();
     const regionRegex = /<(?:[\w-]+:)?region\b([^>]*)\/?\s*>/gi;
     let regionMatch: RegExpExecArray | null;
     while ((regionMatch = regionRegex.exec(ttmlText)) !== null) {
         const attributes = parseAttributes(regionMatch[1]!);
         const regionId = attributes['xml:id'] || attributes.id;
         if (regionId) {
-            placements.set(
+            boxes.set(
                 regionId,
-                parseRegionPlacement(withReferencedStyles(attributes, styles))
+                parseRegionBox(withReferencedStyles(attributes, styles))
             );
         }
     }
-    return placements;
+    return boxes;
+}
+
+/** A cue's vertical anchor: the edge of its box that its text is put
+ *  against. */
+function placementOf(box: RegionBox | null): CuePlacement {
+    if (!box) {
+        return AUTO_PLACEMENT;
+    }
+    switch (box.displayAlign) {
+        case 'after':
+            return { line: box.bottom, lineAlign: 'end' };
+        case 'center':
+            return { line: (box.top + box.bottom) / 2, lineAlign: 'center' };
+        case 'before':
+            return { line: box.top, lineAlign: 'start' };
+    }
+}
+
+/** Boxes this close, as a fraction of the picture, touch: documents write
+ *  their percentages to three decimals. */
+const TOUCHING = 0.0001;
+
+/** Whether the text in `lower` goes on from the text in `upper`: the same
+ *  box, or one that starts where it ends, with text against the same
+ *  edge. */
+function continuesBlock(upper: RegionBox, lower: RegionBox): boolean {
+    return (
+        upper.displayAlign === lower.displayAlign &&
+        (Math.abs(lower.top - upper.bottom) < TOUCHING ||
+            (lower.top === upper.top && lower.bottom === upper.bottom))
+    );
+}
+
+function isBoxed(cue: IntermediateCue): cue is BoxedCue {
+    return cue.box !== null;
+}
+
+/**
+ * Paragraphs shown over the same span whose boxes stack, each starting
+ * where the one above it ends, are the lines of one caption laid out a
+ * region per line, as Netflix's captions converted from broadcast
+ * (CEA-608) are. Each such caption becomes one cue, its lines top to
+ * bottom in the box they fill, so it is translated and drawn as a whole.
+ * It takes the place of its top line.
+ */
+function joinCaptionLines(cues: readonly IntermediateCue[]): IntermediateCue[] {
+    const bySpan = new Map<string, BoxedCue[]>();
+    for (const cue of cues.filter(isBoxed)) {
+        const span = `${cue.startMs}-${cue.endMs}`;
+        bySpan.set(span, [...(bySpan.get(span) ?? []), cue]);
+    }
+    const joinedAt = new Map<IntermediateCue, IntermediateCue>();
+    const absorbed = new Set<IntermediateCue>();
+    for (const shown of bySpan.values()) {
+        const captions: BoxedCue[][] = [];
+        for (const line of [...shown].sort((a, b) => a.box.top - b.box.top)) {
+            const caption = captions[captions.length - 1];
+            const above = caption?.[caption.length - 1];
+            if (caption && above && continuesBlock(above.box, line.box)) {
+                caption.push(line);
+            } else {
+                captions.push([line]);
+            }
+        }
+        for (const [top, ...below] of captions) {
+            if (top && below.length > 0) {
+                joinedAt.set(top, {
+                    startMs: top.startMs,
+                    endMs: top.endMs,
+                    box: {
+                        ...top.box,
+                        bottom: Math.max(
+                            ...below.map((line) => line.box.bottom)
+                        ),
+                    },
+                    text: [top, ...below]
+                        .map((line) => line.text)
+                        .filter((text) => text !== '')
+                        .join('\n'),
+                });
+                for (const line of below) {
+                    absorbed.add(line);
+                }
+            }
+        }
+    }
+    return cues.flatMap((cue) =>
+        absorbed.has(cue) ? [] : [joinedAt.get(cue) ?? cue]
+    );
 }
 
 /** The region inherited at a document offset from the nearest enclosing
@@ -271,7 +369,7 @@ function parsePElements(
     ttmlText: string,
     tickRate: number,
     styles: ReadonlyMap<string, Attributes>,
-    regionPlacements: ReadonlyMap<string, CuePlacement>
+    regionBoxes: ReadonlyMap<string, RegionBox | null>
 ): IntermediateCue[] {
     const intermediateCues: IntermediateCue[] = [];
     const regionAt = regionScopes(ttmlText);
@@ -298,10 +396,9 @@ function parsePElements(
         intermediateCues.push({
             startMs,
             endMs,
-            placement:
-                (region === undefined
-                    ? undefined
-                    : regionPlacements.get(region)) ?? AUTO_PLACEMENT,
+            box:
+                (region === undefined ? undefined : regionBoxes.get(region)) ??
+                null,
             text: normalizeCueText(
                 stripRubyAnnotations(pMatch[2]!, styles),
                 'ttml'
@@ -334,22 +431,24 @@ export function convertTtmlToVtt(ttmlText: string): string {
     }
 
     const styles = parseStyles(ttmlText);
-    const cues = parsePElements(
+    const paragraphs = parsePElements(
         ttmlText,
         parseTickRate(ttmlText),
         styles,
-        parseRegionPlacements(ttmlText, styles)
+        parseRegionBoxes(ttmlText, styles)
     );
-    if (cues.length === 0) {
+    if (paragraphs.length === 0) {
         throw new TTMLConversionError(
             'TTML conversion failed: No valid TTML subtitle entries found'
         );
     }
-    cues.sort((a, b) => a.startMs - b.startMs);
+    const cues = joinCaptionLines(paragraphs).sort(
+        (a, b) => a.startMs - b.startMs
+    );
 
     let vtt = 'WEBVTT\n\n';
     for (const cue of cues) {
-        const settings = formatCueSettings(cue.placement);
+        const settings = formatCueSettings(placementOf(cue.box));
         vtt += `${formatMillisecondsAsVtt(cue.startMs)} --> ${formatMillisecondsAsVtt(cue.endMs)}${settings === '' ? '' : ` ${settings}`}\n`;
         vtt += `${encodeVttText(cue.text)}\n\n`;
     }
