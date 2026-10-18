@@ -3,6 +3,7 @@ import {
     AUTO_PLACEMENT,
     blockKey,
     formatCueSettings,
+    mayJoin,
     parseCueSettings,
     placeBlock,
     STANDARD_PLACEMENT,
@@ -77,5 +78,15 @@ describe('placeBlock', () => {
             'end:0.15'
         );
         expect(blockKey(STANDARD_PLACEMENT)).toBe('standard');
+    });
+});
+
+describe('mayJoin', () => {
+    it('keeps a raised translation out of dialogue, and lets one in the dialogue band join a raised original', () => {
+        expect(mayJoin(TOP, BOTTOM)).toBe(false);
+        expect(mayJoin(TOP, AUTO_PLACEMENT)).toBe(false);
+        expect(mayJoin(TOP, { line: 0.5, lineAlign: 'center' })).toBe(true);
+        expect(mayJoin(BOTTOM, TOP)).toBe(true);
+        expect(mayJoin(AUTO_PLACEMENT, BOTTOM)).toBe(true);
     });
 });

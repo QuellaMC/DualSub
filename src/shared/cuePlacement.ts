@@ -28,6 +28,17 @@ export function raisedLine(placement: CuePlacement): number | null {
         : placement.line;
 }
 
+/** Whether a translation placed at `translation` may be drawn with an
+ *  original placed at `original`. One the show raises over on-screen text
+ *  never goes with dialogue. One in the dialogue band may go with a raised
+ *  original, since many tracks leave their signs unplaced. */
+export function mayJoin(
+    translation: CuePlacement,
+    original: CuePlacement
+): boolean {
+    return raisedLine(translation) === null || raisedLine(original) !== null;
+}
+
 /** Where a block is drawn: at the viewer's own position, where the platform
  *  draws ordinary dialogue, or on the line the platform chose. */
 export type BlockPlacement =

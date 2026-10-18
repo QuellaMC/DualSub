@@ -239,6 +239,26 @@ describe('buildCueSet pairing the show’s own translation', () => {
         }
     });
 
+    it('never holds a line while another in its block still shows', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: vtt(
+                    ['10.000', '12.000', 'どこに'],
+                    ['11.900', '14.000', '行くの？'],
+                    ['12.200', '15.000', '駅まで。']
+                ),
+                targetVttText: vtt([
+                    '11.500',
+                    '12.500',
+                    'Where are you going?',
+                ]),
+            },
+            false
+        );
+        expect(set.cues.find((cue) => cue.original === 'どこに')?.end).toBe(12);
+    });
+
     it('never holds a line for the next one in another block', () => {
         const set = buildCueSet(
             {
@@ -365,6 +385,25 @@ describe('buildCueSet pairing the show’s own translation', () => {
             ['どこに\n行くの？', 'Where are you going?\nTo the station.'],
         ]);
         expect(shownAt(set, 2.5)).toEqual([['行くの？', 'To the station.']]);
+    });
+
+    it('leaves an official line raised over on-screen text on its own when only dialogue is there', () => {
+        const set = buildCueSet(
+            {
+                ...base,
+                vttText: vtt(['10.000', '14.000', 'どこに行くの？']),
+                targetVttText: [
+                    'WEBVTT',
+                    '00:00:10.000 --> 00:00:14.000 line:10%,start\nPLATFORM 3',
+                    '00:00:10.000 --> 00:00:14.000\nWhere are you going?',
+                ].join('\n\n'),
+            },
+            true
+        );
+        expect(shownAt(set, 12)).toEqual([
+            ['どこに行くの？', 'Where are you going?'],
+            ['', 'PLATFORM 3'],
+        ]);
     });
 
     it('never moves an official line to an original in another block', () => {

@@ -1,5 +1,6 @@
 import {
     blockKey,
+    mayJoin,
     placeBlock,
     placementOrder,
     type BlockPlacement,
@@ -45,7 +46,8 @@ export interface CueGroup {
 /** The cue an official translation is drawn with. A paired one shows only
  *  with its own originals, with the first of them, in its order, on
  *  screen. Any other goes with the original it shares the most time with,
- *  or on its own: the two tracks need not agree on timing or placement. */
+ *  where it may join it, or on its own: the two tracks need not agree on
+ *  timing or placement. */
 function anchorOf(target: Cue, originals: readonly Cue[]): Cue | null {
     if (target.pairedWith.length > 0) {
         for (const id of target.pairedWith) {
@@ -58,7 +60,9 @@ function anchorOf(target: Cue, originals: readonly Cue[]): Cue | null {
     }
     let anchor = target;
     let bestOverlap = 0;
-    for (const original of originals) {
+    for (const original of originals.filter((active) =>
+        mayJoin(target.placement, active.placement)
+    )) {
         const overlap =
             Math.min(original.end, target.end) -
             Math.max(original.start, target.start);

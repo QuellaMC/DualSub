@@ -210,6 +210,23 @@ describe('groupActiveCues with official translations', () => {
         ).toEqual([[early], [best, target]]);
     });
 
+    it('draws an unpaired translation raised over on-screen text on its own rather than with dialogue', () => {
+        const dialogue = cue({ start: 1, end: 3, original: 'Hi' });
+        const sign = cue({
+            id: 'sign',
+            start: 1,
+            end: 3,
+            cueType: 'target',
+            original: null,
+            translated: '标志',
+            useNativeTarget: true,
+            placement: TOP,
+        });
+        expect(
+            groupActiveCues([dialogue, sign]).map((group) => group.cues)
+        ).toEqual([[dialogue], [sign]]);
+    });
+
     it('draws a translation with no active original at its own placement', () => {
         const target = cue({
             start: 1,

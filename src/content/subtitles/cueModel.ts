@@ -1,5 +1,6 @@
 import {
     blockKey,
+    mayJoin,
     placeBlock,
     raisedLine,
     type CuePlacement,
@@ -140,7 +141,11 @@ function pairOfficialLines(
         }
         around = around.filter(({ cue }) => cue.end > target.start);
         const candidates = around
-            .filter(({ cue }) => together(cue, target))
+            .filter(
+                ({ cue }) =>
+                    together(cue, target) &&
+                    mayJoin(target.placement, cue.placement)
+            )
             .sort(bestMatchFirst(target));
         const chosen: VttCue[] = [];
         for (const { index, cue } of candidates) {
@@ -194,28 +199,44 @@ function countBelow(
     return low;
 }
 
+/** The starts of some lines in order, and how far those that have begun
+ *  by a given time reach. */
+interface Reach {
+    readonly starts: readonly number[];
+    readonly latestEndBy: (time: number) => number;
+}
+
+function reachOf(lines: readonly Timing[]): Reach {
+    const byStart = [...lines].sort((a, b) => a.start - b.start);
+    const starts = byStart.map((line) => line.start);
+    const latestEnds: number[] = [];
+    for (const line of byStart) {
+        latestEnds.push(Math.max(line.end, latestEnds.at(-1) ?? -Infinity));
+    }
+    return {
+        starts,
+        latestEndBy: (time) =>
+            latestEnds[countBelow(starts, time, true) - 1] ?? -Infinity,
+    };
+}
+
 /** The ends of `lines`, each held until the next of them begins when the
- *  gap between them is short and one of `steady` shows through all of it. */
+ *  gap between them is short, no other of them is still showing, and one
+ *  of `steady` shows through all of it. */
 function holdEnds(
     lines: readonly Timing[],
     steady: readonly Timing[]
 ): number[] {
-    const starts = lines.map((line) => line.start).sort((a, b) => a - b);
-    const steadyByStart = [...steady].sort((a, b) => a.start - b.start);
-    const steadyStarts = steadyByStart.map((line) => line.start);
-    const latestEnds: number[] = [];
-    for (const line of steadyByStart) {
-        latestEnds.push(Math.max(line.end, latestEnds.at(-1) ?? -Infinity));
-    }
+    const own = reachOf(lines);
+    const other = reachOf(steady);
     return lines.map((line) => {
-        const next = starts[countBelow(starts, line.end, false)];
-        const shownBefore = countBelow(steadyStarts, line.end, true);
+        const next = own.starts[countBelow(own.starts, line.end, false)];
         const held =
             next !== undefined &&
             next > line.end &&
             next - line.end < CHAINED_GAP &&
-            shownBefore > 0 &&
-            latestEnds[shownBefore - 1]! >= next;
+            own.latestEndBy(line.end) <= line.end &&
+            other.latestEndBy(line.end) >= next;
         return held ? next : line.end;
     });
 }
