@@ -185,3 +185,106 @@ describe('convertTtmlToVtt (IMSC 1.1)', () => {
         expect(parseTtmlTimeToSeconds('10000000t')).toBe(1);
     });
 });
+
+/** Rows as Netflix lays out captions converted from broadcast: each line
+ *  of a caption in its own region, one row tall, the rows touching. */
+const ROWS = `
+      <region xml:id="row1" tts:displayAlign="center" tts:extent="60.000% 5.330%" tts:origin="20.000% 10.000%"/>
+      <region xml:id="row2" tts:displayAlign="center" tts:extent="40.000% 5.330%" tts:origin="30.000% 15.330%"/>
+      <region xml:id="row2After" tts:displayAlign="after" tts:extent="40.000% 5.330%" tts:origin="30.000% 15.330%"/>
+      <region xml:id="row1Left" tts:displayAlign="center" tts:extent="35.000% 5.330%" tts:origin="10.000% 10.000%"/>
+      <region xml:id="row1Right" tts:displayAlign="center" tts:extent="35.000% 5.330%" tts:origin="55.000% 10.000%"/>
+      <region xml:id="row14" tts:displayAlign="center" tts:extent="50.000% 5.330%" tts:origin="25.000% 79.290%"/>
+      <region xml:id="row15" tts:displayAlign="center" tts:extent="55.000% 5.330%" tts:origin="22.500% 84.620%"/>`;
+
+function captions(paragraphs: string): string {
+    return `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:tickRate="10000000">
+  <head><layout>${ROWS}</layout></head>
+  <body><div>${paragraphs}</div></body>
+</tt>`;
+}
+
+describe('convertTtmlToVtt (captions laid out a region per line)', () => {
+    it('joins the lines of a caption into one cue, top to bottom, in the box they fill', () => {
+        const vtt = convertTtmlToVtt(
+            captions(`
+      <p begin="10000000t" end="30000000t" region="row2">THE KEYS?</p>
+      <p begin="10000000t" end="30000000t" region="row1">WHERE DID YOU PUT</p>
+      <p begin="40000000t" end="60000000t" region="row14">I LEFT THEM</p>
+      <p begin="40000000t" end="60000000t" region="row15">BY THE DOOR.</p>
+      <p begin="70000000t" end="80000000t" region="row1">FINE.</p>`)
+        );
+        expect(vtt).toBe(
+            [
+                'WEBVTT',
+                '',
+                '00:00:01.000 --> 00:00:03.000 line:15.33%,center',
+                'WHERE DID YOU PUT\nTHE KEYS?',
+                '',
+                '00:00:04.000 --> 00:00:06.000 line:84.62%,center',
+                'I LEFT THEM\nBY THE DOOR.',
+                '',
+                '00:00:07.000 --> 00:00:08.000 line:12.66%,center',
+                'FINE.',
+                '',
+                '',
+            ].join('\n')
+        );
+    });
+
+    it('keeps lines apart that are not one stack shown over one span', () => {
+        const vtt = convertTtmlToVtt(
+            captions(`
+      <p begin="10000000t" end="30000000t" region="row1">SIGN</p>
+      <p begin="10000000t" end="30000000t" region="row14">Dialogue</p>
+      <p begin="40000000t" end="60000000t" region="row1">First</p>
+      <p begin="40000000t" end="50000000t" region="row2">Second</p>
+      <p begin="70000000t" end="90000000t" region="row1">Upper</p>
+      <p begin="70000000t" end="90000000t" region="row2After">Lower</p>`)
+        );
+        for (const [timing, text] of [
+            ['00:00:01.000 --> 00:00:03.000 line:12.66%,center', 'SIGN'],
+            ['00:00:01.000 --> 00:00:03.000 line:81.96%,center', 'Dialogue'],
+            ['00:00:04.000 --> 00:00:06.000 line:12.66%,center', 'First'],
+            ['00:00:04.000 --> 00:00:05.000 line:18%,center', 'Second'],
+            ['00:00:07.000 --> 00:00:09.000 line:12.66%,center', 'Upper'],
+            ['00:00:07.000 --> 00:00:09.000 line:20.66%,end', 'Lower'],
+        ]) {
+            expect(vtt).toContain(`${timing}\n${text}\n`);
+        }
+    });
+
+    it('keeps lines side by side in one band as separate cues', () => {
+        expect(
+            convertTtmlToVtt(
+                captions(`
+      <p begin="10000000t" end="30000000t" region="row1Left">- Who is it?</p>
+      <p begin="10000000t" end="30000000t" region="row1Right">- Me.</p>`)
+            )
+        ).toBe(
+            [
+                'WEBVTT',
+                '',
+                '00:00:01.000 --> 00:00:03.000 line:12.66%,center',
+                '- Who is it?',
+                '',
+                '00:00:01.000 --> 00:00:03.000 line:12.66%,center',
+                '- Me.',
+                '',
+                '',
+            ].join('\n')
+        );
+    });
+
+    it('leaves a line in its own row when the line touching it is empty', () => {
+        const vtt = convertTtmlToVtt(
+            captions(`
+      <p begin="10000000t" end="30000000t" region="row1">FINE.</p>
+      <p begin="10000000t" end="30000000t" region="row2"> </p>`)
+        );
+        expect(vtt).toContain(
+            '00:00:01.000 --> 00:00:03.000 line:12.66%,center\nFINE.\n'
+        );
+        expect(vtt).not.toContain('line:15.33%');
+    });
+});
