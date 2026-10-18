@@ -25,7 +25,8 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    uses, each translated line comes and goes with its original line.
    While it plays, press "Fix it for me" under "The translation goes with
    the wrong line" in Help: from the next frame, both lines keep their own
-   timing, with no reload, and Undo pairs them again.
+   timing, with no reload, and Undo pairs them again. Either way, a line
+   that stays up while the line beside it changes does not blink.
 3. Next episode (autoplay and manual): no duplicated cues, no cue from the
    previous episode, timing correct from the first line.
 4. Leave the player, come back, and reload the page: subtitles return

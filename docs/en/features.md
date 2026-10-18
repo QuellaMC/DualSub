@@ -24,6 +24,6 @@
 - Performance Tuning: Configurable delay between subtitle translation requests
 - Advanced Options: Exact values, limits, backup and restore, and a diagnostic report, shown on request
 - Logging System: Detailed debugging with configurable log levels
-- Official Subtitle Integration: Uses platform native subtitles when available (Netflix)
+- Official Subtitle Integration: Uses the show's own translation when it has one, each of its lines shown with the original line it belongs with
 
 See also: `docs/en/platforms.md` and `docs/en/providers.md`.

@@ -267,7 +267,13 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 3.1.1 (Current)
+### Version 3.2.0 (Current)
+
+- 🔗 **The show's own translation follows the original line**: each of its lines comes and goes with the original line it belongs with; when a show's lines go with the wrong one, Help turns this off in one click
+- 🐛 With the show's own translation, lines no longer blink across the short gaps between subtitles
+- 🐛 On Netflix, a closed caption shows as one block with one translation, instead of line by line
+
+### Version 3.1.1
 
 - 🐛 The two subtitle lines are called Original and Translation, so their names hold whichever one is on top
 
