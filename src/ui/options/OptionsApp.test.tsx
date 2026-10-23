@@ -1178,6 +1178,38 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('opens a section at the top of the page with its heading focused', async () => {
+        await renderReady();
+        window.scrollTo(0, 400);
+        nav('Style');
+        await waitFor(() =>
+            expect(
+                screen.getByRole('heading', { level: 1, name: 'Style' })
+            ).toHaveFocus()
+        );
+        expect(window.scrollY).toBe(0);
+    });
+
+    it("opens a section at the top of the page when a site's settings cannot be read", async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#look';
+        await renderReady();
+        vi.spyOn(browser.storage.sync, 'get').mockRejectedValue(
+            new Error('broken')
+        );
+        fireEvent.click(
+            within(
+                screen.getByRole('group', { name: 'Settings for' })
+            ).getByRole('button', { name: /^Netflix/ })
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to load settings'
+        );
+        window.scrollTo(0, 400);
+        nav('Timing');
+        await waitFor(() => expect(window.scrollY).toBe(0));
+    });
+
     it('opens a folded or advanced setting from search and focuses it', async () => {
         await renderReady();
         const search = screen.getByRole('searchbox');

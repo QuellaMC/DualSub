@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Opening a section of the settings page from its menu now shows it from the top. The page used to scroll down a little, out of sight of the top bar and the first lines of the section.
+
 ## [3.2.0] - 2026-10-17
 
 ### Changed
