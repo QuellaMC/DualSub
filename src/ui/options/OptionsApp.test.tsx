@@ -1178,6 +1178,18 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('opens a section at the top of the page with its heading focused', async () => {
+        await renderReady();
+        window.scrollTo(0, 400);
+        nav('Style');
+        await waitFor(() =>
+            expect(
+                screen.getByRole('heading', { level: 1, name: 'Style' })
+            ).toHaveFocus()
+        );
+        expect(window.scrollY).toBe(0);
+    });
+
     it('opens a folded or advanced setting from search and focuses it', async () => {
         await renderReady();
         const search = screen.getByRole('searchbox');

@@ -63,6 +63,28 @@ function initialPlace(): { section: SectionId; anchors: readonly string[] } {
         : { section: 'start', anchors: [] };
 }
 
+/** Brings into view where an arrival lands and returns what takes focus
+ *  there, or null while the page does not show it yet. */
+function reveal(anchors: readonly string[]): HTMLElement | null {
+    if (anchors.length === 0) {
+        // A section opens at the top of the page. Its heading is hidden,
+        // there only to take focus, so the page does not scroll to it.
+        const heading = document.querySelector<HTMLElement>('.content h1');
+        if (heading) {
+            window.scrollTo(0, 0);
+        }
+        return heading;
+    }
+    const target = anchors
+        .map((id) => document.getElementById(id))
+        .find((element) => element !== null);
+    if (!target) {
+        return null;
+    }
+    target.scrollIntoView({ block: 'start' });
+    return target.querySelector<HTMLElement>(FOCUSABLE) ?? target;
+}
+
 export function OptionsApp() {
     const [scope, setScope] = useState<Scope>('all');
     const [section, setSection] = useState<SectionId>(
@@ -163,20 +185,10 @@ export function OptionsApp() {
         }
         const opened = new Set<HTMLElement>();
         const land = (): boolean => {
-            const target =
-                arrival.anchors.length === 0
-                    ? document.querySelector<HTMLElement>('.content h1')
-                    : arrival.anchors
-                          .map((id) => document.getElementById(id))
-                          .find((element) => element !== null);
-            if (!target) {
+            const focused = reveal(arrival.anchors);
+            if (!focused) {
                 return false;
             }
-            target.scrollIntoView({ block: 'start' });
-            const focused =
-                arrival.anchors.length === 0
-                    ? target
-                    : (target.querySelector<HTMLElement>(FOCUSABLE) ?? target);
             focused.focus({ preventScroll: true });
             // Nothing there takes focus yet, as a card still reading its
             // settings: keep looking.
