@@ -69,11 +69,8 @@ function reveal(anchors: readonly string[]): HTMLElement | null {
     if (anchors.length === 0) {
         // A section opens at the top of the page. Its heading is hidden,
         // there only to take focus, so the page does not scroll to it.
-        const heading = document.querySelector<HTMLElement>('.content h1');
-        if (heading) {
-            window.scrollTo(0, 0);
-        }
-        return heading;
+        window.scrollTo(0, 0);
+        return document.querySelector<HTMLElement>('.content h1');
     }
     const target = anchors
         .map((id) => document.getElementById(id))
