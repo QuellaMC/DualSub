@@ -267,7 +267,11 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 3.2.0 (Current)
+### Version 3.2.1 (Current)
+
+- 🐛 The settings page opens each section at its top, instead of scrolled a little past the top bar
+
+### Version 3.2.0
 
 - 🔗 **The show's own translation follows the original line**: each of its lines comes and goes with the original line it belongs with; when a show's lines go with the wrong one, Help turns this off in one click
 - 🐛 With the show's own translation, lines no longer blink across the short gaps between subtitles

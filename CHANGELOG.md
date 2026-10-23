@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-10-23
+
 ### Fixed
 
 - Opening a section of the settings page from its menu now shows it from the top. The page used to scroll down a little, out of sight of the top bar and the first lines of the section.
@@ -200,7 +202,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.2.1...HEAD
+[3.2.1]: https://github.com/QuellaMC/DualSub/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/QuellaMC/DualSub/compare/v3.1.1...v3.2.0
 [3.1.1]: https://github.com/QuellaMC/DualSub/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/QuellaMC/DualSub/compare/v3.0.2...v3.1.0

@@ -89,9 +89,11 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 17. On a clean profile the settings page opens on Start and says
     it is working on Netflix and Disney+, the menu's highlight on Start.
     Make the text bigger with A+: the notice confirms it, stays while
-    pointed at, and Undo (or Ctrl+Z) puts it back. Search "twice": Sites
-    opens with focus on Netflix's hide switch. In Timing, Show earlier
-    slides the subtitle bars ahead of the voice on the timeline. Turn on
+    pointed at, and Undo (or Ctrl+Z) puts it back. Scroll down and open
+    Languages from the menu: it opens at the top, the top bar in view.
+    Search "twice": Sites opens with focus on Netflix's hide switch. In
+    Timing, Show earlier slides the subtitle bars ahead of the voice on
+    the timeline. Turn on
     Advanced options in the top bar, pick Netflix in the bar at the top,
     and change the size in Style: the Size row gets a dot and a "Netflix
     only" tag, the Netflix overlay follows, Disney+ keeps the shared
