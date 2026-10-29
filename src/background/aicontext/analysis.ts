@@ -8,36 +8,37 @@ import type { ContextProvider, ProviderSettings } from './provider';
 import { ContextProviderError } from './providerError';
 import { answerJsonSchema, parseAnswer } from './schemas';
 
-const MAX_ERROR_DETAIL_BYTES = 2048;
+const MAX_ERROR_BODY_BYTES = 2048;
 const MAX_ERROR_DETAIL_CHARS = 160;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object';
 }
 
-/** The upstream error's own words, when its body offers any: OpenAI-style
- *  `{error:{message}}`, plain `{detail}`/`{message}`/`{title}`, or text. */
-async function readErrorDetail(response: Response): Promise<string> {
-    let body: string;
+/** The upstream error's body: decoded when it is JSON, otherwise its text. */
+async function readErrorBody(response: Response): Promise<unknown> {
+    let text: string;
     try {
-        body = (await response.text()).slice(0, MAX_ERROR_DETAIL_BYTES);
+        text = (await response.text()).slice(0, MAX_ERROR_BODY_BYTES);
     } catch {
         return '';
     }
-    let detail: unknown = body;
     try {
-        const parsed: unknown = JSON.parse(body);
-        if (isRecord(parsed)) {
-            const error = parsed['error'];
-            detail = isRecord(error)
-                ? error['message']
-                : (error ??
-                  parsed['detail'] ??
-                  parsed['message'] ??
-                  parsed['title']);
-        }
+        return JSON.parse(text) as unknown;
     } catch {
-        // Not JSON; the text itself is the detail.
+        return text;
+    }
+}
+
+/** The upstream error's own words, when its body offers any: OpenAI-style
+ *  `{error:{message}}`, plain `{detail}`/`{message}`/`{title}`, or text. */
+function errorDetail(body: unknown): string {
+    let detail = body;
+    if (isRecord(body)) {
+        const error = body['error'];
+        detail = isRecord(error)
+            ? error['message']
+            : (error ?? body['detail'] ?? body['message'] ?? body['title']);
     }
     if (typeof detail !== 'string') {
         return '';
@@ -96,9 +97,14 @@ export async function runProviderAnalysis(
         );
     }
     if (!response.ok) {
-        const detail = await readErrorDetail(response);
+        const body = await readErrorBody(response);
+        const detail = errorDetail(body);
+        const refused =
+            response.status === 401 ||
+            response.status === 403 ||
+            provider.refusesKey?.(body) === true;
         throw new ContextProviderError(
-            'UPSTREAM_ERROR',
+            refused ? 'KEY_REFUSED' : 'UPSTREAM_ERROR',
             `API request failed: ${response.status}${detail ? ` (${detail})` : ''}`,
             { status: response.status }
         );

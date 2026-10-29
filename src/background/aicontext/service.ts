@@ -255,9 +255,7 @@ export class AiContextService {
                     return failure('setup');
                 }
                 return failure(
-                    error.status === 401 || error.status === 403
-                        ? 'auth'
-                        : 'failed'
+                    error.code === 'KEY_REFUSED' ? 'auth' : 'failed'
                 );
             }
             this.logger.error('Context analysis failed', error, {

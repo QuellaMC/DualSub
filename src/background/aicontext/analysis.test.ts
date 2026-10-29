@@ -144,6 +144,7 @@ describe('openai context provider', () => {
                 fetch: fetchReturning(jsonResponse({}, 401)),
             })
         );
+        expect(unauthorized.code).toBe('KEY_REFUSED');
         expect(unauthorized.retryable).toBe(false);
     });
 
@@ -317,6 +318,45 @@ describe('gemini context provider', () => {
         );
         expect(error.code).toBe('SAFETY_BLOCKED');
         expect(error.retryable).toBe(false);
+    });
+
+    it('tells a refused key from any other bad request', async () => {
+        const refusal = (reason: string) =>
+            jsonResponse(
+                {
+                    error: {
+                        code: 400,
+                        message:
+                            'API key not valid. Please pass a valid API key.',
+                        status: 'INVALID_ARGUMENT',
+                        details: [
+                            {
+                                '@type':
+                                    'type.googleapis.com/google.rpc.ErrorInfo',
+                                reason,
+                                domain: 'googleapis.com',
+                            },
+                        ],
+                    },
+                },
+                400
+            );
+        const refused = await failure(
+            runProviderAnalysis(geminiContextProvider, SETTINGS, INPUT, {
+                timeoutMs: 1000,
+                fetch: fetchReturning(refusal('API_KEY_INVALID')),
+            })
+        );
+        expect(refused.code).toBe('KEY_REFUSED');
+        expect(refused.retryable).toBe(false);
+
+        const malformed = await failure(
+            runProviderAnalysis(geminiContextProvider, SETTINGS, INPUT, {
+                timeoutMs: 1000,
+                fetch: fetchReturning(refusal('BAD_REQUEST')),
+            })
+        );
+        expect(malformed.code).toBe('UPSTREAM_ERROR');
     });
 
     it('requires a Gemini API key', async () => {

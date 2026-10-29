@@ -50,6 +50,9 @@ export interface ContextProvider {
      * @throws {ContextProviderError} MALFORMED_RESPONSE or SAFETY_BLOCKED.
      */
     readResponseText(payload: unknown): string;
+    /** Whether a failed response's decoded body says the key was refused,
+     *  for providers that say so outside 401 and 403. */
+    refusesKey?(body: unknown): boolean;
 }
 
 export type { ContextProviderError };
