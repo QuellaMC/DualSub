@@ -12,6 +12,7 @@ import type {
     SelectionState,
 } from '@/messaging/contracts/selection';
 import { SIDEPANEL_PORT_NAME } from '@/messaging/contracts/sidepanelPort';
+import { pickedSubject } from './picked';
 import {
     PanelConnection,
     type EditStatus,
@@ -28,11 +29,11 @@ export interface Lookup {
     readonly result: LookupResult | null;
 }
 
-/** What one AI request produced for some words under some AI settings
- *  (the configuration key of useAnalysis): an answer, or why there is
- *  none. */
+/** What one AI request produced for its subject (see pickedSubject) under
+ *  some AI settings (the configuration key of useAnalysis): an answer, or
+ *  why there is none. */
 export interface Explanation {
-    readonly words: readonly string[];
+    readonly subject: string;
     readonly configuration: string;
     readonly answer: AiAnswer | null;
     readonly failure: AnswerFailure | null;
@@ -73,22 +74,6 @@ export interface PanelHandle {
     ) => Promise<EditStatus>;
 }
 
-export function selectionWords(
-    selection: SelectionState | null
-): readonly string[] {
-    return selection?.entries.map((entry) => entry.word) ?? [];
-}
-
-export function sameWords(
-    left: readonly string[],
-    right: readonly string[]
-): boolean {
-    return (
-        left.length === right.length &&
-        left.every((word, index) => word === right[index])
-    );
-}
-
 /** The same content session: the background names it, so a worker
  *  restart (a new owner generation) keeps it and a new document or
  *  player session does not. */
@@ -113,9 +98,10 @@ async function queryActiveTab(): Promise<TabBinding | null> {
  * React view of the panel's port. State is kept per tab so switching away
  * and back restores that tab's words, lookup and explanation; the bound
  * tab is whichever the connection registered last. A lookup and an
- * explanation belong to their words: they stay while the tab shows those
- * words, or none at all, in the same document, and go when the tab shows
- * other words, another document, or nothing at all.
+ * explanation belong to their subject: they stay while the tab picks those
+ * words of that line, or no words at all, in the same document, and go
+ * when it picks other words or another line, shows another document, or
+ * shows nothing at all.
  */
 export function usePanelConnection(): PanelHandle {
     const [connected, setConnected] = useState(false);
@@ -156,24 +142,30 @@ export function usePanelConnection(): PanelHandle {
                         return { ...previous, [tabId]: EMPTY_TAB_STATE };
                     }
                     const current = previous[tabId] ?? EMPTY_TAB_STATE;
-                    const words = selectionWords(selection);
-                    const keeps = (picked: readonly string[] | undefined) =>
-                        picked !== undefined &&
+                    const { line, entries } = selection;
+                    const keeps = (subject: string | null) =>
+                        subject !== null &&
                         continues(current.selection, selection) &&
-                        (words.length === 0 || sameWords(words, picked));
+                        (entries.length === 0 ||
+                            (line !== null &&
+                                subject === pickedSubject(line, entries)));
                     return {
                         ...previous,
                         [tabId]: {
                             ...current,
                             selection,
                             lookup: keeps(
-                                current.lookup?.entries.map(
-                                    (entry) => entry.word
-                                )
+                                current.lookup &&
+                                    pickedSubject(
+                                        current.lookup.line,
+                                        current.lookup.entries
+                                    )
                             )
                                 ? current.lookup
                                 : null,
-                            explanation: keeps(current.explanation?.words)
+                            explanation: keeps(
+                                current.explanation?.subject ?? null
+                            )
                                 ? current.explanation
                                 : null,
                         },

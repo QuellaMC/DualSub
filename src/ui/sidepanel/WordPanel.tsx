@@ -11,13 +11,10 @@ import { ExplanationView } from './ExplanationView';
 import { KeyGuide } from './KeyGuide';
 import { LineQuote } from './LineQuote';
 import { LookupCard, Placeholder } from './LookupCard';
+import { pickedSubject } from './picked';
 import { ANALYSIS_SETTINGS_KEYS, useAnalysis } from './useAnalysis';
 import { useLookup } from './useLookup';
-import {
-    sameWords,
-    selectionWords,
-    usePanelConnection,
-} from './usePanelConnection';
+import { usePanelConnection } from './usePanelConnection';
 import { useTabSite } from './useTabSite';
 
 function Empty({ t }: { t: Translate }) {
@@ -73,10 +70,8 @@ export function WordPanel({ t }: { t: Translate }) {
     const shownLookup =
         lookup &&
         (!liveLine ||
-            sameWords(
-                selectionWords(selection),
-                lookup.entries.map((entry) => entry.word)
-            ))
+            pickedSubject(liveLine, entries) ===
+                pickedSubject(lookup.line, lookup.entries))
             ? lookup
             : null;
     const target = settings?.targetLanguage ?? null;

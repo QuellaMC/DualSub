@@ -517,6 +517,82 @@ describe('SidePanelApp', () => {
         expect(screen.queryByText('A friendly greeting')).toBeNull();
     });
 
+    it('drops the answer when the same words are picked in another line', async () => {
+        const send = background();
+        const fake = await renderBound();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
+        );
+        await screen.findByText('A friendly greeting');
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 3,
+                    renderRevision: 2,
+                    reason: 'subtitle-change',
+                    entries: [],
+                    line: null,
+                },
+            },
+        });
+        await waitFor(() => expect(word('hola')).toBeDisabled());
+
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 4,
+                    renderRevision: 3,
+                    line: {
+                        text: 'hola mi amigo de siempre',
+                        language: 'es',
+                        translation: 'hello my old friend',
+                    },
+                },
+            },
+        });
+        await waitFor(() => expect(sent(send, 'lookupWords')).toHaveLength(2));
+        expect(screen.getByText('hello my old friend')).toBeInTheDocument();
+        expect(screen.queryByText('A friendly greeting')).toBeNull();
+    });
+
+    it('looks the kept words up again in a new target language', async () => {
+        const send = background();
+        const fake = await renderBound();
+        await screen.findByText('hello friend');
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 3,
+                    renderRevision: 2,
+                    reason: 'subtitle-change',
+                    entries: [],
+                    line: null,
+                },
+            },
+        });
+        await waitFor(() => expect(word('hola')).toBeDisabled());
+
+        await configService.setMultiple({ targetLanguage: 'fr' });
+        await waitFor(() =>
+            expect(sent(send, 'lookupWords').at(-1)).toEqual({
+                action: 'lookupWords',
+                text: 'hola amigo',
+                language: 'es',
+                targetLanguage: 'fr',
+            })
+        );
+        expect(word('hola')).toBeDisabled();
+    });
+
     it('forgets a tab whose page navigates away', async () => {
         background();
         const fake = await renderBound();

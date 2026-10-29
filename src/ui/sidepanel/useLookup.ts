@@ -1,30 +1,24 @@
 import { useEffect } from 'react';
 import { sendWithRetry } from '@/messaging/client';
 import { lookupWords } from '@/messaging/contracts/lookupWords';
-import { pickedText } from './picked';
+import { pickedSubject, pickedText } from './picked';
 import type { Lookup, PanelHandle } from './usePanelConnection';
 
-/** One lookup is the same as another for the same words of the same line
- *  in the same target language; a new translation of the line is not a
- *  new lookup. */
+/** One lookup is the same as another for the same subject in the same
+ *  target language. */
 function sameLookup(left: Lookup, right: Omit<Lookup, 'result'>): boolean {
     return (
-        left.text === right.text &&
         left.targetLanguage === right.targetLanguage &&
-        left.line.text === right.line.text &&
-        left.line.language === right.line.language &&
-        left.entries.length === right.entries.length &&
-        left.entries.every(
-            (entry, index) =>
-                entry.wordIndex === right.entries[index]!.wordIndex
-        )
+        pickedSubject(left.line, left.entries) ===
+            pickedSubject(right.line, right.entries)
     );
 }
 
 /**
- * Looks up the words picked in the bound tab: their translation and
- * dictionary entries. A lookup belongs to its tab and words; an answer for
- * words no longer picked is dropped.
+ * Looks up the words picked in the bound tab, or, once their line has
+ * gone, the words of the lookup kept from it: their translation and
+ * dictionary entries in the current target language. A lookup belongs to
+ * its tab and subject; an answer for words no longer picked is dropped.
  */
 export function useLookup(
     panel: PanelHandle,
@@ -34,16 +28,14 @@ export function useLookup(
     const { selection, lookup: shown } = tab;
 
     useEffect(() => {
-        const line = selection?.line ?? null;
-        const entries = selection?.entries ?? [];
-        if (
-            activeTabId === null ||
-            !line ||
-            entries.length === 0 ||
-            !targetLanguage
-        ) {
+        const picked =
+            selection?.line && selection.entries.length > 0
+                ? { line: selection.line, entries: selection.entries }
+                : shown;
+        if (activeTabId === null || !picked || !targetLanguage) {
             return;
         }
+        const { line, entries } = picked;
         const wanted = {
             entries,
             line,

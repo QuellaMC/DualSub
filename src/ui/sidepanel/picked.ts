@@ -22,3 +22,16 @@ export function pickedText(
         ? line.text.slice(first.start, last.end).replace(/\s+/g, ' ')
         : entries.map((entry) => entry.word).join(' ');
 }
+
+/** What a lookup or an explanation is about: these words of this line, in
+ *  its language. A new translation of the line leaves it the same. */
+export function pickedSubject(
+    line: SelectionLine,
+    entries: readonly SelectionEntry[]
+): string {
+    return JSON.stringify([
+        line.text,
+        line.language,
+        entries.map((entry) => entry.wordIndex),
+    ]);
+}

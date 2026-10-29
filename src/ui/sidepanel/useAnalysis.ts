@@ -8,12 +8,8 @@ import {
 } from '@/messaging/contracts/analyzeContext';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
 import type { SettingsStatus } from '../hooks/useSettings';
-import {
-    sameWords,
-    type Explanation,
-    type Lookup,
-    type PanelHandle,
-} from './usePanelConnection';
+import { pickedSubject } from './picked';
+import type { Explanation, Lookup, PanelHandle } from './usePanelConnection';
 
 /** Everything that can change an answer: what is asked of the provider,
  *  and the provider identity the background caches by (its credentials
@@ -32,12 +28,12 @@ export type AnalysisSettings = Pick<
     (typeof ANALYSIS_SETTINGS_KEYS)[number]
 >;
 
-/** A request belongs to the tab, the content session, and the words it
+/** A request belongs to the tab, the content session, and the subject it
  *  was started for, under the settings of that moment. */
 interface ActiveRequest {
     readonly tabId: number;
     readonly session: string;
-    readonly words: readonly string[];
+    readonly subject: string;
     readonly configurationKey: string;
     cancelled: boolean;
 }
@@ -52,16 +48,17 @@ function normalizeContextTypes(types: readonly string[]): ContextType[] {
     ];
 }
 
-function lookupWords(lookup: Lookup | null): readonly string[] {
-    return lookup?.entries.map((entry) => entry.word) ?? [];
+function lookupSubject(lookup: Lookup | null): string | null {
+    return lookup && pickedSubject(lookup.line, lookup.entries);
 }
 
 /**
  * Explains the looked-up words of the bound tab, only when asked. A
  * request belongs to its tab, not to the panel's current view: switching
  * tabs while it runs neither cancels it nor loses its outcome. It is
- * dropped only when its tab's words change to other words, its tab moves
- * to another content session or has nothing to show, or the AI settings
+ * dropped only when its tab looks up other words or the same words in
+ * another line, its tab moves to another content session or has nothing
+ * to show, or the AI settings
  * change underneath it. An explanation is shown only under the settings it
  * was made with; changing them hides it and changing them back shows it
  * again.
@@ -89,13 +86,12 @@ export function useAnalysis(
         contextTypes,
         settings?.targetLanguage,
     ]);
-    const words = lookupWords(tab.lookup);
-    const wordsKey = JSON.stringify(words);
+    const subject = lookupSubject(tab.lookup);
     const session = tab.selection?.session ?? null;
     const explanation =
         tab.explanation !== null &&
         tab.explanation.configuration === configurationKey &&
-        sameWords(tab.explanation.words, words)
+        tab.explanation.subject === subject
             ? tab.explanation
             : null;
 
@@ -113,7 +109,7 @@ export function useAnalysis(
         [updateTab]
     );
 
-    // Settings changes end every flight; other words or another session
+    // Settings changes end every flight; another subject or another session
     // end the active tab's. Other tabs cannot change their words while
     // inactive: the background accepts snapshots only from the active tab.
     useEffect(() => {
@@ -131,12 +127,11 @@ export function useAnalysis(
                 : requests.current.get(activeTabId);
         if (
             request &&
-            (session !== request.session ||
-                !sameWords(JSON.parse(wordsKey) as string[], request.words))
+            (session !== request.session || subject !== request.subject)
         ) {
             invalidate(request);
         }
-    }, [activeTabId, invalidate, session, wordsKey]);
+    }, [activeTabId, invalidate, session, subject]);
 
     useEffect(
         () => () => {
@@ -153,7 +148,6 @@ export function useAnalysis(
         if (tabId === null || !settings || !lookup || session === null) {
             return;
         }
-        const picked = lookupWords(lookup);
         const previous = requests.current.get(tabId);
         if (previous) {
             invalidate(previous);
@@ -161,15 +155,15 @@ export function useAnalysis(
         const request: ActiveRequest = {
             tabId,
             session,
-            words: picked,
+            subject: pickedSubject(lookup.line, lookup.entries),
             configurationKey,
             cancelled: false,
         };
         requests.current.set(tabId, request);
         updateTab(tabId, { explanation: null, explaining: true });
         // Judged against the state React is about to commit, so a tab
-        // cleared, moved to another session, or given other words in the
-        // same tick wins over the outcome.
+        // cleared, moved to another session, or given another subject in
+        // the same tick wins over the outcome.
         const settle = (
             answer: AiAnswer | null,
             failure: AnswerFailure | null
@@ -177,11 +171,11 @@ export function useAnalysis(
             updateTab(tabId, (current) =>
                 current.selection === null ||
                 current.selection.session !== request.session ||
-                !sameWords(lookupWords(current.lookup), picked)
+                lookupSubject(current.lookup) !== request.subject
                     ? null
                     : {
                           explanation: {
-                              words: picked,
+                              subject: request.subject,
                               configuration: configurationKey,
                               answer,
                               failure,
