@@ -1,3 +1,4 @@
+import { languageTag } from '@/messaging/contracts/primitives';
 import type { Logger } from '@/shared/logger';
 import type {
     MediaScope,
@@ -82,6 +83,21 @@ function sameRect(a: PictureRect | null, b: PictureRect): boolean {
     );
 }
 
+/** The current line as painted for clicking: its text, the language its
+ *  words were split in, and the translation shown under it. */
+export interface PaintedLine {
+    readonly text: string;
+    readonly language: string | null;
+    readonly translation: string | null;
+}
+
+/** The language a line is split in: the track's, when it is a valid tag. */
+function lineLanguage(language: string | null): string | null {
+    return language !== null && languageTag.safeParse(language).success
+        ? language
+        : null;
+}
+
 /** One drawn placement: an original line and its translation. */
 interface Block {
     readonly key: string;
@@ -111,6 +127,8 @@ export class Renderer {
     private picture: PictureRect | null = null;
     private visible = true;
     private interactive = false;
+    /** The translation last reported with the current line. */
+    private reportedTranslation: string | null = null;
     private platformLook: SubtitleLook | null;
 
     constructor(
@@ -129,15 +147,16 @@ export class Renderer {
             logger: Logger;
             onNavigationMismatch: () => void;
             onSeek?: () => void;
-            /** The original line was repainted under a new render revision. */
-            onOriginalPainted?: (renderRevision: number) => void;
+            /** While words are clickable: the current line was painted
+             *  under a new render revision, or its translation changed. */
+            onLinePainted?: (renderRevision: number, line: PaintedLine) => void;
             onWordIntent?: (intent: WordIntent) => void;
         }
     ) {
         this.container = new SessionContainer(deps.uiRoot);
         this.platformLook = deps.platformLook;
         this.words = new WordLayer({
-            language: () => deps.state.language ?? 'und',
+            language: () => lineLanguage(deps.state.language) ?? 'und',
             onIntent: (intent) => deps.onWordIntent?.(intent),
         });
     }
@@ -520,8 +539,22 @@ export class Renderer {
         if (!anyInteractive) {
             this.words.forget();
         }
-        if (lineChanged && this.interactive) {
-            this.deps.onOriginalPainted?.(state.renderRevision);
+        if (!this.interactive) {
+            return;
+        }
+        const translation =
+            primary && !primary.placeholder
+                ? planned.get(primary.key)?.translatedText ||
+                  primary.translatedText ||
+                  null
+                : null;
+        if (lineChanged || translation !== this.reportedTranslation) {
+            this.reportedTranslation = translation;
+            this.deps.onLinePainted?.(state.renderRevision, {
+                text: line,
+                language: lineLanguage(state.language),
+                translation,
+            });
         }
     }
 

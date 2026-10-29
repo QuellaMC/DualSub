@@ -1,21 +1,10 @@
 import type { ReactNode } from 'react';
-import { browser } from 'wxt/browser';
 import { GitHubMark } from '../design/GitHubMark';
 import { Icon } from '../design/Icon';
 import { Logo } from '../design/Logo';
 import type { Translate } from '../hooks/useI18n';
+import { openSettings } from '../openSettings';
 import { SOURCE_URL } from '../sourceCode';
-
-/** The settings page, opened at `section` when one is named. */
-export function openSettings(section?: string): void {
-    if (section) {
-        void browser.tabs.create({
-            url: `${browser.runtime.getURL('/options.html')}#${section}`,
-        });
-    } else {
-        void browser.runtime.openOptionsPage();
-    }
-}
 
 /** The frame every popup state shares: the name, the way to the settings,
  *  the source, and help. */

@@ -8,7 +8,7 @@ import {
     checkVertexConnection,
     geminiVertexProvider,
 } from './geminiVertex';
-import { googleProvider } from './google';
+import { googleProvider, lookupDictionary } from './google';
 import { microsoftEdgeProvider } from './microsoftEdge';
 import {
     fetchAvailableModels,
@@ -164,6 +164,56 @@ describe('google provider', () => {
         );
         expect(error.code).toBe('NETWORK_ERROR');
         expect(error.retryable).toBe(true);
+    });
+});
+
+describe('google dictionary', () => {
+    it('asks for translations by word type and keeps the listed word', async () => {
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({
+                sentences: [{ trans: 'jugs', orig: 'cántaros' }],
+                dict: [
+                    {
+                        pos: 'noun',
+                        terms: ['pitcher', 'jug', ''],
+                        base_form: 'cántaro',
+                        pos_enum: 1,
+                    },
+                    { pos: 'verb', terms: [] },
+                ],
+                src: 'es',
+            })
+        );
+        await expect(lookupDictionary('cántaros', 'es', 'en')).resolves.toEqual(
+            [{ pos: 'noun', baseForm: 'cántaro', terms: ['pitcher', 'jug'] }]
+        );
+        expect(requestAt(0).url).toBe(
+            'https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=en&hl=en&dt=bd&dj=1&q=c%C3%A1ntaros'
+        );
+    });
+
+    it('answers nothing when Google lists nothing', async () => {
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({ sentences: [{ trans: 'in buckets' }] })
+        );
+        await expect(
+            lookupDictionary('a cántaros', 'es', 'en')
+        ).resolves.toEqual([]);
+    });
+
+    it('fails like translation on a CAPTCHA page or a malformed answer', async () => {
+        fetchMock.mockResolvedValueOnce(
+            textResponse(
+                '<html><title>Google</title>Our systems have detected unusual traffic</html>'
+            )
+        );
+        expect((await failure(lookupDictionary('x', 'es', 'en'))).code).toBe(
+            'RATE_LIMIT_EXCEEDED'
+        );
+        fetchMock.mockResolvedValueOnce(jsonResponse({ dict: 'nope' }));
+        expect((await failure(lookupDictionary('x', 'es', 'en'))).code).toBe(
+            'REQUEST_FAILED'
+        );
     });
 });
 

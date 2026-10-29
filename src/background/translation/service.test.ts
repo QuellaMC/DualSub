@@ -299,6 +299,31 @@ describe('TranslationService', () => {
         expect(google.translate).toHaveBeenCalledTimes(2);
     });
 
+    it("runs another request in the provider's turn, behind its translations", async () => {
+        vi.setSystemTime(0);
+        const google = fakeProvider('google', {
+            policy: { kind: 'provider' },
+            minDelayMs: 500,
+        });
+        const service = new TranslationService({
+            providers: [google],
+            config: fakeConfig().config,
+            logger: silentLogger,
+        });
+        await service.initialize();
+        await service.translate('one', 'auto', 'es');
+
+        const request = vi.fn(() => Promise.resolve('looked up'));
+        const pending = service.paced('google', 'uno', request);
+        await vi.advanceTimersByTimeAsync(499);
+        expect(request).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(await pending).toBe('looked up');
+        expect(
+            await rejection(service.paced('deepl', 'uno', request))
+        ).toBeInstanceOf(TranslationProviderError);
+    });
+
     it('fails when the selected provider is not registered', async () => {
         const service = new TranslationService({
             providers: [],

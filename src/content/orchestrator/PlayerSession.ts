@@ -95,7 +95,7 @@ export type LanguageSettings = Pick<
 
 /** Clickable words and what a click asks the side panel to do. */
 export const INTERACTION_SETTINGS_KEYS = [
-    'aiContextEnabled',
+    'wordLookupEnabled',
     'sidePanelAutoOpen',
     'sidePanelAutoPauseVideo',
 ] as const;
@@ -279,8 +279,8 @@ export class PlayerSession {
             logger: this.logger,
             onNavigationMismatch: deps.onNavigationMismatch,
             onSeek: () => this.translation?.scheduler.kick(),
-            onOriginalPainted: (revision) =>
-                this.selection.onSubtitleChange(revision),
+            onLinePainted: (revision, line) =>
+                this.selection.onLinePainted(revision, line),
             onWordIntent: (intent) => this.onWordIntent(intent),
         });
         this.mediaBinding = new MediaBinding({
@@ -326,7 +326,7 @@ export class PlayerSession {
 
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
-        this.renderer.setInteractive(this.interaction.aiContextEnabled);
+        this.renderer.setInteractive(this.interaction.wordLookupEnabled);
         this.setLoading(true);
 
         // Replays retained events synchronously — anything the page bridge
@@ -499,13 +499,13 @@ export class PlayerSession {
                     changes[key];
             }
         }
-        if (changes.aiContextEnabled !== undefined) {
+        if (changes.wordLookupEnabled !== undefined) {
             // The panel learns the selection is gone before the words stop
             // being clickable.
-            if (!changes.aiContextEnabled) {
+            if (!changes.wordLookupEnabled) {
                 this.selection.clear();
             }
-            this.renderer.setInteractive(changes.aiContextEnabled);
+            this.renderer.setInteractive(changes.wordLookupEnabled);
         }
     }
 

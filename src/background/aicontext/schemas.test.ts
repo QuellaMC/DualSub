@@ -1,134 +1,105 @@
 import { describe, expect, it } from 'vitest';
-import { createContextPrompt, languageName } from './prompt';
-import {
-    analysisJsonSchema,
-    combineAnalyses,
-    parseAnalysis,
-    type Analysis,
-} from './schemas';
+import type { AiAnswer } from '@/messaging/contracts/analyzeContext';
+import { createAnswerPrompt } from './prompt';
+import { answerJsonSchema, answerShape, parseAnswer } from './schemas';
 
-export function culturalSample(definition = 'A greeting'): Analysis {
+/** An answer to every kind of explanation. */
+export function answerSample(): Required<AiAnswer> {
     return {
-        definition,
-        cultural_context: {
-            origins: 'origins',
-            social_context: 'social',
-            regional_variations: 'regional',
-        },
-        usage: {
-            examples: ['one', 'two'],
-            when_to_use: 'often',
-            formality_level: 'casual',
-        },
-        cultural_significance: 'significant',
-        learning_tips: 'tips',
-        related_expressions: ['hi'],
-        sensitivities: 'none',
+        meaning: 'The rain outside is very heavy.',
+        register: 'everyday',
+        examples: [
+            { text: 'Anoche llovió a cántaros.', translation: 'It poured.' },
+        ],
+        similar: ['llover a mares'],
+        tip: 'Keep it with llover.',
+        culture: 'Said everywhere Spanish is spoken.',
+        history: 'A cántaro is a clay jug.',
     };
 }
 
-describe('analysis schemas', () => {
-    it('emits the provider response schema with every field required and no extras', () => {
-        expect(analysisJsonSchema('cultural')).toEqual({
-            type: 'object',
-            properties: {
-                definition: { type: 'string' },
-                cultural_context: {
-                    type: 'object',
-                    properties: {
-                        origins: { type: 'string' },
-                        social_context: { type: 'string' },
-                        regional_variations: { type: 'string' },
-                    },
-                    required: [
-                        'origins',
-                        'social_context',
-                        'regional_variations',
-                    ],
-                    additionalProperties: false,
-                },
-                usage: {
-                    type: 'object',
-                    properties: {
-                        examples: { type: 'array', items: { type: 'string' } },
-                        when_to_use: { type: 'string' },
-                        formality_level: { type: 'string' },
-                    },
-                    required: ['examples', 'when_to_use', 'formality_level'],
-                    additionalProperties: false,
-                },
-                cultural_significance: { type: 'string' },
-                learning_tips: { type: 'string' },
-                related_expressions: {
-                    type: 'array',
-                    items: { type: 'string' },
-                },
-                sensitivities: { type: 'string' },
-            },
-            required: [
-                'definition',
-                'cultural_context',
-                'usage',
-                'cultural_significance',
-                'learning_tips',
-                'related_expressions',
-                'sensitivities',
-            ],
-            additionalProperties: false,
-        });
-    });
-
-    it('accepts an exact analysis and rejects extra or missing fields', () => {
-        const sample = culturalSample();
-        expect(parseAnalysis('cultural', sample)).toEqual(sample);
-        expect(parseAnalysis('cultural', { ...sample, extra: 1 })).toBeNull();
-        const { sensitivities: _omitted, ...missing } = sample;
-        expect(parseAnalysis('cultural', missing)).toBeNull();
-        expect(parseAnalysis('historical', sample)).toBeNull();
-        expect(parseAnalysis('all', [])).toBeNull();
-    });
-
-    it('combines per-type analyses under section keys with the first definition', () => {
-        const cultural = culturalSample('first');
-        const linguistic = { definition: 'second', etymology: { a: 'b' } };
+describe('answer shape', () => {
+    it('asks for the meaning and register, plus what each kind adds', () => {
+        expect(Object.keys(answerShape([]).shape)).toEqual([
+            'meaning',
+            'register',
+        ]);
         expect(
-            combineAnalyses(['cultural', 'linguistic'], {
-                cultural,
-                linguistic,
-            })
-        ).toEqual({
-            definition: 'first',
-            cultural_analysis: {
-                cultural_context: cultural.cultural_context,
-                usage: cultural.usage,
-                cultural_significance: 'significant',
-                learning_tips: 'tips',
-                related_expressions: ['hi'],
-                sensitivities: 'none',
-            },
-            linguistic_analysis: { etymology: { a: 'b' } },
+            Object.keys(answerShape(['linguistic', 'historical']).shape)
+        ).toEqual([
+            'meaning',
+            'register',
+            'examples',
+            'similar',
+            'tip',
+            'history',
+        ]);
+    });
+
+    it('sends a strict schema with every field required and no array caps', () => {
+        const schema = answerJsonSchema(['linguistic', 'cultural']);
+        expect(schema).toMatchObject({
+            type: 'object',
+            additionalProperties: false,
+            required: [
+                'meaning',
+                'register',
+                'examples',
+                'similar',
+                'tip',
+                'culture',
+            ],
         });
-        expect(combineAnalyses(['historical'], {})).toEqual({});
+        expect(JSON.stringify(schema)).not.toContain('maxItems');
+        expect(schema).not.toHaveProperty('$schema');
+    });
+
+    it('keeps a matching answer, cut to the caps, and refuses anything else', () => {
+        const sample = answerSample();
+        const { culture: _culture, history: _history, ...asked } = sample;
+        expect(parseAnswer(['linguistic'], asked)).toEqual(asked);
+        expect(
+            parseAnswer(['linguistic'], {
+                ...asked,
+                similar: Array.from({ length: 12 }, (_, index) => `s${index}`),
+            })?.similar
+        ).toHaveLength(8);
+        expect(parseAnswer(['linguistic'], sample)).toBeNull();
+        expect(parseAnswer(['cultural'], asked)).toBeNull();
+        expect(parseAnswer([], { ...asked, register: 'rude' })).toBeNull();
+        expect(parseAnswer([], 'not json')).toBeNull();
     });
 });
 
-describe('context prompt', () => {
-    it('names the target language and embeds the requested JSON structure', () => {
-        const prompt = createContextPrompt('¡Hola!', 'cultural', 'zh-CN');
-        expect(prompt).toContain('Text to analyze: "¡Hola!"');
+describe('answer prompt', () => {
+    it('gives the words with their line and asks only for the kinds wanted', () => {
+        const prompt = createAnswerPrompt({
+            text: 'a cántaros',
+            line: 'Está lloviendo a cántaros, no salgas.',
+            sourceLanguage: 'es',
+            targetLanguage: 'zh-CN',
+            kinds: ['historical'],
+        });
+        expect(prompt).toContain('Words: "a cántaros"');
         expect(prompt).toContain(
-            'Target language for response: zh-CN (Chinese (Simplified))'
+            'The line they appear in: "Está lloviendo a cántaros, no salgas."'
         );
-        expect(prompt).toContain('"cultural_context": {');
-        expect(prompt).not.toContain('"historical_context"');
-        expect(createContextPrompt('x', 'all', 'en')).toContain(
-            '"key_insights"'
-        );
+        expect(prompt).toContain('Language of the line: Spanish');
+        expect(prompt).toContain('Chinese (Simplified) (zh-CN)');
+        expect(prompt).toContain('"history"');
+        expect(prompt).not.toContain('"culture"');
+        expect(prompt).not.toContain('"examples"');
     });
 
-    it('falls back to the raw code for unknown languages', () => {
-        expect(languageName('en')).toBe('English');
-        expect(languageName('auto')).toBe('Unknown');
-        expect(languageName('tlh')).toBe('tlh');
+    it('lets the model tell an unknown language from the line', () => {
+        expect(
+            createAnswerPrompt({
+                text: 'hola',
+                line: 'hola amigo',
+                sourceLanguage: 'auto',
+                targetLanguage: 'en',
+                kinds: [],
+            })
+        ).toContain('Language of the line: unknown; tell it from the line');
     });
 });

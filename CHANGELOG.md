@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Click a word in the subtitles to see what it means, with nothing to set up. The side panel shows the line the word is in with its translation, the word's own translation, and an entry from Google's dictionary, or from Wiktionary when Google has none. Click more words, in the subtitles or in the panel's copy of the line, to look up a phrase, and click a picked word in the panel to take it out.
+- Explain with AI, in the panel, asks your AI service how the words are used in their line: what they mean there and how casual or formal they are, plus what you ticked in What to explain: examples and similar ways to say it, the culture behind them, and their history. Without a key, it opens the three steps for adding one right in the panel.
+
+### Changed
+
+- The side panel is redesigned around the words you clicked, with DualSub and the language pair at the top, and Help and Settings at the bottom. On a tab that isn't Netflix or Disney+, it says where to open a video.
+- Subtitle words are clickable for everyone, and "Look up words when I click them" in Meanings turns that off. Explanations no longer have a switch of their own: a saved OpenAI or Gemini key is what makes Explain with AI work, so anyone with a key in keeps it working after the update.
+- The words you click go to Google's dictionary, and to Wiktionary when Google has no entry, whichever translation service you use. The privacy policy says so.
+- An AI answer is one explanation of the words in their line, instead of separate cultural, historical, and linguistic analyses, and it explains the meaning even with nothing ticked in What to explain. A failure says whether the key was refused, reopening the key steps, or the service didn't answer, instead of showing the service's own message.
+
 ## [3.2.1] - 2026-10-23
 
 ### Fixed

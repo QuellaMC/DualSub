@@ -154,10 +154,16 @@ const ENTRIES: readonly SearchEntry[] = [
         anchors: ['translation-delay'],
     },
     {
-        labelKey: 'explainTitle',
-        wordsKey: 'searchWordsExplanations',
+        labelKey: 'explainLookupTitle',
+        wordsKey: 'searchWordsLookup',
         section: 'explanations',
         anchors: ['explanations'],
+    },
+    {
+        labelKey: 'explainWithAi',
+        wordsKey: 'searchWordsExplanations',
+        section: 'explanations',
+        anchors: ['explain-ai'],
     },
     {
         labelKey: 'explainTypesTitle',

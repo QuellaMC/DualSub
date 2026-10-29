@@ -39,6 +39,27 @@ export function credentialEntered(value: string | undefined): boolean {
     return (value ?? '').trim() !== '';
 }
 
+/** The settings that decide whether a word explanation can be asked for. */
+export const AI_KEY_SETTINGS = [
+    'openaiApiKey',
+    'openaiApiKeyOrigin',
+    'openaiBaseUrl',
+    'geminiApiKey',
+] as const;
+
+/** Whether `provider` holds a key it may be sent with; a saved key is what
+ *  turns AI explanations on. */
+export function aiKeyReady(
+    provider: 'openai' | 'gemini',
+    settings: Partial<Record<(typeof AI_KEY_SETTINGS)[number], string>>
+): boolean {
+    return credentialEntered(
+        provider === 'openai'
+            ? usableCredential('openaiApiKey', settings)
+            : settings.geminiApiKey
+    );
+}
+
 /** Whether a Vertex token has run out at `now`; 0 records no expiry. */
 export function vertexTokenExpired(expiresAt: number, now: number): boolean {
     return expiresAt > 0 && expiresAt <= now;

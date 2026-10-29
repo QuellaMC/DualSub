@@ -8,7 +8,7 @@ import { configService } from '@/config/service';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
 import { keyEntry, usableCredential } from '@/shared/keyOrigins';
 import { credentialEntered } from '@/shared/providers';
-import { Icon } from '../../design/Icon';
+import { AI_SERVICES, AiKeySteps } from '../../AiKeySteps';
 import { Switch } from '../../design/Switch';
 import { useChoice } from '../../design/useChoice';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
@@ -19,23 +19,6 @@ import { useHostPermission } from '../../hooks/useHostPermission';
 import { useFeedback } from '../shell/feedback';
 import { SharedTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
-
-const AI_SERVICES = {
-    openai: {
-        nameKey: 'setupServiceOpenAI',
-        keyPage: 'https://platform.openai.com/api-keys',
-        keyPageKey: 'setupOpenOpenAI',
-        keyHelpKey: 'setupOpenAIKeyHelp',
-        placeholder: 'sk-…',
-    },
-    gemini: {
-        nameKey: 'setupServiceGemini',
-        keyPage: 'https://aistudio.google.com/apikey',
-        keyPageKey: 'setupOpenAIStudio',
-        keyHelpKey: 'setupGeminiKeyHelp',
-        placeholder: 'AIza…',
-    },
-} as const;
 
 /** The illustration clicks a word in an English line; its explanation is in
  *  the page's language. */
@@ -92,7 +75,6 @@ export function ExplanationsSection({
 }: SectionProps & { advanced: boolean }) {
     const feedback = useFeedback();
     const provider = settings.aiContextProvider;
-    const service = AI_SERVICES[provider];
     const apiKey =
         provider === 'openai'
             ? usableCredential('openaiApiKey', settings)
@@ -101,17 +83,10 @@ export function ExplanationsSection({
     const access = useHostPermission(settings.openaiBaseUrl);
     const blocked = provider === 'openai' && access.permitted === false;
     const keyIn = credentialEntered(apiKey);
-    // Explanations need a key the service can be reached with, and at least
-    // one kind of explanation to give.
-    const ready =
-        keyIn &&
-        (provider !== 'openai' || access.permitted === true) &&
-        settings.aiContextTypes.length > 0;
-    const enabled = settings.aiContextEnabled;
-    const enableSwitch = useRef<HTMLButtonElement | null>(null);
+    // Done hands focus to the Change key button that takes its place.
+    const focusChange = useRef(false);
     // The steps open while there is no key, or no access to its address,
-    // and stay open while one is typed in, until explanations are turned on
-    // with it.
+    // and stay open while one is typed in, until it is done.
     const [stepsOpen, setStepsOpen] = useState(!keyIn);
     if ((!keyIn || blocked) && !stepsOpen) {
         setStepsOpen(true);
@@ -187,43 +162,26 @@ export function ExplanationsSection({
                 </div>
                 <div className="row">
                     <div className="grow">
-                        <div className="label" id="explain-switch">
-                            {t('explainTitle')}
+                        <div className="label" id="explain-lookup">
+                            {t('explainLookupTitle')}
                         </div>
                         <div className="help">
                             {t(
-                                !ready
-                                    ? 'explainStatusSetup'
-                                    : enabled
-                                      ? 'explainStatusOn'
-                                      : 'explainStatusOff'
+                                settings.wordLookupEnabled
+                                    ? 'explainLookupOn'
+                                    : 'explainLookupOff'
                             )}
                         </div>
                     </div>
-                    <span
-                        className={`tag ${ready && enabled ? 'ok' : 'muted'}`}
-                    >
-                        {t(
-                            !ready
-                                ? 'explainNeedsSetup'
-                                : enabled
-                                  ? 'commonOn'
-                                  : 'commonOff'
-                        )}
-                    </span>
                     <Switch
-                        ref={enableSwitch}
-                        checked={enabled}
-                        labelledBy="explain-switch"
-                        disabled={!enabled && !ready}
+                        checked={settings.wordLookupEnabled}
+                        labelledBy="explain-lookup"
                         onChange={(on) =>
                             save(
-                                { aiContextEnabled: on },
+                                { wordLookupEnabled: on },
                                 {
                                     message: t(
-                                        on
-                                            ? 'toastExplainOn'
-                                            : 'toastExplainOff'
+                                        on ? 'toastLookupOn' : 'toastLookupOff'
                                     ),
                                 }
                             )
@@ -233,15 +191,24 @@ export function ExplanationsSection({
             </div>
 
             {!stepsOpen ? (
-                <div className="card">
+                <div className="card" id="explain-ai">
                     <div className="row">
                         <div className="grow">
                             <h2 className="label">
-                                {t('explainSetUpWith', t(service.nameKey))}
+                                {t(
+                                    'explainSetUpWith',
+                                    t(AI_SERVICES[provider].nameKey)
+                                )}
                             </h2>
                             <p className="help">{t('explainKeySaved')}</p>
                         </div>
                         <button
+                            ref={(button) => {
+                                if (button && focusChange.current) {
+                                    focusChange.current = false;
+                                    button.focus();
+                                }
+                            }}
                             type="button"
                             id="explain-change-key"
                             className="button"
@@ -253,129 +220,57 @@ export function ExplanationsSection({
                     </div>
                 </div>
             ) : (
-                <div className="card">
-                    <h2 className="label">{t('explainSetupTitle')}</h2>
+                <div className="card" id="explain-ai">
+                    <h2 className="label">{t('explainWithAi')}</h2>
                     <p className="help">{t('explainSetupHelp')}</p>
-                    <ol className="steps">
-                        <li>
-                            <div>
-                                <div className="strong" id="explain-service">
-                                    {t('explainChooseService')}
-                                </div>
-                                <div
-                                    className="segmented"
-                                    role="group"
-                                    aria-labelledby="explain-service"
+                    <AiKeySteps
+                        t={t}
+                        idPrefix="explain"
+                        service={provider}
+                        onService={(id) =>
+                            void save({ aiContextProvider: id }, 'quiet')
+                        }
+                        keyValue={apiKey}
+                        onKey={(key) =>
+                            void save(
+                                provider === 'openai'
+                                    ? keyEntry(
+                                          'openaiApiKey',
+                                          key,
+                                          settings.openaiBaseUrl
+                                      )
+                                    : { geminiApiKey: key },
+                                'quiet'
+                            )
+                        }
+                        action={
+                            keyIn &&
+                            !blocked && (
+                                <button
+                                    type="button"
+                                    className="button primary"
+                                    onClick={() => {
+                                        focusChange.current = true;
+                                        setStepsOpen(false);
+                                    }}
                                 >
-                                    {(['gemini', 'openai'] as const).map(
-                                        (id) => (
-                                            <button
-                                                key={id}
-                                                id={`explain-provider-${id}`}
-                                                type="button"
-                                                aria-pressed={provider === id}
-                                                onClick={() =>
-                                                    void save(
-                                                        {
-                                                            aiContextProvider:
-                                                                id,
-                                                        },
-                                                        'quiet'
-                                                    )
-                                                }
-                                            >
-                                                {t(AI_SERVICES[id].nameKey)}
-                                            </button>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-                        </li>
-                        <li>
-                            <div>
-                                <div className="strong">{t('setupGetKey')}</div>
-                                <p className="help">{t(service.keyHelpKey)}</p>
-                                <a
-                                    className="button"
-                                    href={service.keyPage}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    {t(service.keyPageKey)}
-                                    <Icon name="external" />
-                                </a>
-                            </div>
-                        </li>
-                        <li>
-                            <div className="grow">
-                                <label className="strong" htmlFor="explain-key">
-                                    {t('setupPasteKey')}
-                                </label>
-                                <div className="inline wrap">
-                                    <input
-                                        type="password"
-                                        id="explain-key"
-                                        className="field grow"
-                                        autoComplete="off"
-                                        placeholder={service.placeholder}
-                                        value={apiKey}
-                                        onChange={(event) => {
-                                            const key = event.target.value;
-                                            void (provider === 'openai'
-                                                ? save(
-                                                      keyEntry(
-                                                          'openaiApiKey',
-                                                          key,
-                                                          settings.openaiBaseUrl
-                                                      ),
-                                                      'quiet'
-                                                  )
-                                                : save(
-                                                      { geminiApiKey: key },
-                                                      'quiet'
-                                                  ));
-                                        }}
-                                    />
-                                    {!enabled && (
-                                        <button
-                                            type="button"
-                                            className="button primary"
-                                            disabled={!ready}
-                                            onClick={() =>
-                                                void save(
-                                                    { aiContextEnabled: true },
-                                                    {
-                                                        message:
-                                                            t('toastExplainOn'),
-                                                    }
-                                                ).then((saved) => {
-                                                    if (saved) {
-                                                        setStepsOpen(false);
-                                                        enableSwitch.current?.focus();
-                                                    }
-                                                })
-                                            }
-                                        >
-                                            {t('explainTurnOn')}
-                                        </button>
-                                    )}
-                                </div>
-                                {blocked && (
-                                    <>
-                                        <p className="help">
-                                            {t('explainAllowHost')}
-                                        </p>
-                                        <OpenAIHostPermission
-                                            t={t}
-                                            baseUrl={settings.openaiBaseUrl}
-                                            valid
-                                            onAnswer={access.recheck}
-                                        />
-                                    </>
-                                )}
-                            </div>
-                        </li>
-                    </ol>
+                                    {t('commonDone')}
+                                </button>
+                            )
+                        }
+                    >
+                        {blocked && (
+                            <>
+                                <p className="help">{t('explainAllowHost')}</p>
+                                <OpenAIHostPermission
+                                    t={t}
+                                    baseUrl={settings.openaiBaseUrl}
+                                    valid
+                                    onAnswer={access.recheck}
+                                />
+                            </>
+                        )}
+                    </AiKeySteps>
                 </div>
             )}
 
@@ -400,11 +295,6 @@ export function ExplanationsSection({
                         </KindCheck>
                     ))}
                 </div>
-                {settings.aiContextTypes.length === 0 && (
-                    <p className="status-line error" role="alert">
-                        {t('aiContextTypesRequired')}
-                    </p>
-                )}
             </div>
 
             <div className="card" id="explain-reading">

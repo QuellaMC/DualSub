@@ -515,7 +515,7 @@ describe('OptionsApp', () => {
         });
     });
 
-    it('asks for access to a custom explanation address before turning explanations on', async () => {
+    it('asks for access to a custom explanation address before the key is done', async () => {
         await fakeBrowser.storage.sync.set({
             aiContextProvider: 'openai',
             openaiBaseUrl: 'https://llm.example.com/v1',
@@ -529,7 +529,7 @@ describe('OptionsApp', () => {
         const allow = await screen.findByRole('button', {
             name: 'Allow API host',
         });
-        expect(screen.getByRole('button', { name: 'Turn on' })).toBeDisabled();
+        expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
 
         vi.spyOn(browser.permissions, 'request').mockResolvedValue(
             true as never
@@ -538,11 +538,9 @@ describe('OptionsApp', () => {
             true as never
         );
         fireEvent.click(allow);
-        await waitFor(() =>
-            expect(
-                screen.getByRole('button', { name: 'Turn on' })
-            ).toBeEnabled()
-        );
+        expect(
+            await screen.findByRole('button', { name: 'Done' })
+        ).toBeEnabled();
     });
 
     it('names each host access control by its own address', async () => {
@@ -577,20 +575,20 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('keeps explanations off while no kind of explanation is chosen', async () => {
-        await fakeBrowser.storage.sync.set({
-            aiContextProvider: 'gemini',
-            aiContextTypes: [],
-        });
-        await fakeBrowser.storage.local.set({ geminiApiKey: 'AIza-key' });
+    it('turns clickable words off and on with the lookup switch', async () => {
         location.hash = '#explanations';
         await renderReady();
+        const lookup = screen.getByRole('switch', {
+            name: 'Look up words when I click them',
+        });
+        expect(lookup).toBeChecked();
+        fireEvent.click(lookup);
+        await waitFor(async () =>
+            expect(await sync('wordLookupEnabled')).toBe(false)
+        );
         expect(
-            await screen.findByText('Pick at least one.')
+            screen.getByText('Subtitle words can’t be clicked.')
         ).toBeInTheDocument();
-        expect(
-            screen.getByRole('switch', { name: 'Word explanations' })
-        ).toBeDisabled();
     });
 
     it('clears two kinds of explanation clicked one right after the other', async () => {
@@ -778,23 +776,16 @@ describe('OptionsApp', () => {
         expect(download).toBeEnabled();
     });
 
-    it('turns word explanations on only once a key is in', async () => {
+    it('saves a key as it is typed and folds the steps once it is done', async () => {
         location.hash = '#explanations';
         await renderReady();
-        const enable = screen.getByRole('switch', {
-            name: 'Word explanations',
-        });
-        expect(enable).toBeDisabled();
+        expect(screen.queryByRole('button', { name: 'Done' })).toBeNull();
         fireEvent.change(screen.getByLabelText('Paste it here'), {
             target: { value: 'AIza-key' },
         });
-        // The button waits for the key to be saved.
-        const turnOn = await screen.findByRole('button', { name: 'Turn on' });
-        await waitFor(() => expect(turnOn).toBeEnabled());
-        fireEvent.click(turnOn);
-        await waitFor(async () =>
-            expect(await sync('aiContextEnabled')).toBe(true)
-        );
+        // Done waits for the key to be saved.
+        const done = await screen.findByRole('button', { name: 'Done' });
+        fireEvent.click(done);
         expect(
             await fakeBrowser.storage.local.get([
                 'openaiApiKey',
@@ -810,6 +801,9 @@ describe('OptionsApp', () => {
         expect(
             screen.queryByLabelText('Paste it here')
         ).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'Change key' })
+        ).toHaveFocus();
 
         fireEvent.click(screen.getByRole('button', { name: 'Change key' }));
         expect(screen.getByLabelText('Paste it here')).toHaveValue('AIza-key');

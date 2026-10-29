@@ -143,10 +143,7 @@ export class MessageRouter {
             return undefined;
         }
 
-        const schema =
-            entry.contract.requestByRole?.[classified.role] ??
-            entry.contract.request;
-        const parsed = schema.safeParse(snapshot.value);
+        const parsed = entry.contract.request.safeParse(snapshot.value);
         if (!parsed.success) {
             return undefined;
         }

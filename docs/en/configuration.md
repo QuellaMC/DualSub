@@ -25,17 +25,17 @@ The settings page holds every setting, the popup's included, with a menu of its 
 - Style: the subtitles on a stage at your video's true proportions, at night or by day. Click a line to style it, drag the subtitles to move them, or open Full screen to see them at their real size. The pane beside the stage holds the size, position, look, translation color, and lines (which goes on top, stacked or side by side, and the spacing), each with exact values.
 - Timing: a timeline of the voice and the subtitles; show the subtitles earlier or later in half-second steps
 - Translation: the translation service, its setup, and whether a free service covers when it fails
-- Meanings: Word explanations; click a word in the subtitles to have an AI service explain it, through your own OpenAI or Gemini key
+- Meanings: click a word in the subtitles to see what it means, and set up Explain with AI with your own OpenAI or Gemini key
 - Sites: DualSub on or off for each site, and hiding each site's own subtitles
 - Help: fixes for common problems, such as hiding the sites' own subtitles everywhere, or letting the show's own translation keep its own timing when its lines go with the wrong original line
 
-The Advanced options switch in the top bar adds the exact timing shift, the switch that shows the show's own translation with the original line it belongs with, the pause between translation requests, per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
+The Advanced options switch in the top bar adds the exact timing shift, the switch that shows the show's own translation with the original line it belongs with, the pause between translation requests, per-site settings, the AI service's address and model, limits for AI explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
 
 API keys stay on this computer: they don't sync and never go into a backup file. A key goes only to the address it was entered for. When that address moves to another host (on this computer, on another one you sync with, or by loading a backup), DualSub treats the key as missing until you enter one for the new address.
 
 ## Per-Site Settings
 
-Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the original line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.
+Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the original line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word lookup, AI explanations, and API keys are the same on every site.
 
 In the settings page, with advanced options shown, pick a site in the bar at the top: what you change then gets a "Netflix only" tag (in Style, a dot on the row), and "Use All sites" drops the site's own value. The Sites section lists what each site keeps and removes it in one click.
 
@@ -47,16 +47,16 @@ For language learning:
 
 - Translation: Microsoft Translator (free, nothing to set up)
 - Original line: always one language, the one you are learning
-- Word explanations: on, explaining meaning, culture, and history
+- Explain with AI: a Gemini key, explaining meaning, culture, and history
 
 For speed:
 
 - Translation: Google Translate
 - Pause between translation requests: 100 ms
-- Word explanations: Gemini 3.5 Flash, remembering answers
+- Explain with AI: Gemini 3.5 Flash, remembering answers
 
 For technical users:
 
 - Translation: AI translation through an OpenAI-compatible address
-- Word explanations: OpenAI GPT-5.6 Luna, at most 60 requests per minute
+- Explain with AI: OpenAI GPT-5.6 Luna, at most 60 requests per minute
 - Detail in the browser console: Everything (debug)

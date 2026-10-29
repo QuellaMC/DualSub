@@ -149,68 +149,8 @@
     "openaiFailedToFetchModels": {
         "message": "获取模型失败：%s"
     },
-    "aiContextUsage": {
-        "message": "💡 用法与例句"
-    },
-    "aiContextLearningTips": {
-        "message": "🎯 学习提示"
-    },
-    "aiContextRelatedExpressions": {
-        "message": "🔗 相关表达"
-    },
-    "aiContextKeyInsights": {
-        "message": "🔑 关键见解"
-    },
     "sidepanelLoading": {
         "message": "加载中..."
-    },
-    "sidepanelTabAIAnalysis": {
-        "message": "AI 分析"
-    },
-    "sidepanelAnalyzeButton": {
-        "message": "分析"
-    },
-    "sidepanelAnalyzing": {
-        "message": "分析中..."
-    },
-    "sidepanelWordsToAnalyze": {
-        "message": "待分析单词"
-    },
-    "sidepanelRemoveWordLabel": {
-        "message": "移除 %s（第 %d 个）"
-    },
-    "sidepanelWordInputPlaceholder": {
-        "message": "点击字幕中的单词以添加分析..."
-    },
-    "sidepanelErrorRetry": {
-        "message": "重试"
-    },
-    "sidepanelResultsTitle": {
-        "message": "“%s”的结果"
-    },
-    "sidepanelSectionDefinition": {
-        "message": "定义"
-    },
-    "sidepanelSectionCultural": {
-        "message": "文化背景"
-    },
-    "sidepanelSectionHistorical": {
-        "message": "历史背景"
-    },
-    "sidepanelSectionLinguistic": {
-        "message": "语言学分析"
-    },
-    "sidepanelErrorNoWords": {
-        "message": "未选择要分析的单词"
-    },
-    "sidepanelErrorDisabled": {
-        "message": "单词解释已关闭。请在 DualSub 设置里打开。"
-    },
-    "sidepanelErrorGeneric": {
-        "message": "分析过程中发生错误。"
-    },
-    "aiContextTypesRequired": {
-        "message": "请至少选一项。"
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API 测试成功"
@@ -238,9 +178,6 @@
     },
     "openaiHostPermissionScope": {
         "message": "已配置端点：%s。Chrome 权限范围：%s（此主机上的所有路径和端口）。"
-    },
-    "sidepanelErrorNoContextTypes": {
-        "message": "请在 DualSub 设置里至少选一项要解释的内容。"
     },
     "vertexImportSuccessEphemeral": {
         "message": "访问令牌已生成。服务账号密钥没有被保存；令牌过期后，请重新导入 JSON。"
@@ -416,15 +353,6 @@
     "explainSetupHelp": {
         "message": "解释由 AI 服务提供，使用你自己的账户。你的密钥只保存在这台电脑上。"
     },
-    "explainSetupTitle": {
-        "message": "三步就能设置好"
-    },
-    "explainStatusOff": {
-        "message": "已关闭。你的密钥还保存着。"
-    },
-    "explainNeedsSetup": {
-        "message": "需要设置"
-    },
     "explainSetUpWith": {
         "message": "已用 %s 设置好"
     },
@@ -440,12 +368,6 @@
     "explainAddress": {
         "message": "地址（用于兼容服务器）"
     },
-    "explainStatusOn": {
-        "message": "点一下字幕里的词试试看。"
-    },
-    "explainStatusSetup": {
-        "message": "完成下面三步，就能打开这个功能。"
-    },
     "explainThemeAuto": {
         "message": "跟随电脑设置"
     },
@@ -460,12 +382,6 @@
     },
     "explainTimeout": {
         "message": "等多少秒后放弃"
-    },
-    "explainTitle": {
-        "message": "单词解释"
-    },
-    "explainTurnOn": {
-        "message": "打开"
     },
     "explainTypeCulture": {
         "message": "背后的文化"
@@ -1145,12 +1061,6 @@
     "toastEarlier": {
         "message": "字幕提前了 %s 秒"
     },
-    "toastExplainOff": {
-        "message": "单词解释已关闭"
-    },
-    "toastExplainOn": {
-        "message": "单词解释已打开"
-    },
     "toastFallbackOff": {
         "message": "翻译只交给你选的服务"
     },
@@ -1648,5 +1558,143 @@
     },
     "startNeedsSetupStopped": {
         "message": "设置好之前，字幕不会被翻译。"
+    },
+    "sidepanelLanguagePair": {
+        "message": "%s → %s"
+    },
+    "sidepanelEmptyTitle": {
+        "message": "点一下字幕里的任意一个词"
+    },
+    "sidepanelEmptyHelp": {
+        "message": "视频会暂停，意思会显示在这里。多点几个词可以查整个短语，想继续看就点一下视频。"
+    },
+    "sidepanelElsewhereTitle": {
+        "message": "在 Netflix 或 Disney+ 上打开一个视频"
+    },
+    "sidepanelElsewhereHelp": {
+        "message": "然后点一下字幕里的任意一个词，它的意思就会显示在这里。"
+    },
+    "sidepanelLineLabel": {
+        "message": "字幕这一行"
+    },
+    "sidepanelAddWord": {
+        "message": "点击加上这个词"
+    },
+    "sidepanelRemoveWord": {
+        "message": "点击去掉这个词"
+    },
+    "sidepanelInLanguage": {
+        "message": "用%s"
+    },
+    "sidepanelFormOf": {
+        "message": "变化形式"
+    },
+    "sidepanelFrom": {
+        "message": "来自 %s"
+    },
+    "sidepanelNoEntry": {
+        "message": "这个词单独查不到。点一下它前后的词，查整个短语。"
+    },
+    "sidepanelNoEntryPhrase": {
+        "message": "词典里没有这几个词连在一起的条目。"
+    },
+    "explainWithAi": {
+        "message": "用 AI 解释"
+    },
+    "sidepanelExplaining": {
+        "message": "正在解释它在这里的用法…"
+    },
+    "sidepanelKeyGuideTitle": {
+        "message": "添加密钥，用 AI 解释"
+    },
+    "sidepanelNotNow": {
+        "message": "以后再说"
+    },
+    "sidepanelKeyRefused": {
+        "message": "这个密钥用不了。检查一下，或者重新获取一个。"
+    },
+    "sidepanelCheckAndExplain": {
+        "message": "检查并解释"
+    },
+    "sidepanelAiFailed": {
+        "message": "AI 服务没有回应。"
+    },
+    "sidepanelTryAgain": {
+        "message": "重试"
+    },
+    "sidepanelInThisLine": {
+        "message": "在这句里"
+    },
+    "sidepanelExamples": {
+        "message": "例句"
+    },
+    "sidepanelSimilar": {
+        "message": "类似的说法"
+    },
+    "sidepanelTip": {
+        "message": "提示"
+    },
+    "sidepanelWrittenBy": {
+        "message": "由 %s 撰写，可能会出错。"
+    },
+    "sidepanelRegisterEveryday": {
+        "message": "日常"
+    },
+    "sidepanelRegisterCasual": {
+        "message": "口语"
+    },
+    "sidepanelRegisterFormal": {
+        "message": "正式"
+    },
+    "sidepanelRegisterSlang": {
+        "message": "俚语"
+    },
+    "sidepanelRegisterOffensive": {
+        "message": "冒犯性"
+    },
+    "sidepanelWordTypeNoun": {
+        "message": "名词"
+    },
+    "sidepanelWordTypeVerb": {
+        "message": "动词"
+    },
+    "sidepanelWordTypeAdjective": {
+        "message": "形容词"
+    },
+    "sidepanelWordTypeAdverb": {
+        "message": "副词"
+    },
+    "sidepanelWordTypePronoun": {
+        "message": "代词"
+    },
+    "sidepanelWordTypePreposition": {
+        "message": "介词"
+    },
+    "sidepanelWordTypeConjunction": {
+        "message": "连词"
+    },
+    "sidepanelWordTypeInterjection": {
+        "message": "叹词"
+    },
+    "sidepanelWordTypeSaying": {
+        "message": "惯用语"
+    },
+    "explainLookupTitle": {
+        "message": "点击单词时查词"
+    },
+    "explainLookupOn": {
+        "message": "点一下字幕里的词，就能看到它的意思。"
+    },
+    "explainLookupOff": {
+        "message": "字幕里的词不能点击。"
+    },
+    "toastLookupOn": {
+        "message": "查词已打开"
+    },
+    "toastLookupOff": {
+        "message": "查词已关闭"
+    },
+    "searchWordsLookup": {
+        "message": "点击 单词 查词 词典 意思 翻译 字幕"
     }
 }

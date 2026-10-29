@@ -20,7 +20,7 @@
 
 ## Advanced Features
 
-- Word Explanations: Cultural, historical, and linguistic explanations of the words you click (OpenAI or Google Gemini)
+- Word Meanings: Click a subtitle word to see its translation and dictionary meaning, with nothing to set up; Explain with AI adds how it is used in its line, its culture, and its history, through your own OpenAI or Google Gemini key
 - Performance Tuning: Configurable delay between subtitle translation requests
 - Advanced Options: Exact values, limits, backup and restore, and a diagnostic report, shown on request
 - Logging System: Detailed debugging with configurable log levels

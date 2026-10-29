@@ -149,68 +149,8 @@
     "openaiFailedToFetchModels": {
         "message": "모델 가져오기 실패: %s"
     },
-    "aiContextUsage": {
-        "message": "💡 사용법 및 예시"
-    },
-    "aiContextLearningTips": {
-        "message": "🎯 학습 팁"
-    },
-    "aiContextRelatedExpressions": {
-        "message": "🔗 관련 표현"
-    },
-    "aiContextKeyInsights": {
-        "message": "🔑 핵심 통찰"
-    },
     "sidepanelLoading": {
         "message": "로딩 중..."
-    },
-    "sidepanelTabAIAnalysis": {
-        "message": "AI 분석"
-    },
-    "sidepanelAnalyzeButton": {
-        "message": "분석"
-    },
-    "sidepanelAnalyzing": {
-        "message": "분석 중..."
-    },
-    "sidepanelWordsToAnalyze": {
-        "message": "분석할 단어"
-    },
-    "sidepanelRemoveWordLabel": {
-        "message": "%s (%d번째) 제거"
-    },
-    "sidepanelWordInputPlaceholder": {
-        "message": "자막의 단어를 클릭하여 분석에 추가하세요..."
-    },
-    "sidepanelErrorRetry": {
-        "message": "재시도"
-    },
-    "sidepanelResultsTitle": {
-        "message": "\"%s\"에 대한 결과"
-    },
-    "sidepanelSectionDefinition": {
-        "message": "정의"
-    },
-    "sidepanelSectionCultural": {
-        "message": "문화적 맥락"
-    },
-    "sidepanelSectionHistorical": {
-        "message": "역사적 맥락"
-    },
-    "sidepanelSectionLinguistic": {
-        "message": "언어학적 분석"
-    },
-    "sidepanelErrorNoWords": {
-        "message": "분석할 단어가 선택되지 않았습니다"
-    },
-    "sidepanelErrorDisabled": {
-        "message": "단어 설명이 꺼져 있어요. DualSub 설정에서 켜 주세요."
-    },
-    "sidepanelErrorGeneric": {
-        "message": "분석 중 오류가 발생했습니다."
-    },
-    "aiContextTypesRequired": {
-        "message": "하나 이상 고르세요."
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API 테스트가 성공했습니다!"
@@ -238,9 +178,6 @@
     },
     "openaiHostPermissionScope": {
         "message": "설정된 엔드포인트: %s. Chrome 권한 범위: %s(이 호스트의 모든 경로 및 포트)."
-    },
-    "sidepanelErrorNoContextTypes": {
-        "message": "DualSub 설정에서 설명할 내용을 하나 이상 고르세요."
     },
     "vertexImportSuccessEphemeral": {
         "message": "액세스 토큰을 생성했어요. 서비스 계정 키는 저장하지 않았으니, 토큰이 만료되면 JSON을 다시 가져오세요."
@@ -416,15 +353,6 @@
     "explainSetupHelp": {
         "message": "설명은 내 계정으로 쓰는 AI 서비스가 만들어요. 키는 이 컴퓨터에만 저장돼요."
     },
-    "explainSetupTitle": {
-        "message": "세 단계로 설정하기"
-    },
-    "explainStatusOff": {
-        "message": "꺼져 있어요. 키는 그대로 저장되어 있어요."
-    },
-    "explainNeedsSetup": {
-        "message": "설정 필요"
-    },
     "explainSetUpWith": {
         "message": "%s(으)로 설정됨"
     },
@@ -440,12 +368,6 @@
     "explainAddress": {
         "message": "주소 (호환 서버용)"
     },
-    "explainStatusOn": {
-        "message": "자막에서 단어를 클릭해 보세요."
-    },
-    "explainStatusSetup": {
-        "message": "아래 세 단계를 마치면 켤 수 있어요."
-    },
     "explainThemeAuto": {
         "message": "컴퓨터 설정에 맞추기"
     },
@@ -460,12 +382,6 @@
     },
     "explainTimeout": {
         "message": "최대 대기 시간 (초)"
-    },
-    "explainTitle": {
-        "message": "단어 설명"
-    },
-    "explainTurnOn": {
-        "message": "켜기"
     },
     "explainTypeCulture": {
         "message": "문화적 배경"
@@ -1145,12 +1061,6 @@
     "toastEarlier": {
         "message": "자막을 %s초 앞당겼어요"
     },
-    "toastExplainOff": {
-        "message": "단어 설명을 껐어요"
-    },
-    "toastExplainOn": {
-        "message": "단어 설명을 켰어요"
-    },
     "toastFallbackOff": {
         "message": "고른 서비스로만 번역해요"
     },
@@ -1648,5 +1558,143 @@
     },
     "startNeedsSetupStopped": {
         "message": "설정을 마칠 때까지 자막이 번역되지 않아요."
+    },
+    "sidepanelLanguagePair": {
+        "message": "%s → %s"
+    },
+    "sidepanelEmptyTitle": {
+        "message": "자막에서 아무 단어나 클릭하세요"
+    },
+    "sidepanelEmptyHelp": {
+        "message": "영상이 멈추고 여기에 뜻이 나와요. 단어를 더 클릭하면 구절로 찾아볼 수 있고, 계속 보려면 영상을 클릭하세요."
+    },
+    "sidepanelElsewhereTitle": {
+        "message": "Netflix나 Disney+에서 영상을 여세요"
+    },
+    "sidepanelElsewhereHelp": {
+        "message": "그다음 자막에서 아무 단어나 클릭하면 여기에 뜻이 나와요."
+    },
+    "sidepanelLineLabel": {
+        "message": "자막 줄"
+    },
+    "sidepanelAddWord": {
+        "message": "클릭하면 이 단어를 추가해요"
+    },
+    "sidepanelRemoveWord": {
+        "message": "클릭하면 이 단어를 빼요"
+    },
+    "sidepanelInLanguage": {
+        "message": "%s로"
+    },
+    "sidepanelFormOf": {
+        "message": "변화형"
+    },
+    "sidepanelFrom": {
+        "message": "출처: %s"
+    },
+    "sidepanelNoEntry": {
+        "message": "이 단어만으로는 사전에 없어요. 주변 단어도 클릭해서 구절 전체로 찾아보세요."
+    },
+    "sidepanelNoEntryPhrase": {
+        "message": "이 단어들을 합친 표현은 사전에 없어요."
+    },
+    "explainWithAi": {
+        "message": "AI로 설명하기"
+    },
+    "sidepanelExplaining": {
+        "message": "여기서 어떻게 쓰였는지 설명하는 중…"
+    },
+    "sidepanelKeyGuideTitle": {
+        "message": "AI로 설명하려면 키를 추가하세요"
+    },
+    "sidepanelNotNow": {
+        "message": "나중에"
+    },
+    "sidepanelKeyRefused": {
+        "message": "그 키는 작동하지 않았어요. 확인하거나 새 키를 받으세요."
+    },
+    "sidepanelCheckAndExplain": {
+        "message": "확인하고 설명하기"
+    },
+    "sidepanelAiFailed": {
+        "message": "AI 서비스가 응답하지 않았어요."
+    },
+    "sidepanelTryAgain": {
+        "message": "다시 시도"
+    },
+    "sidepanelInThisLine": {
+        "message": "이 대사에서는"
+    },
+    "sidepanelExamples": {
+        "message": "예문"
+    },
+    "sidepanelSimilar": {
+        "message": "비슷한 표현"
+    },
+    "sidepanelTip": {
+        "message": "팁"
+    },
+    "sidepanelWrittenBy": {
+        "message": "%s가 작성했어요. 틀릴 수도 있어요."
+    },
+    "sidepanelRegisterEveryday": {
+        "message": "일상"
+    },
+    "sidepanelRegisterCasual": {
+        "message": "편한 말"
+    },
+    "sidepanelRegisterFormal": {
+        "message": "격식"
+    },
+    "sidepanelRegisterSlang": {
+        "message": "속어"
+    },
+    "sidepanelRegisterOffensive": {
+        "message": "무례한 말"
+    },
+    "sidepanelWordTypeNoun": {
+        "message": "명사"
+    },
+    "sidepanelWordTypeVerb": {
+        "message": "동사"
+    },
+    "sidepanelWordTypeAdjective": {
+        "message": "형용사"
+    },
+    "sidepanelWordTypeAdverb": {
+        "message": "부사"
+    },
+    "sidepanelWordTypePronoun": {
+        "message": "대명사"
+    },
+    "sidepanelWordTypePreposition": {
+        "message": "전치사"
+    },
+    "sidepanelWordTypeConjunction": {
+        "message": "접속사"
+    },
+    "sidepanelWordTypeInterjection": {
+        "message": "감탄사"
+    },
+    "sidepanelWordTypeSaying": {
+        "message": "관용구"
+    },
+    "explainLookupTitle": {
+        "message": "클릭한 단어 찾아보기"
+    },
+    "explainLookupOn": {
+        "message": "자막에서 단어를 클릭하면 뜻을 볼 수 있어요."
+    },
+    "explainLookupOff": {
+        "message": "자막 단어를 클릭할 수 없어요."
+    },
+    "toastLookupOn": {
+        "message": "단어 찾기를 켰어요"
+    },
+    "toastLookupOff": {
+        "message": "단어 찾기를 껐어요"
+    },
+    "searchWordsLookup": {
+        "message": "클릭 단어 찾기 사전 뜻 번역 자막"
     }
 }

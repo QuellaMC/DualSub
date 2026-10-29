@@ -31,24 +31,6 @@ body {
     height: 20px;
 }
 
-.icon-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    border: 0;
-    border-radius: 10px;
-    background: transparent;
-    color: var(--ink-lead);
-    cursor: pointer;
-}
-
-.icon-button:hover {
-    background: var(--fill);
-    color: var(--ink-lead);
-}
-
 .popup-body {
     display: flex;
     flex-direction: column;

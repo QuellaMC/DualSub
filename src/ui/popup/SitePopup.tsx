@@ -29,7 +29,8 @@ import { useDraft } from '../hooks/useDraft';
 import { useI18n, type Translate } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
 import { languageName } from '../languageLabels';
-import { openSettings, PopupShell, PopupUnavailable } from './PopupShell';
+import { openSettings } from '../openSettings';
+import { PopupShell, PopupUnavailable } from './PopupShell';
 
 const SITE_POPUP_KEYS = [
     'uiLanguage',

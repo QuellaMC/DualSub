@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { detectBrowserLanguage } from '@/config/schema';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
-import { AnalysisPanel } from './AnalysisPanel';
+import { WordPanel } from './WordPanel';
 
 export const SIDEPANEL_SETTINGS_KEYS = [
     'uiLanguage',
@@ -39,11 +39,5 @@ export function SidePanelApp() {
             </div>
         );
     }
-    return (
-        <div className="sidepanel-container">
-            <main className="sidepanel-content">
-                <AnalysisPanel t={t} />
-            </main>
-        </div>
-    );
+    return <WordPanel t={t} />;
 }

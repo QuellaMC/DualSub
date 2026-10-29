@@ -149,68 +149,8 @@
     "openaiFailedToFetchModels": {
         "message": "取得模型失敗：%s"
     },
-    "aiContextUsage": {
-        "message": "💡 用法與例句"
-    },
-    "aiContextLearningTips": {
-        "message": "🎯 學習提示"
-    },
-    "aiContextRelatedExpressions": {
-        "message": "🔗 相關表達"
-    },
-    "aiContextKeyInsights": {
-        "message": "🔑 關鍵見解"
-    },
     "sidepanelLoading": {
         "message": "載入中..."
-    },
-    "sidepanelTabAIAnalysis": {
-        "message": "AI 分析"
-    },
-    "sidepanelAnalyzeButton": {
-        "message": "分析"
-    },
-    "sidepanelAnalyzing": {
-        "message": "分析中..."
-    },
-    "sidepanelWordsToAnalyze": {
-        "message": "待分析單字"
-    },
-    "sidepanelRemoveWordLabel": {
-        "message": "移除 %s（第 %d 個）"
-    },
-    "sidepanelWordInputPlaceholder": {
-        "message": "點擊字幕中的單字以新增至分析..."
-    },
-    "sidepanelErrorRetry": {
-        "message": "重試"
-    },
-    "sidepanelResultsTitle": {
-        "message": "「%s」的結果"
-    },
-    "sidepanelSectionDefinition": {
-        "message": "定義"
-    },
-    "sidepanelSectionCultural": {
-        "message": "文化背景"
-    },
-    "sidepanelSectionHistorical": {
-        "message": "歷史背景"
-    },
-    "sidepanelSectionLinguistic": {
-        "message": "語言學分析"
-    },
-    "sidepanelErrorNoWords": {
-        "message": "未選擇要分析的單字"
-    },
-    "sidepanelErrorDisabled": {
-        "message": "單字解釋已關閉。請到 DualSub 設定中開啟。"
-    },
-    "sidepanelErrorGeneric": {
-        "message": "分析過程中發生錯誤。"
-    },
-    "aiContextTypesRequired": {
-        "message": "請至少選一項。"
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API 測試成功！"
@@ -238,9 +178,6 @@
     },
     "openaiHostPermissionScope": {
         "message": "已設定端點：%s。Chrome 權限範圍：%s（此主機上的所有路徑與連接埠）。"
-    },
-    "sidepanelErrorNoContextTypes": {
-        "message": "請到 DualSub 設定中，至少選一項要解釋的內容。"
     },
     "vertexImportSuccessEphemeral": {
         "message": "已產生存取權杖。服務帳戶金鑰並未儲存；權杖過期後，請重新匯入 JSON 檔案。"
@@ -416,15 +353,6 @@
     "explainSetupHelp": {
         "message": "解釋內容來自 AI 服務，使用的是你自己的帳號。你的金鑰只存在這台電腦上。"
     },
-    "explainSetupTitle": {
-        "message": "三個步驟完成設定"
-    },
-    "explainStatusOff": {
-        "message": "已關閉。你的金鑰仍然保存著。"
-    },
-    "explainNeedsSetup": {
-        "message": "需要設定"
-    },
     "explainSetUpWith": {
         "message": "已用 %s 設定好"
     },
@@ -440,12 +368,6 @@
     "explainAddress": {
         "message": "位址（用於相容伺服器）"
     },
-    "explainStatusOn": {
-        "message": "點一下字幕裡的單字試試看。"
-    },
-    "explainStatusSetup": {
-        "message": "完成下面三個步驟就能開啟。"
-    },
     "explainThemeAuto": {
         "message": "跟電腦設定一樣"
     },
@@ -460,12 +382,6 @@
     },
     "explainTimeout": {
         "message": "最多等待秒數"
-    },
-    "explainTitle": {
-        "message": "單字解釋"
-    },
-    "explainTurnOn": {
-        "message": "開啟"
     },
     "explainTypeCulture": {
         "message": "背後的文化"
@@ -1145,12 +1061,6 @@
     "toastEarlier": {
         "message": "字幕提早 %s 秒"
     },
-    "toastExplainOff": {
-        "message": "單字解釋已關閉"
-    },
-    "toastExplainOn": {
-        "message": "單字解釋已開啟"
-    },
     "toastFallbackOff": {
         "message": "翻譯只交給你選的服務"
     },
@@ -1648,5 +1558,143 @@
     },
     "startNeedsSetupStopped": {
         "message": "設定好之前，字幕不會翻譯。"
+    },
+    "sidepanelLanguagePair": {
+        "message": "%s → %s"
+    },
+    "sidepanelEmptyTitle": {
+        "message": "點一下字幕裡的任一個單字"
+    },
+    "sidepanelEmptyHelp": {
+        "message": "影片會暫停，意思會顯示在這裡。多點幾個單字可以查整個片語，想繼續看就點一下影片。"
+    },
+    "sidepanelElsewhereTitle": {
+        "message": "在 Netflix 或 Disney+ 上打開一部影片"
+    },
+    "sidepanelElsewhereHelp": {
+        "message": "然後點一下字幕裡的任一個單字，它的意思就會顯示在這裡。"
+    },
+    "sidepanelLineLabel": {
+        "message": "字幕這一行"
+    },
+    "sidepanelAddWord": {
+        "message": "點一下加入這個單字"
+    },
+    "sidepanelRemoveWord": {
+        "message": "點一下移除這個單字"
+    },
+    "sidepanelInLanguage": {
+        "message": "用%s"
+    },
+    "sidepanelFormOf": {
+        "message": "變化形式"
+    },
+    "sidepanelFrom": {
+        "message": "來自 %s"
+    },
+    "sidepanelNoEntry": {
+        "message": "這個單字單獨查不到。點一下它前後的單字，查整個片語。"
+    },
+    "sidepanelNoEntryPhrase": {
+        "message": "字典裡沒有這幾個單字連在一起的條目。"
+    },
+    "explainWithAi": {
+        "message": "用 AI 解釋"
+    },
+    "sidepanelExplaining": {
+        "message": "正在解釋它在這裡的用法…"
+    },
+    "sidepanelKeyGuideTitle": {
+        "message": "加入金鑰，用 AI 解釋"
+    },
+    "sidepanelNotNow": {
+        "message": "以後再說"
+    },
+    "sidepanelKeyRefused": {
+        "message": "這個金鑰無法使用。檢查一下，或重新取得一個。"
+    },
+    "sidepanelCheckAndExplain": {
+        "message": "檢查並解釋"
+    },
+    "sidepanelAiFailed": {
+        "message": "AI 服務沒有回應。"
+    },
+    "sidepanelTryAgain": {
+        "message": "再試一次"
+    },
+    "sidepanelInThisLine": {
+        "message": "在這句裡"
+    },
+    "sidepanelExamples": {
+        "message": "例句"
+    },
+    "sidepanelSimilar": {
+        "message": "類似的說法"
+    },
+    "sidepanelTip": {
+        "message": "提示"
+    },
+    "sidepanelWrittenBy": {
+        "message": "由 %s 撰寫，可能會出錯。"
+    },
+    "sidepanelRegisterEveryday": {
+        "message": "日常"
+    },
+    "sidepanelRegisterCasual": {
+        "message": "口語"
+    },
+    "sidepanelRegisterFormal": {
+        "message": "正式"
+    },
+    "sidepanelRegisterSlang": {
+        "message": "俚語"
+    },
+    "sidepanelRegisterOffensive": {
+        "message": "冒犯性"
+    },
+    "sidepanelWordTypeNoun": {
+        "message": "名詞"
+    },
+    "sidepanelWordTypeVerb": {
+        "message": "動詞"
+    },
+    "sidepanelWordTypeAdjective": {
+        "message": "形容詞"
+    },
+    "sidepanelWordTypeAdverb": {
+        "message": "副詞"
+    },
+    "sidepanelWordTypePronoun": {
+        "message": "代名詞"
+    },
+    "sidepanelWordTypePreposition": {
+        "message": "介系詞"
+    },
+    "sidepanelWordTypeConjunction": {
+        "message": "連接詞"
+    },
+    "sidepanelWordTypeInterjection": {
+        "message": "感嘆詞"
+    },
+    "sidepanelWordTypeSaying": {
+        "message": "慣用語"
+    },
+    "explainLookupTitle": {
+        "message": "點單字時查詢"
+    },
+    "explainLookupOn": {
+        "message": "點一下字幕裡的單字，就能看到它的意思。"
+    },
+    "explainLookupOff": {
+        "message": "字幕裡的單字不能點。"
+    },
+    "toastLookupOn": {
+        "message": "查詢單字已開啟"
+    },
+    "toastLookupOff": {
+        "message": "查詢單字已關閉"
+    },
+    "searchWordsLookup": {
+        "message": "點擊 單字 查詢 字典 意思 翻譯 字幕"
     }
 }

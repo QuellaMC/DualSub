@@ -125,20 +125,20 @@ describe('configService', () => {
 
     describe('readStoredBooleanStrict', () => {
         it('returns a genuinely stored boolean', async () => {
-            await fakeBrowser.storage.sync.set({ aiContextEnabled: true });
+            await fakeBrowser.storage.sync.set({ translationFallback: true });
             await expect(
-                configService.readStoredBooleanStrict('aiContextEnabled')
+                configService.readStoredBooleanStrict('translationFallback')
             ).resolves.toBe(true);
         });
 
         it('fails closed for missing, invalid, or non-boolean keys', async () => {
             await expect(
-                configService.readStoredBooleanStrict('aiContextEnabled')
+                configService.readStoredBooleanStrict('translationFallback')
             ).rejects.toThrow('unavailable');
 
-            await fakeBrowser.storage.sync.set({ aiContextEnabled: 'yes' });
+            await fakeBrowser.storage.sync.set({ translationFallback: 'yes' });
             await expect(
-                configService.readStoredBooleanStrict('aiContextEnabled')
+                configService.readStoredBooleanStrict('translationFallback')
             ).rejects.toThrow('unavailable');
 
             await expect(
@@ -151,7 +151,7 @@ describe('configService', () => {
                 new Error('broken')
             );
             await expect(
-                configService.readStoredBooleanStrict('aiContextEnabled')
+                configService.readStoredBooleanStrict('translationFallback')
             ).rejects.toBeInstanceOf(ConfigServiceReadError);
         });
     });

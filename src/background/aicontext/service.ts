@@ -1,8 +1,15 @@
 import type { SettingsValues } from '@/config/schema';
 import type { configService, SettingsChanges } from '@/config/service';
+import type {
+    AiAnswer,
+    AnswerFailure,
+} from '@/messaging/contracts/analyzeContext';
+import type { ContextType } from '@/shared/contextTypes';
 import { createLogger } from '@/shared/logger';
+import { AI_KEY_SETTINGS, aiKeyReady } from '@/shared/providers';
 import { TtlCache } from '@/shared/ttlCache';
 import { runProviderAnalysis } from './analysis';
+import type { AnswerPromptInput } from './prompt';
 import {
     PROVIDER_SETTINGS_KEYS,
     type AiContextProviderId,
@@ -18,7 +25,6 @@ import {
     type RateLimitPolicy,
     type UsageStore,
 } from './rateLimiter';
-import type { Analysis, AnalysisType } from './schemas';
 
 export const AI_CONTEXT_RUNTIME_KEYS = [
     'aiContextProvider',
@@ -67,13 +73,11 @@ const CACHE_IDENTITY_KEYS = [
 
 const RATE_WINDOW_MS = 60_000;
 
-export const AI_CONTEXT_DISABLED_MESSAGE = 'AI context analysis is disabled';
-export const AI_CONTEXT_UNVERIFIED_MESSAGE =
-    'AI context availability could not be verified';
-
 export interface AnalysisRequest {
     readonly text: string;
-    readonly type: AnalysisType;
+    /** The subtitle line the words appear in. */
+    readonly line: string;
+    readonly kinds: readonly ContextType[];
     readonly sourceLanguage: string;
     readonly targetLanguage: string;
 }
@@ -81,22 +85,15 @@ export interface AnalysisRequest {
 export type AnalysisOutcome =
     | {
           readonly success: true;
-          readonly analysis: Analysis;
+          readonly answer: AiAnswer;
           readonly cached: boolean;
       }
-    | {
-          readonly success: false;
-          readonly error: string;
-          readonly shouldRetry: boolean;
-      };
+    | { readonly success: false; readonly reason: AnswerFailure };
 
 export interface AiContextServiceDeps {
     readonly config: Pick<
         typeof configService,
-        | 'getMultiple'
-        | 'readMultipleResultStrict'
-        | 'readStoredBooleanStrict'
-        | 'onChanged'
+        'getMultiple' | 'readMultipleResultStrict' | 'onChanged'
     >;
     readonly providers: readonly ContextProvider[];
     readonly usageStore?: (providerId: AiContextProviderId) => UsageStore;
@@ -104,11 +101,12 @@ export interface AiContextServiceDeps {
     readonly clock?: { now(): number; sleep(ms: number): Promise<void> };
 }
 
-function failure(error: string, shouldRetry = false): AnalysisOutcome {
-    return { success: false, error, shouldRetry };
+function failure(reason: AnswerFailure): AnalysisOutcome {
+    return { success: false, reason };
 }
 
-/** Thrown inside an attempt when the feature is off; carries the answer. */
+/** Thrown inside an attempt when no usable key is stored any more; carries
+ *  the answer. */
 class AnalysisGateClosed extends Error {
     override readonly name = 'AnalysisGateClosed';
 
@@ -122,12 +120,13 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * The paid, privacy-sensitive service. Enablement is re-proven from a
- * genuinely stored boolean before dispatch, after every attempt, and across
- * every backoff, so switching the feature off stops work that is already
- * in flight. Successful analyses are cached per provider identity and
- * credential generation; a credential change during a flight keeps that
- * flight's answer out of the cache.
+ * The paid, privacy-sensitive service. A saved key is what turns it on, so
+ * a usable key is re-proven from storage before dispatch, after every
+ * attempt, and across every backoff: removing the key stops work that is
+ * already in flight, and storage that cannot be read refuses. Successful
+ * answers are cached per provider identity and credential generation; a
+ * credential change during a flight keeps that flight's answer out of the
+ * cache.
  */
 export class AiContextService {
     private readonly logger = createLogger('AiContextService');
@@ -141,7 +140,7 @@ export class AiContextService {
     >();
     private readonly clock: { now(): number; sleep(ms: number): Promise<void> };
     private runtime: RuntimeConfig | null = null;
-    private cache: TtlCache<Analysis> | null = null;
+    private cache: TtlCache<AiAnswer> | null = null;
     private credentialGeneration = 0;
     private unsubscribe: (() => void) | null = null;
 
@@ -183,18 +182,15 @@ export class AiContextService {
             throw new Error('AI context service not initialized');
         }
         const text = request.text.trim();
-        if (text === '') {
-            return failure('Invalid or empty text provided for analysis');
+        const provider = this.providers.get(runtime.aiContextProvider);
+        if (text === '' || !provider) {
+            return failure('failed');
         }
-        const gate = await this.enablementFailure();
+        const gate = await this.keyFailure(provider.id);
         if (gate) {
             return gate;
         }
 
-        const provider = this.providers.get(runtime.aiContextProvider);
-        if (!provider) {
-            return failure('AI context provider unavailable');
-        }
         let settings: RequestSettings;
         try {
             const { values } = await this.deps.config.readMultipleResultStrict(
@@ -203,44 +199,47 @@ export class AiContextService {
             );
             settings = values as RequestSettings;
         } catch {
-            return failure('Required provider configuration is unavailable');
+            return failure('failed');
         }
 
         const generation = this.credentialGeneration;
         const cacheKey = JSON.stringify([
             provider.identity(settings),
             generation,
-            request.type,
+            request.kinds,
             request.sourceLanguage,
             request.targetLanguage,
             text,
+            request.line,
         ]);
         const cached = this.cache?.get(cacheKey);
         if (cached) {
-            return { success: true, analysis: cached, cached: true };
+            return { success: true, answer: cached, cached: true };
         }
 
         try {
-            const analysis = await this.analyzeWithRetry(
+            const answer = await this.analyzeWithRetry(
                 provider,
                 settings,
                 {
                     text,
-                    type: request.type,
+                    line: request.line,
+                    kinds: request.kinds,
+                    sourceLanguage: request.sourceLanguage,
                     targetLanguage: request.targetLanguage,
                 },
                 runtime
             );
             if (this.cache && generation === this.credentialGeneration) {
-                this.cache.set(cacheKey, analysis);
+                this.cache.set(cacheKey, answer);
             }
-            return { success: true, analysis, cached: false };
+            return { success: true, answer, cached: false };
         } catch (error) {
             if (error instanceof AnalysisGateClosed) {
                 return error.outcome;
             }
             if (error instanceof ContextRateLimitError) {
-                return failure(error.message);
+                return failure('failed');
             }
             if (error instanceof ContextProviderError) {
                 this.logger.error('Context analysis failed', null, {
@@ -252,21 +251,28 @@ export class AiContextService {
                             ? `${error.cause.name}: ${error.cause.message}`
                             : undefined,
                 });
-                return failure(error.message, error.retryable);
+                if (error.code === 'NOT_CONFIGURED') {
+                    return failure('setup');
+                }
+                return failure(
+                    error.status === 401 || error.status === 403
+                        ? 'auth'
+                        : 'failed'
+                );
             }
             this.logger.error('Context analysis failed', error, {
                 provider: provider.id,
             });
-            return failure('Context analysis failed');
+            return failure('failed');
         }
     }
 
     private async analyzeWithRetry(
         provider: ContextProvider,
         settings: RequestSettings,
-        input: { text: string; type: AnalysisType; targetLanguage: string },
+        input: AnswerPromptInput,
         runtime: RuntimeConfig
-    ): Promise<Analysis> {
+    ): Promise<AiAnswer> {
         const limiter = this.limiterFor(provider.id, runtime);
         let lastError: unknown = null;
         for (
@@ -275,24 +281,19 @@ export class AiContextService {
             attempt += 1
         ) {
             await limiter.acquire();
-            await this.assertEnabled();
-            let analysis: Analysis | null = null;
+            await this.assertKey(provider.id);
+            let answer: AiAnswer | null = null;
             try {
-                analysis = await runProviderAnalysis(
-                    provider,
-                    settings,
-                    input,
-                    {
-                        timeoutMs: settings.aiContextTimeout,
-                        fetch: this.deps.fetch ?? fetch,
-                    }
-                );
+                answer = await runProviderAnalysis(provider, settings, input, {
+                    timeoutMs: settings.aiContextTimeout,
+                    fetch: this.deps.fetch ?? fetch,
+                });
             } catch (error) {
                 lastError = error;
             }
-            await this.assertEnabled();
-            if (analysis) {
-                return analysis;
+            await this.assertKey(provider.id);
+            if (answer) {
+                return answer;
             }
             if (
                 !(lastError instanceof ContextProviderError) ||
@@ -309,27 +310,30 @@ export class AiContextService {
                     delay,
                 });
                 await this.clock.sleep(delay);
-                await this.assertEnabled();
+                await this.assertKey(provider.id);
             }
         }
         throw lastError;
     }
 
-    private async enablementFailure(): Promise<AnalysisOutcome | null> {
-        let enabled: boolean;
+    /** Null while `providerId` has a usable key in storage; a read that
+     *  fails refuses, as an unknown answer is not a yes. */
+    private async keyFailure(
+        providerId: AiContextProviderId
+    ): Promise<AnalysisOutcome | null> {
         try {
-            enabled =
-                await this.deps.config.readStoredBooleanStrict(
-                    'aiContextEnabled'
-                );
+            const { values } = await this.deps.config.readMultipleResultStrict(
+                [...AI_KEY_SETTINGS],
+                { includeSensitive: true }
+            );
+            return aiKeyReady(providerId, values) ? null : failure('setup');
         } catch {
-            return failure(AI_CONTEXT_UNVERIFIED_MESSAGE);
+            return failure('failed');
         }
-        return enabled ? null : failure(AI_CONTEXT_DISABLED_MESSAGE);
     }
 
-    private async assertEnabled(): Promise<void> {
-        const gate = await this.enablementFailure();
+    private async assertKey(providerId: AiContextProviderId): Promise<void> {
+        const gate = await this.keyFailure(providerId);
         if (gate) {
             throw new AnalysisGateClosed(gate);
         }
@@ -369,7 +373,7 @@ export class AiContextService {
             previous?.aiContextCacheTTL !== runtime.aiContextCacheTTL ||
             previous.aiContextMaxCacheSize !== runtime.aiContextMaxCacheSize
         ) {
-            this.cache = new TtlCache<Analysis>(
+            this.cache = new TtlCache<AiAnswer>(
                 runtime.aiContextMaxCacheSize,
                 runtime.aiContextCacheTTL,
                 () => this.clock.now()

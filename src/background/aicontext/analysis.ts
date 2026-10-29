@@ -1,18 +1,12 @@
-import { createContextPrompt, SYSTEM_PROMPT } from './prompt';
+import type { AiAnswer } from '@/messaging/contracts/analyzeContext';
+import {
+    createAnswerPrompt,
+    SYSTEM_PROMPT,
+    type AnswerPromptInput,
+} from './prompt';
 import type { ContextProvider, ProviderSettings } from './provider';
 import { ContextProviderError } from './providerError';
-import {
-    analysisJsonSchema,
-    parseAnalysis,
-    type Analysis,
-    type AnalysisType,
-} from './schemas';
-
-export interface AnalysisInput {
-    readonly text: string;
-    readonly type: AnalysisType;
-    readonly targetLanguage: string;
-}
+import { answerJsonSchema, parseAnswer } from './schemas';
 
 const MAX_ERROR_DETAIL_BYTES = 2048;
 const MAX_ERROR_DETAIL_CHARS = 160;
@@ -71,20 +65,13 @@ function isTimeout(error: unknown): boolean {
 export async function runProviderAnalysis(
     provider: ContextProvider,
     settings: ProviderSettings,
-    input: AnalysisInput,
+    input: AnswerPromptInput,
     options: { timeoutMs: number; fetch: typeof fetch }
-): Promise<Analysis> {
+): Promise<AiAnswer> {
     const request = provider.buildRequest(
         settings,
-        {
-            system: SYSTEM_PROMPT,
-            user: createContextPrompt(
-                input.text,
-                input.type,
-                input.targetLanguage
-            ),
-        },
-        analysisJsonSchema(input.type)
+        { system: SYSTEM_PROMPT, user: createAnswerPrompt(input) },
+        answerJsonSchema(input.kinds)
     );
 
     // Called unbound on purpose: the global fetch throws "Illegal invocation"
@@ -141,12 +128,12 @@ export async function runProviderAnalysis(
             { cause: error }
         );
     }
-    const analysis = parseAnalysis(input.type, parsed);
-    if (!analysis) {
+    const answer = parseAnswer(input.kinds, parsed);
+    if (!answer) {
         throw new ContextProviderError(
             'MALFORMED_RESPONSE',
             'Schema validation failed'
         );
     }
-    return analysis;
+    return answer;
 }

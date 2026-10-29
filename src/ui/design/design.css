@@ -262,6 +262,25 @@ h2 {
     font-size: 18px;
 }
 
+.icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: none;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--ink-lead);
+    cursor: pointer;
+}
+
+.icon-button:hover {
+    background: var(--fill);
+    color: var(--ink-lead);
+}
+
 .link-button {
     padding: 4px 2px;
     border: 0;

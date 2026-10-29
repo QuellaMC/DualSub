@@ -1,38 +1,55 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
-import type { SelectionState } from '@/messaging/contracts/selection';
+import type {
+    AiAnswer,
+    AnswerFailure,
+} from '@/messaging/contracts/analyzeContext';
+import type { LookupResult } from '@/messaging/contracts/lookupWords';
+import type {
+    SelectionEditOp,
+    SelectionEntry,
+    SelectionLine,
+    SelectionState,
+} from '@/messaging/contracts/selection';
 import { SIDEPANEL_PORT_NAME } from '@/messaging/contracts/sidepanelPort';
 import {
     PanelConnection,
-    type RemovalStatus,
+    type EditStatus,
     type TabBinding,
 } from './panelConnection';
 
-export type Analysis = Record<string, unknown>;
+/** What the panel looked up for some picked words: the words as they read
+ *  in their line, and the answer once it came (null until then). */
+export interface Lookup {
+    readonly entries: readonly SelectionEntry[];
+    readonly line: SelectionLine;
+    readonly text: string;
+    readonly targetLanguage: string;
+    readonly result: LookupResult | null;
+}
 
-export type PanelError =
-    | { readonly kind: 'key'; readonly key: string }
-    | { readonly kind: 'text'; readonly text: string };
-
-/** What one analysis produced for some words under some analysis settings
- *  (the configuration key of useAnalysis): an answer or an error. */
-export interface AnalysisOutcome {
+/** What one AI request produced for some words under some AI settings
+ *  (the configuration key of useAnalysis): an answer, or why there is
+ *  none. */
+export interface Explanation {
     readonly words: readonly string[];
     readonly configuration: string;
-    readonly answer: Analysis | null;
-    readonly error: PanelError | null;
+    readonly answer: AiAnswer | null;
+    readonly failure: AnswerFailure | null;
 }
 
 export interface TabState {
     readonly selection: SelectionState | null;
-    readonly outcome: AnalysisOutcome | null;
-    readonly analyzing: boolean;
+    readonly lookup: Lookup | null;
+    readonly explanation: Explanation | null;
+    readonly explaining: boolean;
 }
 
 export const EMPTY_TAB_STATE: TabState = {
     selection: null,
-    outcome: null,
-    analyzing: false,
+    lookup: null,
+    explanation: null,
+    explaining: false,
 };
 
 /** Fields to change, or a function of the state React is about to commit
@@ -49,10 +66,11 @@ export interface PanelHandle {
     /** The bound tab's state. */
     readonly tab: TabState;
     readonly updateTab: (tabId: number, patch: TabPatch) => void;
-    readonly requestRemoval: (
+    readonly requestEdit: (
         selection: SelectionState,
-        wordIndex: number
-    ) => Promise<RemovalStatus>;
+        wordIndex: number,
+        op: SelectionEditOp
+    ) => Promise<EditStatus>;
 }
 
 export function selectionWords(
@@ -93,11 +111,11 @@ async function queryActiveTab(): Promise<TabBinding | null> {
 
 /**
  * React view of the panel's port. State is kept per tab so switching away
- * and back restores that tab's words and outcome; the bound tab is
- * whichever the connection registered last. An outcome is keyed by its
- * words: it stays while the tab shows those words, or none at all, in the
- * same document, and goes when the tab shows other words, another
- * document, or nothing at all.
+ * and back restores that tab's words, lookup and explanation; the bound
+ * tab is whichever the connection registered last. A lookup and an
+ * explanation belong to their words: they stay while the tab shows those
+ * words, or none at all, in the same document, and go when the tab shows
+ * other words, another document, or nothing at all.
  */
 export function usePanelConnection(): PanelHandle {
     const [connected, setConnected] = useState(false);
@@ -139,17 +157,25 @@ export function usePanelConnection(): PanelHandle {
                     }
                     const current = previous[tabId] ?? EMPTY_TAB_STATE;
                     const words = selectionWords(selection);
-                    const keepsOutcome =
-                        current.outcome !== null &&
+                    const keeps = (picked: readonly string[] | undefined) =>
+                        picked !== undefined &&
                         continues(current.selection, selection) &&
-                        (words.length === 0 ||
-                            sameWords(words, current.outcome.words));
+                        (words.length === 0 || sameWords(words, picked));
                     return {
                         ...previous,
                         [tabId]: {
                             ...current,
                             selection,
-                            outcome: keepsOutcome ? current.outcome : null,
+                            lookup: keeps(
+                                current.lookup?.entries.map(
+                                    (entry) => entry.word
+                                )
+                            )
+                                ? current.lookup
+                                : null,
+                            explanation: keeps(current.explanation?.words)
+                                ? current.explanation
+                                : null,
                         },
                     };
                 });
@@ -165,10 +191,10 @@ export function usePanelConnection(): PanelHandle {
         };
     }, []);
 
-    const requestRemoval = useCallback(
-        (selection: SelectionState, wordIndex: number) =>
-            connectionRef.current?.requestRemoval(selection, wordIndex) ??
-            Promise.resolve<RemovalStatus>('rejected'),
+    const requestEdit = useCallback(
+        (selection: SelectionState, wordIndex: number, op: SelectionEditOp) =>
+            connectionRef.current?.requestEdit(selection, wordIndex, op) ??
+            Promise.resolve<EditStatus>('rejected'),
         []
     );
 
@@ -181,6 +207,6 @@ export function usePanelConnection(): PanelHandle {
                 ? EMPTY_TAB_STATE
                 : (tabs[activeTabId] ?? EMPTY_TAB_STATE),
         updateTab,
-        requestRemoval,
+        requestEdit,
     };
 }

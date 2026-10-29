@@ -59,6 +59,13 @@ function fakePort() {
 
 const BINDING = { registrationId: 1, tabId: 12, windowId: 3 };
 
+/** Words: hola 0, mi 1, amigo 2. */
+const LINE = {
+    text: 'hola mi amigo',
+    language: 'es',
+    translation: 'hello my friend',
+};
+
 const SELECTION = {
     session: 'doc-1:1',
     selectionOwnerGeneration: 1,
@@ -69,7 +76,65 @@ const SELECTION = {
         { wordIndex: 0, word: 'hola' },
         { wordIndex: 2, word: 'amigo' },
     ],
+    line: LINE,
 };
+
+const LOOKUP = {
+    translation: 'hello friend',
+    entries: [
+        {
+            term: 'amigo',
+            from: null,
+            type: 'noun',
+            senses: ['friend, pal'],
+        },
+    ],
+    source: 'google',
+};
+
+const ANSWER = {
+    success: true,
+    answer: {
+        meaning: 'A friendly greeting',
+        register: 'casual',
+        examples: [{ text: 'Hola amigo, ¿qué tal?', translation: 'Hi friend' }],
+        similar: ['hola compa'],
+        tip: 'Use it with friends.',
+    },
+};
+
+/**
+ * The background, by action: lookups and explanations. A reply is a value,
+ * or a function that produces one per request.
+ */
+function background(replies: { lookup?: unknown; analyze?: unknown } = {}) {
+    const reply = (value: unknown, fallback: unknown) =>
+        Promise.resolve(
+            typeof value === 'function'
+                ? (value as () => unknown)()
+                : (value ?? fallback)
+        );
+    return vi
+        .spyOn(browser.runtime, 'sendMessage')
+        .mockImplementation((message: unknown) => {
+            const { action } = message as { action: string };
+            return (
+                action === 'lookupWords'
+                    ? reply(replies.lookup, LOOKUP)
+                    : action === 'analyzeContext'
+                      ? reply(replies.analyze, ANSWER)
+                      : Promise.resolve(undefined)
+            ) as never;
+        });
+}
+
+function sent(send: ReturnType<typeof background>, action: string) {
+    return send.mock.calls
+        .map(([message]) => message as unknown as Record<string, unknown>)
+        .filter((message) => message.action === action);
+}
+
+const word = (name: string) => screen.getByRole('button', { name });
 
 async function renderBound() {
     const fake = fakePort();
@@ -78,7 +143,7 @@ async function renderBound() {
         { id: 12, windowId: 3 },
     ] as never);
     render(<SidePanelApp />);
-    await screen.findByRole('heading', { level: 1, name: 'AI Analysis' });
+    await screen.findByText('DualSub');
     await waitFor(() => expect(fake.posted).toHaveLength(1));
     expect(fake.posted[0]).toMatchObject({
         action: 'sidePanelRegister',
@@ -89,7 +154,8 @@ async function renderBound() {
         action: 'sidePanelSelectionSync',
         data: { binding: BINDING, selection: SELECTION },
     });
-    await screen.findByText('hola');
+    await screen.findByRole('button', { name: 'hola' });
+    await screen.findByRole('button', { name: 'Explain with AI' });
     return fake;
 }
 
@@ -121,16 +187,6 @@ function settled(): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-const ANSWER = {
-    success: true,
-    result: {
-        analysis: { definition: 'A friendly greeting' },
-        contextType: 'cultural',
-        contextTypes: ['cultural'],
-        isStructured: true,
-    },
-};
-
 beforeAll(() => {
     installExtensionRuntimeIdentity();
 });
@@ -152,10 +208,14 @@ beforeEach(async () => {
             )
         )
     );
+    vi.spyOn(browser.tabs, 'get').mockResolvedValue({
+        id: 12,
+        url: 'https://www.netflix.com/watch/81234567',
+    } as never);
     await configService.setMultiple({
         uiLanguage: 'en',
-        aiContextEnabled: true,
-        aiContextTypes: ['cultural'],
+        aiContextTypes: ['linguistic'],
+        aiContextProvider: 'gemini',
         targetLanguage: 'en',
     });
 });
@@ -167,15 +227,15 @@ afterEach(() => {
 });
 
 describe('SidePanelApp', () => {
-    it('shows the bound tab selection as removable word tags', async () => {
+    it('shows the line with the picked words pressed, and asks content to change them', async () => {
+        background();
         const fake = await renderBound();
-        expect(
-            screen.getAllByRole('listitem').map((item) => item.textContent)
-        ).toEqual(['hola×', 'amigo×']);
+        expect(word('hola')).toHaveAttribute('aria-pressed', 'true');
+        expect(word('mi')).toHaveAttribute('aria-pressed', 'false');
+        expect(screen.getByText('hello my friend')).toBeInTheDocument();
+        expect(screen.getByText('Spanish → English')).toBeInTheDocument();
 
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Remove amigo at position 2' })
-        );
+        fireEvent.click(word('amigo'));
         await waitFor(() => expect(fake.posted).toHaveLength(2));
         expect(fake.posted[1]).toEqual({
             action: 'sidePanelUpdateState',
@@ -186,10 +246,12 @@ describe('SidePanelApp', () => {
                 selectionRevision: 2,
                 renderRevision: 1,
                 wordIndex: 2,
+                op: 'remove',
             },
         });
         // Nothing changes until content republishes without the word.
-        expect(screen.getAllByRole('listitem')).toHaveLength(2);
+        expect(word('amigo')).toHaveAttribute('aria-pressed', 'true');
+        expect(word('mi')).toBeDisabled();
         fake.emit({
             action: 'sidePanelSelectionSync',
             data: {
@@ -212,74 +274,156 @@ describe('SidePanelApp', () => {
             },
         });
         await waitFor(() =>
-            expect(screen.getAllByRole('listitem')).toHaveLength(1)
+            expect(word('amigo')).toHaveAttribute('aria-pressed', 'false')
         );
+        fireEvent.click(word('mi'));
+        await waitFor(() => expect(fake.posted).toHaveLength(3));
+        expect(fake.posted[2]!.data).toMatchObject({
+            wordIndex: 1,
+            op: 'add',
+            selectionRevision: 3,
+        });
     });
 
-    it('analyzes the selected words and renders the structured answer', async () => {
+    it('looks up the picked words: their translation and dictionary entries', async () => {
+        const send = background();
         await renderBound();
-        const send = vi
-            .spyOn(browser.runtime, 'sendMessage')
-            .mockResolvedValue({
-                success: true,
-                result: {
-                    analysis: {
-                        definition: 'A friendly greeting',
-                        cultural_context: { origins: 'Spain' },
-                    },
-                    contextType: 'cultural',
-                    contextTypes: ['cultural'],
-                    isStructured: true,
-                },
-            } as never);
-
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         expect(
-            await screen.findByRole('heading', {
-                level: 2,
-                name: 'Results for "hola, amigo"',
-            })
+            await screen.findByRole('heading', { level: 2, name: 'hola amigo' })
         ).toBeInTheDocument();
-        expect(send).toHaveBeenCalledWith(
-            expect.objectContaining({
+        expect(await screen.findByText('hello friend')).toBeInTheDocument();
+        expect(screen.getByText('friend, pal')).toBeInTheDocument();
+        expect(screen.getByText('noun')).toBeInTheDocument();
+        expect(screen.getByText('From Google Translate')).toBeInTheDocument();
+        expect(sent(send, 'lookupWords')).toEqual([
+            {
+                action: 'lookupWords',
+                text: 'hola amigo',
+                language: 'es',
+                targetLanguage: 'en',
+            },
+        ]);
+    });
+
+    it('says when the dictionary has nothing for the picked words', async () => {
+        background({
+            lookup: { translation: 'hello friend', entries: [], source: null },
+        });
+        await renderBound();
+        expect(
+            await screen.findByText(
+                'No dictionary entry for these words together.'
+            )
+        ).toBeInTheDocument();
+    });
+
+    it('explains the picked words in their line only when asked', async () => {
+        const send = background();
+        await renderBound();
+        await screen.findByText('hello friend');
+        expect(sent(send, 'analyzeContext')).toHaveLength(0);
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
+        );
+        expect(
+            await screen.findByText('A friendly greeting')
+        ).toBeInTheDocument();
+        expect(sent(send, 'analyzeContext')).toEqual([
+            {
                 action: 'analyzeContext',
                 text: 'hola amigo',
-                contextTypes: ['cultural'],
-                contextType: 'cultural',
+                line: 'hola mi amigo',
+                language: 'es',
+                contextTypes: ['linguistic'],
                 targetLanguage: 'en',
-            })
-        );
-        expect(screen.getByText('A friendly greeting')).toBeInTheDocument();
-        expect(screen.getByText('Spain')).toBeInTheDocument();
+            },
+        ]);
+        expect(screen.getByText('Casual')).toBeInTheDocument();
+        expect(screen.getByText('Hi friend')).toBeInTheDocument();
+        expect(screen.getByText('hola compa')).toBeInTheDocument();
+        expect(screen.getByText('Use it with friends.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Written by Google Gemini. It can make mistakes.')
+        ).toBeInTheDocument();
     });
 
-    it('shows the background reason when analysis fails and allows a retry', async () => {
+    it('walks through adding a key when there is none, then explains', async () => {
+        let keyed = false;
+        const send = background({
+            analyze: () =>
+                keyed ? ANSWER : { success: false, reason: 'setup' },
+        });
         await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({
-            success: false,
-            error: 'OpenAI API key not configured',
-            shouldRetry: false,
-        } as never);
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
-        expect(await screen.findByRole('alert')).toHaveTextContent(
-            'OpenAI API key not configured'
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+        expect(
+            await screen.findByRole('heading', {
+                name: 'Add a key to explain with AI',
+            })
+        ).toBeInTheDocument();
+        const check = screen.getByRole('button', { name: 'Check and explain' });
+        expect(check).toBeDisabled();
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: ' AIza-test ' },
+        });
+        keyed = true;
+        fireEvent.click(check);
+        expect(
+            await screen.findByText('A friendly greeting')
+        ).toBeInTheDocument();
+        expect(await fakeBrowser.storage.local.get('geminiApiKey')).toEqual({
+            geminiApiKey: 'AIza-test',
+        });
+        expect(sent(send, 'analyzeContext')).toHaveLength(2);
+    });
+
+    it('says a refused key was refused, and closes the guide on request', async () => {
+        background({ analyze: { success: false, reason: 'auth' } });
+        await renderBound();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'That key didn’t work. Check it, or get a new one.'
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+        expect(
+            await screen.findByRole('button', { name: 'Explain with AI' })
+        ).toBeEnabled();
+    });
+
+    it('offers to try again when the AI service did not answer', async () => {
+        const send = background({
+            analyze: { success: false, reason: 'failed' },
+        });
+        await renderBound();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'The AI service didn’t answer.'
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+        await waitFor(() =>
+            expect(sent(send, 'analyzeContext')).toHaveLength(2)
+        );
     });
 
     it('keeps the words and the answer when the panel rebinds to another tab and back', async () => {
+        background();
         const fake = await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
-            ANSWER as never
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         await screen.findByText('A friendly greeting');
 
         await switchTab(fake, 2, 13);
         await waitFor(() =>
             expect(screen.queryByText('A friendly greeting')).toBeNull()
         );
-        expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+        expect(screen.queryByRole('button', { name: 'hola' })).toBeNull();
 
         // Content republishes the same words. A worker restart in between
         // would mint a new owner generation; the words say it is the same
@@ -295,27 +439,25 @@ describe('SidePanelApp', () => {
         expect(
             await screen.findByText('A friendly greeting')
         ).toBeInTheDocument();
-        expect(screen.getAllByRole('listitem')).toHaveLength(2);
+        expect(word('hola')).toHaveAttribute('aria-pressed', 'true');
     });
 
-    it('finishes an analysis into its tab while the user is on another tab', async () => {
-        const fake = await renderBound();
+    it('finishes an explanation into its tab while the user is on another tab', async () => {
         let answer: (value: unknown) => void = () => undefined;
-        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(
-            () =>
+        background({
+            analyze: () =>
                 new Promise((resolve) => {
                     answer = resolve;
-                }) as never
+                }),
+        });
+        const fake = await renderBound();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
-        await screen.findByText('Analyzing...', { selector: 'p' });
+        await screen.findByRole('status');
 
         await switchTab(fake, 2, 13);
-        await waitFor(() =>
-            expect(
-                screen.queryByText('Analyzing...', { selector: 'p' })
-            ).toBeNull()
-        );
+        await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
         answer(ANSWER);
 
         const binding = await switchTab(fake, 3, 12);
@@ -329,15 +471,14 @@ describe('SidePanelApp', () => {
         expect(
             await screen.findByText('A friendly greeting')
         ).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Analyze/ })).toBeEnabled();
     });
 
-    it('keeps the answer when the line moves on and drops it for new words', async () => {
+    it('keeps the lookup and answer, read only, when the line moves on, and drops them for new words', async () => {
+        background();
         const fake = await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
-            ANSWER as never
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         await screen.findByText('A friendly greeting');
 
         fake.emit({
@@ -350,12 +491,12 @@ describe('SidePanelApp', () => {
                     renderRevision: 2,
                     reason: 'subtitle-change',
                     entries: [],
+                    line: null,
                 },
             },
         });
-        await waitFor(() =>
-            expect(screen.queryAllByRole('listitem')).toHaveLength(0)
-        );
+        await waitFor(() => expect(word('hola')).toBeDisabled());
+        expect(word('hola')).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByText('A friendly greeting')).toBeInTheDocument();
 
         fake.emit({
@@ -366,38 +507,40 @@ describe('SidePanelApp', () => {
                     ...SELECTION,
                     selectionRevision: 4,
                     renderRevision: 2,
-                    entries: [{ wordIndex: 1, word: 'adios' }],
+                    entries: [{ wordIndex: 1, word: 'mi' }],
                 },
             },
         });
-        await screen.findByText('adios');
+        await waitFor(() =>
+            expect(word('mi')).toHaveAttribute('aria-pressed', 'true')
+        );
         expect(screen.queryByText('A friendly greeting')).toBeNull();
     });
 
     it('forgets a tab whose page navigates away', async () => {
+        background();
         const fake = await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
-            ANSWER as never
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         await screen.findByText('A friendly greeting');
 
         fake.emit({
             action: 'sidePanelSelectionSync',
             data: { binding: BINDING, selection: null },
         });
-        await waitFor(() =>
-            expect(screen.queryByText('A friendly greeting')).toBeNull()
-        );
-        expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+        expect(
+            await screen.findByText('Click any word in the subtitles')
+        ).toBeInTheDocument();
+        expect(screen.queryByText('A friendly greeting')).toBeNull();
     });
 
-    it('keeps the answer when the same words are selected again', async () => {
+    it('brings the lookup and answer back when the same words are picked again', async () => {
+        const send = background();
         const fake = await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
-            ANSWER as never
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         await screen.findByText('A friendly greeting');
 
         fake.emit({
@@ -412,6 +555,9 @@ describe('SidePanelApp', () => {
                 },
             },
         });
+        await waitFor(() =>
+            expect(screen.queryByText('A friendly greeting')).toBeNull()
+        );
         fake.emit({
             action: 'sidePanelSelectionSync',
             data: {
@@ -419,18 +565,18 @@ describe('SidePanelApp', () => {
                 selection: { ...SELECTION, selectionRevision: 4 },
             },
         });
-        await waitFor(() =>
-            expect(screen.getAllByRole('listitem')).toHaveLength(2)
-        );
-        expect(screen.getByText('A friendly greeting')).toBeInTheDocument();
+        expect(
+            await screen.findByText('A friendly greeting')
+        ).toBeInTheDocument();
+        expect(sent(send, 'lookupWords')).toHaveLength(1);
     });
 
     it('forgets a tab that comes back with nothing to show', async () => {
+        background();
         const fake = await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
-            ANSWER as never
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         await screen.findByText('A friendly greeting');
 
         await switchTab(fake, 2, 13);
@@ -445,15 +591,14 @@ describe('SidePanelApp', () => {
         await waitFor(() =>
             expect(screen.queryByText('A friendly greeting')).toBeNull()
         );
-        expect(screen.queryAllByRole('listitem')).toHaveLength(0);
     });
 
     it('drops the answer when the tab shows another document', async () => {
+        background();
         const fake = await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
-            ANSWER as never
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         await screen.findByText('A friendly greeting');
 
         fake.emit({
@@ -465,7 +610,9 @@ describe('SidePanelApp', () => {
                     session: 'doc-2:1',
                     selectionOwnerGeneration: 2,
                     selectionRevision: 1,
+                    reason: 'subtitle-change',
                     entries: [],
+                    line: null,
                 },
             },
         });
@@ -474,67 +621,49 @@ describe('SidePanelApp', () => {
         );
     });
 
-    it('shows an answer only in the language it was made for', async () => {
+    it('shows an answer only under the AI settings it was made with', async () => {
+        background();
         await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
-            ANSWER as never
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         await screen.findByText('A friendly greeting');
 
-        await configService.setMultiple({ targetLanguage: 'ja' });
+        await configService.setMultiple({ geminiModel: 'gemini-other' });
         await waitFor(() =>
             expect(screen.queryByText('A friendly greeting')).toBeNull()
         );
-        await configService.setMultiple({ targetLanguage: 'en' });
+        await configService.setMultiple({ geminiModel: 'gemini-3.5-flash' });
         expect(
             await screen.findByText('A friendly greeting')
         ).toBeInTheDocument();
     });
 
-    it('hides the answer while the analysis settings differ from its own', async () => {
+    it('hides a failure from earlier AI settings', async () => {
+        background({ analyze: { success: false, reason: 'failed' } });
         await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
-            ANSWER as never
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
-        await screen.findByText('A friendly greeting');
-
-        await configService.setMultiple({ aiContextEnabled: false });
-        await waitFor(() =>
-            expect(screen.queryByText('A friendly greeting')).toBeNull()
-        );
-        await configService.setMultiple({ aiContextEnabled: true });
-        expect(
-            await screen.findByText('A friendly greeting')
-        ).toBeInTheDocument();
-    });
-
-    it('hides an error produced under previous analysis settings', async () => {
-        await renderBound();
-        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({
-            success: false,
-            error: 'OpenAI API key not configured',
-            shouldRetry: false,
-        } as never);
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
         await screen.findByRole('alert');
 
-        await configService.setMultiple({ aiContextProvider: 'gemini' });
+        await configService.setMultiple({ aiContextProvider: 'openai' });
         await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
     });
 
     it('drops a request when the tab moves to another session with the same words', async () => {
-        const fake = await renderBound();
         let answer: (value: unknown) => void = () => undefined;
-        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(
-            () =>
+        background({
+            analyze: () =>
                 new Promise((resolve) => {
                     answer = resolve;
-                }) as never
+                }),
+        });
+        const fake = await renderBound();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
-        await screen.findByText('Analyzing...', { selector: 'p' });
+        await screen.findByRole('status');
 
         fake.emit({
             action: 'sidePanelSelectionSync',
@@ -547,22 +676,20 @@ describe('SidePanelApp', () => {
                 },
             },
         });
-        await waitFor(() =>
-            expect(
-                screen.queryByText('Analyzing...', { selector: 'p' })
-            ).toBeNull()
-        );
+        await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
         answer(ANSWER);
         await waitFor(() =>
             expect(
-                screen.getByRole('button', { name: /Analyze/ })
+                screen.getByRole('button', { name: 'Explain with AI' })
             ).toBeEnabled()
         );
         expect(screen.queryByText('A friendly greeting')).toBeNull();
     });
 
     it('keeps actions disabled until the background confirms what the tab shows', async () => {
+        background();
         const fake = await renderBound();
+        await screen.findByText('hello friend');
         await switchTab(fake, 2, 13);
         fake.emit({ action: 'tabActivated', data: { tabId: 12, windowId: 3 } });
         await waitFor(() =>
@@ -573,8 +700,10 @@ describe('SidePanelApp', () => {
         );
         // The remembered words are back on screen; nothing may act on
         // them until the background says they are what the tab shows.
-        expect(screen.getAllByRole('listitem')).toHaveLength(2);
-        expect(screen.getByRole('button', { name: /Analyze/ })).toBeDisabled();
+        expect(word('hola')).toBeDisabled();
+        expect(
+            screen.getByRole('button', { name: 'Explain with AI' })
+        ).toBeDisabled();
         const binding = { registrationId: 3, tabId: 12, windowId: 3 };
         fake.emit({ action: 'sidePanelBindingConfirmed', data: binding });
         fake.emit({
@@ -582,21 +711,85 @@ describe('SidePanelApp', () => {
             data: { binding, selection: null },
         });
         await settled();
-        expect(screen.getByRole('button', { name: /Analyze/ })).toBeDisabled();
+        expect(
+            screen.getByRole('button', { name: 'Explain with AI' })
+        ).toBeDisabled();
         fake.emit({
             action: 'sidePanelSelectionSync',
             data: { binding, selection: SELECTION },
         });
         await waitFor(() =>
             expect(
-                screen.getByRole('button', { name: /Analyze/ })
+                screen.getByRole('button', { name: 'Explain with AI' })
             ).toBeEnabled()
         );
+        expect(word('hola')).toBeEnabled();
     });
 
-    it('keeps the analyze action disabled while the feature is off', async () => {
-        await configService.setMultiple({ aiContextEnabled: false });
+    it('asks for a video on a site DualSub does not work on', async () => {
+        vi.mocked(browser.tabs.get).mockResolvedValue({ id: 12 } as never);
+        background();
+        const fake = fakePort();
+        vi.spyOn(browser.runtime, 'connect').mockReturnValue(
+            fake.port as never
+        );
+        vi.spyOn(browser.tabs, 'query').mockResolvedValue([
+            { id: 12, windowId: 3 },
+        ] as never);
+        render(<SidePanelApp />);
+        expect(
+            await screen.findByText('Open a video on Netflix or Disney+')
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('link', { name: 'Open Netflix' })
+        ).toBeInTheDocument();
+    });
+
+    it('names no languages once the tab leaves the video, even with a lookup kept', async () => {
+        background();
+        const fake = await renderBound();
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 3,
+                    renderRevision: 2,
+                    reason: 'subtitle-change',
+                    entries: [],
+                    line: null,
+                },
+            },
+        });
+        await waitFor(() => expect(word('hola')).toBeDisabled());
+
+        vi.mocked(browser.tabs.get).mockResolvedValue({
+            id: 12,
+            url: 'https://www.example.com/',
+        } as never);
+        await fakeBrowser.tabs.onUpdated.trigger(
+            12,
+            { url: 'https://www.example.com/' },
+            { id: 12 } as never
+        );
+        expect(
+            await screen.findByText('Open a video on Netflix or Disney+')
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Spanish → English')).toBeNull();
+    });
+
+    it('opens help and the Meanings settings from the footer', async () => {
+        background();
+        const create = vi
+            .spyOn(browser.tabs, 'create')
+            .mockResolvedValue({} as never);
         await renderBound();
-        expect(screen.getByRole('button', { name: /Analyze/ })).toBeDisabled();
+        fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+        expect(create.mock.calls.map(([options]) => options.url)).toEqual([
+            expect.stringMatching(/options\.html#help$/),
+            expect.stringMatching(/options\.html#explanations$/),
+        ]);
     });
 });

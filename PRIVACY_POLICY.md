@@ -1,10 +1,10 @@
 # Privacy Policy for DualSub
 
-**Last updated:** October 17, 2026
+**Last updated:** October 29, 2026
 
 ## Overview
 
-DualSub is an open-source Chrome extension that displays translated subtitles on Netflix and Disney+ and, when enabled, can analyze selected subtitle text with an AI provider. DualSub does not operate a developer-owned analytics or data-collection server. This policy describes what Chrome stores and what the extension sends directly to third-party providers to deliver the features you request.
+DualSub is an open-source Chrome extension that displays translated subtitles on Netflix and Disney+, looks up the subtitle words you click, and, with your own key, can explain them with an AI provider. DualSub does not operate a developer-owned analytics or data-collection server. This policy describes what Chrome stores and what the extension sends directly to third-party providers to deliver the features you request.
 
 ## Data stored by the extension
 
@@ -13,14 +13,14 @@ DualSub uses the Chrome extension storage APIs:
 - Most non-sensitive preferences, such as languages, subtitle layout, provider choice, and side-panel behavior, use `chrome.storage.sync`. Chrome may synchronize these preferences to other Chrome browsers signed in to the same profile.
 - Provider credentials (`deeplApiKey`, OpenAI-compatible and AI-context API keys, Gemini API keys, and Vertex access tokens) use `chrome.storage.local`, so DualSub does not sync them between devices. Chrome extension local storage is not an encrypted secret vault; protect access to your browser profile and remove credentials in Options when no longer needed.
 - A Vertex service-account JSON file is used once in memory to obtain a short-lived access token. The service-account private key is not persisted. Upgrades remove the legacy stored-key value if an older version created one.
-- Translation and AI-context results may be held temporarily in the extension service worker's in-memory caches to reduce repeated requests. These bounded, time-limited caches are not sent to DualSub's developers and disappear when the worker/browser state is discarded.
+- Translation, word lookup, and AI explanation results may be held temporarily in the extension service worker's in-memory caches to reduce repeated requests. These bounded, time-limited caches are not sent to DualSub's developers and disappear when the worker/browser state is discarded.
 - When the translation service you chose fails in a lasting way (a rejected key, a used-up quota, or refused requests), DualSub keeps a short record of it in `chrome.storage.session`: which service, which kind of problem, which service covered meanwhile, and when. It holds no subtitle text or credentials, stays on this device, and is cleared when that service works again, its settings change, or the browser session ends.
 
 Uninstalling the extension or clearing its extension data removes its stored settings and credentials. Synced preference removal is also subject to Chrome Sync behavior.
 
 ## Data sent to third-party providers
 
-DualSub sends only the content needed for the selected feature directly from your browser to the provider you choose.
+DualSub sends only the content needed for the feature you use, directly from your browser to the services named below.
 
 To display subtitles, the extension downloads subtitle manifests and files from the streaming services' delivery networks. Netflix currently serves these files from `*.nflxvideo.net`, and Disney+ currently serves them from `*.media.dssott.com`. These requests retrieve the subtitle data already associated with the video you are watching; they are not sent to DualSub's developers.
 
@@ -36,15 +36,21 @@ The selected provider receives subtitle text plus source/target language codes:
 
 The removed unofficial DeepL scraping/MyMemory fallback is not part of the extension.
 
-### AI context analysis
+### Word lookup
 
-AI context is disabled by default. When you enable it and request analysis, the configured OpenAI or Google Gemini endpoint receives:
+Subtitle words can be clicked to look them up. This is on by default, and "Look up words when I click them" in the Meanings section of Options turns it off. Nothing is sent until you click a word. When you do:
 
-- the subtitle words or phrase you selected;
-- the context types you selected (cultural, historical, and/or linguistic);
-- language information and limited surrounding subtitle context used to interpret the selection.
+- your translation provider receives the words you picked and their language, as for subtitle text above;
+- Google's dictionary (`translate.googleapis.com`) receives the same words and language codes, whichever translation provider you chose and even with the fallback turned off;
+- when Google has no entry, Wikimedia's Wiktionary (`en.wiktionary.org`) receives the word, and, for a word Wiktionary lists as a form of another, that other word. Its English definitions then go to your translation provider to be translated.
 
-DualSub does not send AI-context requests until you enable the feature, configure the provider, and select subtitle text.
+### AI explanations
+
+AI explanations need your own OpenAI or Google Gemini key; without one, nothing is sent. Only when you press "Explain with AI" in the side panel, the configured OpenAI-compatible or Gemini endpoint receives:
+
+- the subtitle words you picked and the subtitle line they appear in;
+- the kinds of explanation you chose (meaning and use, culture, and/or history);
+- the line's language and your translation language.
 
 ### Custom endpoints
 
@@ -56,8 +62,8 @@ The current Manifest V3 extension requests:
 
 - `storage` to save preferences and device-local credentials, and for the browser session, the record of a failing translation service;
 - `activeTab` to interact with the active supported streaming tab after a user action;
-- `sidePanel` to show AI analysis in Chrome's side panel;
-- host access for Netflix and Disney+ pages, their narrow subtitle-delivery hosts, and the built-in translation/AI API hosts listed in `manifest.json`;
+- `sidePanel` to show the meaning of the words you click, and AI explanations, in Chrome's side panel;
+- host access for Netflix and Disney+ pages, their narrow subtitle-delivery hosts, and the built-in translation/AI API hosts listed in `manifest.json` (Wiktionary needs none: it answers any site and DualSub sends it no cookies);
 - optional host access for a custom provider only after the user grants that origin.
 
 DualSub does not request the `scripting` permission.
@@ -70,6 +76,7 @@ DualSub's developers do not receive or sell your subtitle text, settings, creden
 - [Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement)
 - [DeepL Privacy Policy](https://www.deepl.com/privacy)
 - [OpenAI Privacy Policy](https://openai.com/privacy)
+- [Wikimedia Foundation Privacy Policy](https://foundation.wikimedia.org/wiki/Policy:Privacy_policy)
 
 For a custom OpenAI-compatible endpoint, consult the endpoint operator directly.
 
@@ -77,7 +84,7 @@ For a custom OpenAI-compatible endpoint, consult the endpoint operator directly.
 
 You can:
 
-- disable subtitle translation or AI context analysis;
+- turn off subtitle translation or word lookup, and remove your AI key to stop AI explanations;
 - change providers at any time;
 - remove API keys and tokens in Options;
 - revoke optional site access in Chrome's extension settings;

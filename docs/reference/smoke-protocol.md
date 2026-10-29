@@ -71,16 +71,29 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 
 ## Side panel
 
-11. Turn on Word explanations. Click a subtitle word: the panel opens, the
-    word is highlighted, and playback pauses when auto-pause is on.
-12. Click several words, remove one from the panel: the removal shows only
-    after the subtitle highlight drops it.
+11. On a clean profile, click a subtitle word: the panel opens with the
+    DualSub header and the language pair, the word is highlighted in the
+    panel's copy of the line, its translation and a dictionary entry show
+    with their source named, and playback pauses when auto-pause is on.
+    Click the video: it plays on. Turn off "Look up words when I click
+    them" in Meanings: subtitle words stop being clickable at once.
+12. Click several words, then in the panel's line click a new word to add
+    it and a picked one to remove it: each change shows in the panel only
+    after the subtitle highlight follows, and the meaning follows the new
+    words. Remove the last word: the line stays, and a word can be clicked
+    back in.
 13. Switch tabs in the same window and back: the panel follows the active
-    tab and restores its selection.
+    tab and restores its words, meaning, and explanation. On a tab that is
+    not Netflix or Disney+, the panel says to open a video there. Set Panel
+    colors to Dark: the panel follows.
 14. Kill the service worker with the panel open: the panel reconnects and
     the selection is republished.
-15. Analyze: a result renders; turn Word explanations off in the settings
-    page while a request is in flight: no result appears afterwards.
+15. Without a key, press "Explain with AI": the key steps open in the
+    panel. Paste a wrong key and press "Check and explain": the panel says
+    the key didn't work. Paste a working one: the explanation shows, with
+    the sections "What to explain" asks for. Remove the key in the settings
+    page while a request is in flight: no answer appears, and the key steps
+    open again.
 
 ## Settings and locale
 
@@ -112,6 +125,6 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 20. Set up AI translation with a Google Gemini key, then choose OpenAI:
     the key field empties, Start says AI translation isn't set up yet,
     and no request goes to api.openai.com. Choose Google Gemini again:
-    the key is back. With an OpenAI key in Word explanations, save a
-    backup, change its `openaiBaseUrl` to another host, and load it: Word
-    explanations asks for a key again.
+    the key is back. With an OpenAI key under Explain with AI in Meanings,
+    save a backup, change its `openaiBaseUrl` to another host, and load it:
+    Meanings asks for a key again.

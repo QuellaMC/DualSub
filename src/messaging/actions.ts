@@ -4,6 +4,7 @@ export const MessageActions = {
     TRANSLATE: 'translate',
     FETCH_VTT: 'fetchVTT',
     ANALYZE_CONTEXT: 'analyzeContext',
+    LOOKUP_WORDS: 'lookupWords',
     PING: 'ping',
     CHECK_BACKGROUND_READY: 'checkBackgroundReady',
     PLAYER_STATUS: 'playerStatus',

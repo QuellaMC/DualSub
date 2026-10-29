@@ -26,7 +26,8 @@ const LEGACY_DEFAULT_FONT_SIZE_VW = 1.1;
 // retirements: the modal-vs-panel toggle, the legacy half of the
 // useNativeSubtitles/useOfficialTranslations dual key, the
 // viewport-relative font size that subtitleFontScale replaced in 3.1, the
-// debug flag nothing read, and the popup's appearance fold-out.
+// debug flag nothing read, the popup's appearance fold-out, and the word
+// explanations switch that a saved key replaced.
 const RETIRED_SYNC_KEYS = [
     'translationBatchSize',
     'maxConcurrentBatches',
@@ -61,6 +62,7 @@ const RETIRED_SYNC_KEYS = [
     'useNativeSubtitles',
     'subtitleFontSize',
     'appearanceAccordionOpen',
+    'aiContextEnabled',
 ];
 
 const RETIRED_LOCAL_KEYS = [

@@ -149,68 +149,8 @@
     "openaiFailedToFetchModels": {
         "message": "Failed to fetch models: %s"
     },
-    "aiContextUsage": {
-        "message": "💡 Usage & Examples"
-    },
-    "aiContextLearningTips": {
-        "message": "🎯 Learning Tips"
-    },
-    "aiContextRelatedExpressions": {
-        "message": "🔗 Related Expressions"
-    },
-    "aiContextKeyInsights": {
-        "message": "🔑 Key Insights"
-    },
     "sidepanelLoading": {
         "message": "Loading..."
-    },
-    "sidepanelTabAIAnalysis": {
-        "message": "AI Analysis"
-    },
-    "sidepanelAnalyzeButton": {
-        "message": "Analyze"
-    },
-    "sidepanelAnalyzing": {
-        "message": "Analyzing..."
-    },
-    "sidepanelWordsToAnalyze": {
-        "message": "Words to Analyze"
-    },
-    "sidepanelRemoveWordLabel": {
-        "message": "Remove %s at position %d"
-    },
-    "sidepanelWordInputPlaceholder": {
-        "message": "Click on subtitle words to add them for analysis..."
-    },
-    "sidepanelErrorRetry": {
-        "message": "Retry"
-    },
-    "sidepanelResultsTitle": {
-        "message": "Results for \"%s\""
-    },
-    "sidepanelSectionDefinition": {
-        "message": "Definition"
-    },
-    "sidepanelSectionCultural": {
-        "message": "Cultural Context"
-    },
-    "sidepanelSectionHistorical": {
-        "message": "Historical Context"
-    },
-    "sidepanelSectionLinguistic": {
-        "message": "Linguistic Analysis"
-    },
-    "sidepanelErrorNoWords": {
-        "message": "No words selected for analysis"
-    },
-    "sidepanelErrorDisabled": {
-        "message": "Word explanations are turned off. Turn them on in DualSub settings."
-    },
-    "sidepanelErrorGeneric": {
-        "message": "An error occurred during analysis."
-    },
-    "aiContextTypesRequired": {
-        "message": "Pick at least one."
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API test successful!"
@@ -238,9 +178,6 @@
     },
     "openaiHostPermissionScope": {
         "message": "Configured endpoint: %s. Chrome permission scope: %s (all paths and ports on this host)."
-    },
-    "sidepanelErrorNoContextTypes": {
-        "message": "Pick at least one thing to explain in DualSub settings."
     },
     "vertexImportSuccessEphemeral": {
         "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
@@ -416,15 +353,6 @@
     "explainSetupHelp": {
         "message": "Explanations come from an AI service, through your own account. Your key stays on this computer."
     },
-    "explainSetupTitle": {
-        "message": "Set it up in three steps"
-    },
-    "explainStatusOff": {
-        "message": "Turned off. Your key is still saved."
-    },
-    "explainNeedsSetup": {
-        "message": "Needs setup"
-    },
     "explainSetUpWith": {
         "message": "Set up with %s"
     },
@@ -440,12 +368,6 @@
     "explainAddress": {
         "message": "Address, for compatible servers"
     },
-    "explainStatusOn": {
-        "message": "Click a word in the subtitles to try it."
-    },
-    "explainStatusSetup": {
-        "message": "Finish the three steps below to turn it on."
-    },
     "explainThemeAuto": {
         "message": "Match my computer"
     },
@@ -460,12 +382,6 @@
     },
     "explainTimeout": {
         "message": "Give up after (seconds)"
-    },
-    "explainTitle": {
-        "message": "Word explanations"
-    },
-    "explainTurnOn": {
-        "message": "Turn on"
     },
     "explainTypeCulture": {
         "message": "The culture behind it"
@@ -1145,12 +1061,6 @@
     "toastEarlier": {
         "message": "Subtitles %s s earlier"
     },
-    "toastExplainOff": {
-        "message": "Word explanations are off"
-    },
-    "toastExplainOn": {
-        "message": "Word explanations are on"
-    },
     "toastFallbackOff": {
         "message": "Translations stay with your chosen service"
     },
@@ -1648,5 +1558,143 @@
     },
     "startNeedsSetupStopped": {
         "message": "Until it is, subtitles aren't translated."
+    },
+    "sidepanelLanguagePair": {
+        "message": "%s → %s"
+    },
+    "sidepanelEmptyTitle": {
+        "message": "Click any word in the subtitles"
+    },
+    "sidepanelEmptyHelp": {
+        "message": "The video pauses and the meaning shows up here. Click more words to look up a phrase, and click the video to keep watching."
+    },
+    "sidepanelElsewhereTitle": {
+        "message": "Open a video on Netflix or Disney+"
+    },
+    "sidepanelElsewhereHelp": {
+        "message": "Then click any word in the subtitles, and its meaning shows up here."
+    },
+    "sidepanelLineLabel": {
+        "message": "The subtitle line"
+    },
+    "sidepanelAddWord": {
+        "message": "Click to add this word"
+    },
+    "sidepanelRemoveWord": {
+        "message": "Click to remove this word"
+    },
+    "sidepanelInLanguage": {
+        "message": "In %s"
+    },
+    "sidepanelFormOf": {
+        "message": "a form of"
+    },
+    "sidepanelFrom": {
+        "message": "From %s"
+    },
+    "sidepanelNoEntry": {
+        "message": "No entry for this word on its own. Click the words around it to look up the whole phrase."
+    },
+    "sidepanelNoEntryPhrase": {
+        "message": "No dictionary entry for these words together."
+    },
+    "explainWithAi": {
+        "message": "Explain with AI"
+    },
+    "sidepanelExplaining": {
+        "message": "Explaining how it’s used here…"
+    },
+    "sidepanelKeyGuideTitle": {
+        "message": "Add a key to explain with AI"
+    },
+    "sidepanelNotNow": {
+        "message": "Not now"
+    },
+    "sidepanelKeyRefused": {
+        "message": "That key didn’t work. Check it, or get a new one."
+    },
+    "sidepanelCheckAndExplain": {
+        "message": "Check and explain"
+    },
+    "sidepanelAiFailed": {
+        "message": "The AI service didn’t answer."
+    },
+    "sidepanelTryAgain": {
+        "message": "Try again"
+    },
+    "sidepanelInThisLine": {
+        "message": "In this line"
+    },
+    "sidepanelExamples": {
+        "message": "Examples"
+    },
+    "sidepanelSimilar": {
+        "message": "Said the same way"
+    },
+    "sidepanelTip": {
+        "message": "Tip"
+    },
+    "sidepanelWrittenBy": {
+        "message": "Written by %s. It can make mistakes."
+    },
+    "sidepanelRegisterEveryday": {
+        "message": "Everyday"
+    },
+    "sidepanelRegisterCasual": {
+        "message": "Casual"
+    },
+    "sidepanelRegisterFormal": {
+        "message": "Formal"
+    },
+    "sidepanelRegisterSlang": {
+        "message": "Slang"
+    },
+    "sidepanelRegisterOffensive": {
+        "message": "Offensive"
+    },
+    "sidepanelWordTypeNoun": {
+        "message": "noun"
+    },
+    "sidepanelWordTypeVerb": {
+        "message": "verb"
+    },
+    "sidepanelWordTypeAdjective": {
+        "message": "adjective"
+    },
+    "sidepanelWordTypeAdverb": {
+        "message": "adverb"
+    },
+    "sidepanelWordTypePronoun": {
+        "message": "pronoun"
+    },
+    "sidepanelWordTypePreposition": {
+        "message": "preposition"
+    },
+    "sidepanelWordTypeConjunction": {
+        "message": "conjunction"
+    },
+    "sidepanelWordTypeInterjection": {
+        "message": "interjection"
+    },
+    "sidepanelWordTypeSaying": {
+        "message": "saying"
+    },
+    "explainLookupTitle": {
+        "message": "Look up words when I click them"
+    },
+    "explainLookupOn": {
+        "message": "Click a word in the subtitles to see what it means."
+    },
+    "explainLookupOff": {
+        "message": "Subtitle words can’t be clicked."
+    },
+    "toastLookupOn": {
+        "message": "Word lookup is on"
+    },
+    "toastLookupOff": {
+        "message": "Word lookup is off"
+    },
+    "searchWordsLookup": {
+        "message": "click word look up dictionary meaning translate subtitle clickable"
     }
 }

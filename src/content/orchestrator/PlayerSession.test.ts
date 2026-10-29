@@ -132,7 +132,7 @@ function startSession(
         },
         languageSettings,
         interaction: {
-            aiContextEnabled: false,
+            wordLookupEnabled: false,
             sidePanelAutoOpen: true,
             sidePanelAutoPauseVideo: true,
         },

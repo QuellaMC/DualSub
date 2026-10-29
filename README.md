@@ -20,7 +20,7 @@
 - [Features](docs/en/features.md)
 - [Supported Platforms](docs/en/platforms.md)
 - [Translation Providers](docs/en/providers.md)
-- [Word Explanations (AI Context)](docs/en/ai-context.md)
+- [Word Meanings and AI Explanations](docs/en/ai-context.md)
 - [Installation](docs/en/installation.md)
 - [Configuration](docs/en/configuration.md)
 
@@ -40,7 +40,7 @@
 
 - Dual subtitles on Netflix and Disney+
 - Multiple translation providers with rate limiting and caching
-- Word explanations through your own OpenAI or Google Gemini key
+- Click a subtitle word to see what it means, with nothing to set up; explain it with AI through your own OpenAI or Google Gemini key
 - Flexible layouts, appearance controls, and timing offset
 - Every setting on one plain-language page, with search, undo, per-site settings, and a style editor that shows the subtitles at their real size
 - Multi-language UI (EN, ES, JA, KO, ZH-CN, ZH-TW)
@@ -52,7 +52,7 @@ See details in: [features.md](docs/en/features.md), [platforms.md](docs/en/platf
 1. Install from the Chrome Web Store or load unpacked (see [installation.md](docs/en/installation.md)).
 2. A welcome page opens with your languages already picked; change the translation language there if you like.
 3. Open Netflix or Disney+ and play anything: two lines of subtitles appear, by default the video's language on top and yours underneath. A video already in your language shows one line.
-4. Optional: in the settings page's Meanings section, set up Word explanations with your own OpenAI or Gemini key.
+4. Click a word in the subtitles: the side panel shows its translation and dictionary meaning. Optional: press Explain with AI there and follow its three steps to add your own OpenAI or Gemini key.
 
 Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: [ai-context.md](docs/en/ai-context.md).
 
@@ -65,7 +65,7 @@ Translation: Microsoft Translator (free)
 Original line: Always one language, the one you are learning
 Lines: Original on top
 Text size: Large
-Word explanations: On (meaning, culture, history)
+Explain with AI: a Gemini key (meaning, culture, history)
 ```
 
 **For Speed:**
@@ -73,14 +73,14 @@ Word explanations: On (meaning, culture, history)
 ```
 Translation: Google Translate
 Pause between translation requests: 100 ms
-Word explanations: Gemini 3.5 Flash, remembering answers
+Explain with AI: Gemini 3.5 Flash, remembering answers
 ```
 
 **For Advanced Users:**
 
 ```
 Translation: AI translation through an OpenAI-compatible address
-Word explanations: OpenAI GPT-5.6 Luna
+Explain with AI: OpenAI GPT-5.6 Luna
 What to explain: All
 Most requests per minute: 60
 Detail in the browser console: Everything (debug)
@@ -157,14 +157,14 @@ DualSub 3 is a TypeScript extension built with WXT, React 19, zod, and Vitest.
 - **One session per video**: the content orchestrator keeps exactly one player session for the video on the current route, and every listener, timer, and request of a session ends with one abort signal
 - **Page bridge**: a declaratively registered main-world script reads subtitle tracks from the platform's own player and talks to the isolated world over a message channel
 - **Contract-first messaging**: every cross-context message is a zod contract; the router snapshots the payload, authenticates the sender, gates by role, and parses before a typed handler runs
-- **Background services**: a subtitle pipeline with a CDN allowlist and byte caps, a translation service with per-provider pacing and caching, a fail-closed AI context service, and a side panel authority that keeps the content script the single source of selection truth
+- **Background services**: a subtitle pipeline with a CDN allowlist and byte caps, a translation service with per-provider pacing and caching, a word lookup service (Google's dictionary, Wiktionary as the backup), a fail-closed AI explanation service, and a side panel authority that keeps the content script the single source of selection truth
 
 ### Key Components
 
 - **Platform adapters** (`src/content/platform/`): Netflix and Disney+ specifics behind one interface
 - **Translation providers** (`src/background/translation/providers/`): one error taxonomy and one pacing seam for every provider
 - **Configuration service** (`src/config/`): typed settings schema, strict reads, credentials kept device-local, idempotent migrations
-- **Side panel** (`src/ui/sidepanel/`, `src/background/sidepanel/`): selection sync with two-phase removal
+- **Side panel** (`src/ui/sidepanel/`, `src/background/sidepanel/`): selection sync with two-phase edits, adding and removing words from the panel
 
 Reference material: [audit report](docs/reference/pr62-audit-report.html), [smoke protocol](docs/reference/smoke-protocol.md), [store review notes](docs/reference/store-review-notes.md).
 
