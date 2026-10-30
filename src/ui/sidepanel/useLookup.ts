@@ -43,14 +43,18 @@ export function useLookup(
             targetLanguage,
         };
         if (shown && sameLookup(shown, wanted)) {
+            // Kept with the line's latest translation, for after it has gone.
+            if (shown.line.translation !== line.translation) {
+                updateTab(activeTabId, { lookup: { ...shown, line } });
+            }
             return;
         }
         const lookup: Lookup = { ...wanted, result: null };
         updateTab(activeTabId, { lookup });
         const settle = (result: Lookup['result']) =>
             updateTab(activeTabId, (state) =>
-                state.lookup === lookup
-                    ? { lookup: { ...lookup, result } }
+                state.lookup && sameLookup(state.lookup, lookup)
+                    ? { lookup: { ...state.lookup, result } }
                     : null
             );
         void sendWithRetry(

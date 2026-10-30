@@ -388,6 +388,26 @@ describe('SidePanelApp', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'That key didn’t work. Check it, or get a new one.'
         );
+
+        // Another service keeps the guide open, without the refusal.
+        fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.sync.get('aiContextProvider'))
+                    .aiContextProvider
+            ).toBe('openai')
+        );
+        await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+        expect(
+            screen.getByRole('heading', {
+                name: 'Add a key to explain with AI',
+            })
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Google Gemini' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'That key didn’t work. Check it, or get a new one.'
+        );
+
         fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
         expect(
             await screen.findByRole('button', { name: 'Explain with AI' })
@@ -591,6 +611,47 @@ describe('SidePanelApp', () => {
             })
         );
         expect(word('hola')).toBeDisabled();
+    });
+
+    it("keeps the line's latest translation, lookup and answer once the line has gone", async () => {
+        const send = background();
+        const fake = await renderBound();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Explain with AI' })
+        );
+        await screen.findByText('A friendly greeting');
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 3,
+                    reason: 'translation',
+                    line: { ...LINE, translation: 'hi my friend' },
+                },
+            },
+        });
+        await screen.findByText('hi my friend');
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 4,
+                    renderRevision: 2,
+                    reason: 'subtitle-change',
+                    entries: [],
+                    line: null,
+                },
+            },
+        });
+        await waitFor(() => expect(word('hola')).toBeDisabled());
+        expect(screen.getByText('hi my friend')).toBeInTheDocument();
+        expect(screen.getByText('hello friend')).toBeInTheDocument();
+        expect(screen.getByText('A friendly greeting')).toBeInTheDocument();
+        expect(sent(send, 'lookupWords')).toHaveLength(1);
     });
 
     it('forgets a tab whose page navigates away', async () => {

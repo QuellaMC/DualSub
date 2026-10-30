@@ -69,6 +69,10 @@ export function useAnalysis(
     status: SettingsStatus
 ): {
     readonly explanation: Explanation | null;
+    /** Open while the request for these words needed a key, whichever
+     *  service the viewer then picks in it; `refused` holds only for the
+     *  service whose key was turned down. */
+    readonly guide: { readonly refused: boolean } | null;
     readonly explaining: boolean;
     readonly explain: () => Promise<void>;
     readonly dismiss: () => void;
@@ -88,11 +92,13 @@ export function useAnalysis(
     ]);
     const subject = lookupSubject(tab.lookup);
     const session = tab.selection?.session ?? null;
+    const forSubject =
+        tab.explanation?.subject === subject ? tab.explanation : null;
     const explanation =
-        tab.explanation !== null &&
-        tab.explanation.configuration === configurationKey &&
-        tab.explanation.subject === subject
-            ? tab.explanation
+        forSubject?.configuration === configurationKey ? forSubject : null;
+    const guide =
+        forSubject?.failure === 'setup' || forSubject?.failure === 'auth'
+            ? { refused: explanation?.failure === 'auth' }
             : null;
 
     const invalidate = useCallback(
@@ -233,5 +239,11 @@ export function useAnalysis(
         }
     }, [activeTabId, updateTab]);
 
-    return { explanation, explaining: tab.explaining, explain, dismiss };
+    return {
+        explanation,
+        guide,
+        explaining: tab.explaining,
+        explain,
+        dismiss,
+    };
 }

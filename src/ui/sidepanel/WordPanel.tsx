@@ -115,12 +115,12 @@ export function WordPanel({ t }: { t: Translate }) {
             language={shownLookup.line.language ?? undefined}
             service={t(AI_SERVICES[service].nameKey)}
         />
-    ) : explanation?.failure === 'setup' || explanation?.failure === 'auth' ? (
+    ) : ai.guide ? (
         <KeyGuide
             t={t}
             service={service}
             openaiBaseUrl={settings?.openaiBaseUrl ?? ''}
-            refused={explanation.failure === 'auth'}
+            refused={ai.guide.refused}
             busy={explaining}
             onService={(id) => void save({ aiContextProvider: id })}
             onExplain={() => void ai.explain()}
