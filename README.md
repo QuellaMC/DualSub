@@ -4,12 +4,14 @@
   <img src="assets/images/logo1400x560.png" alt="DualSub" width="600" />
 </p>
 
-<p align="center">
-  <a href="https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj"><img src="https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome%20Web%20Store" alt="Chrome Web Store version" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey.svg" alt="License: CC BY-NC-SA 4.0" /></a>
-</p>
-
 [中文](README_zh.md)
+
+![Version](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg)
+![Last Commit](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
+![Manifest](https://img.shields.io/badge/Manifest-v3-blue.svg)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QuellaMC/DualSub)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome%20Web%20Store)](https://chrome.google.com/webstore/detail/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 
 DualSub is a Chrome extension that shows two subtitle languages at once on Netflix and Disney+: the line in the video's language, and its translation underneath. Click a word in the subtitles to see what it means. DualSub runs in Chrome 116 or later, and its interface comes in English, Spanish, Japanese, Korean, and Simplified and Traditional Chinese.
 

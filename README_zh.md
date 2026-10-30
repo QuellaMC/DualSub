@@ -4,12 +4,14 @@
   <img src="assets/images/logo1400x560.png" alt="DualSub" width="600" />
 </p>
 
-<p align="center">
-  <a href="https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj"><img src="https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome%20%E5%BA%94%E7%94%A8%E5%95%86%E5%BA%97" alt="Chrome 应用商店版本" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey.svg" alt="许可证：CC BY-NC-SA 4.0" /></a>
-</p>
-
 [English](README.md)
+
+![Version](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg)
+![Last Commit](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
+![Manifest](https://img.shields.io/badge/Manifest-v3-blue.svg)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QuellaMC/DualSub)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome插件商店)](https://chrome.google.com/webstore/detail/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 
 DualSub 是一个 Chrome 扩展，在 Netflix 和 Disney+ 上同时显示两种语言的字幕：视频语言的原文，以及下面的翻译。点一下字幕里的单词，就能看到它的意思。DualSub 需要 Chrome 116 或更高版本，界面支持英语、西班牙语、日语、韩语以及简体和繁体中文。
 
