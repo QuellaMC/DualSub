@@ -1,31 +1,37 @@
-# Translation Providers
+# Translation services
 
-DualSub supports multiple translation providers with provider-aware rate limits.
+DualSub translates subtitles with the service you choose in the settings page's **Translation** section.
 
-## Providers
+| Service                        | What it needs                                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Microsoft Translator (default) | Nothing                                                                                                    |
+| Google Translate               | Nothing                                                                                                    |
+| DeepL                          | A DeepL API key, on the Free or Pro plan                                                                   |
+| AI translation                 | The API key, address, and model of an OpenAI-compatible service                                            |
+| Google Vertex AI               | A Google Cloud project, region, and model, and an access token, pasted or made from a service-account file |
 
-- Google Translate (No key): Best-effort consumer endpoint with broad language coverage
-- Microsoft Translate (No key): Best-effort Edge translation endpoint
-- DeepL API (Free/Pro): Uses DeepL's supported API; requires an API key
-- OpenAI Compatible: Works with user-configured OpenAI-compatible endpoints; requires an API key
-- Vertex AI Gemini: Uses a Google Cloud project and short-lived access token
+Microsoft Translator and Google Translate use undocumented endpoints that can change without notice. Use a service with a key when you need a documented service contract.
 
-The no-key Google/Microsoft integrations use undocumented consumer/internal endpoints and can change without notice. Use a supported keyed provider when a documented service contract is required.
+DualSub translates each subtitle line on its own, without the lines around it. When the show has its own translation in your language, DualSub shows that instead; **Use the show's own translation** in the Languages section turns this off.
 
-## When a Provider Fails
+## When a service fails
 
-When the provider you chose stops working for good (a rejected key, a used-up quota, or a request it refuses), Microsoft Translator covers, then Google Translate, so subtitles keep coming. Your provider is tried again after ten minutes, or as soon as you change its settings. A passing outage is covered for that request only. Turn fallback off to keep subtitle text with your chosen provider alone.
+When the service you chose stops working for good (it refuses the key, the quota is used up, or it rejects the request), Microsoft Translator covers for it, then Google Translate, so subtitles keep coming. DualSub tries your service again after ten minutes, or as soon as you change its settings. A passing outage is covered for that one request only.
 
-## Request Handling
+To keep subtitle text with your chosen service alone, turn off **Keep translating if this service fails**.
 
-- Subtitle cues are translated individually by the content script.
-- The active background translation contract accepts one text per request for every provider.
+## Request pacing
 
-## Request Pacing and Worker-Local Guards (subject to change)
+Each service has a minimum pause between requests, and some also limit how much they send in a time window:
 
-- Google (free): bytes-per-window, with mandatory delays
-- Microsoft (free): one-minute worker-local character guard with mandatory pacing; it is not a durable Microsoft account quota
-- DeepL API: local request pacing only; quota truth comes from DeepL provider responses
-- OpenAI Compatible: requests-per-minute with a small mandatory delay
+- Microsoft Translator: characters per minute
+- Google Translate: bytes per few seconds
+- DeepL: the pause only; DeepL's responses report the quota
+- AI translation and Google Vertex AI: requests per minute
 
-See `src/background/translation/` for the current provider pacing and the single-text request path.
+These limits live in the extension's service worker and start over when it restarts; they are not your account's quota. With advanced options shown, **Pause between translation requests** lengthens the pause for every service.
+
+## Problems
+
+- **Translations stop or come from another service**: the Translation section and the popup name the failing service, the problem, and the service covering for it. Check its key, plan, or address, or choose another service.
+- **The service complains about too many requests**: raise **Pause between translation requests**.

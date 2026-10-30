@@ -1,123 +1,35 @@
 # Installation
 
-### Prerequisites
+DualSub runs in Chrome 116 or later and in other Chromium browsers that support Chrome extensions.
 
-- Google Chrome or Chromium-based browser (latest version recommended)
-- Internet connection (for translation providers, word lookup, and AI explanations)
-- For development only: Node.js 24 LTS and npm 11+
+## From the Chrome Web Store
 
----
+1. Open [DualSub in the Chrome Web Store](https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj) and press **Add to Chrome**.
+2. A welcome page opens with your languages already picked. Change the translation language there if you like.
+3. Optional: open the puzzle-piece menu in Chrome's toolbar and pin DualSub.
 
-## Option 1: Install from Chrome Web Store (Recommended for most users)
+Chrome keeps DualSub up to date. To turn it off or remove it, open `chrome://extensions`.
 
-1. Open the listing: [Chrome Web Store](https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
-2. Click Add to Chrome → Add extension
-3. A welcome page opens with your languages already picked; change the language your subtitles are translated into there if you like
-4. Pin DualSub (optional): click the puzzle icon in Chrome’s toolbar and pin DualSub for quick access
+## From a release ZIP
 
-### Verify
+1. Download the latest `dualsub-v<version>.zip` from [GitHub Releases](https://github.com/QuellaMC/DualSub/releases) and extract it.
+2. Open `chrome://extensions` and turn on **Developer mode**.
+3. Press **Load unpacked** and select the extracted folder.
 
-1. Visit Netflix or Disney+
-2. Play any video: two lines of subtitles appear, by default the video's language on top and yours underneath; a video already in your language shows one line
-3. Click the DualSub icon to turn dual subtitles off or change the languages
+A ZIP install does not update itself. To update, extract the new release over the same folder and press the reload icon on the DualSub card; a different folder installs a second copy with its own settings.
 
-### Update
+To build DualSub from source, see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-- Automatically handled by the Chrome Web Store
-- You can check the installed version at `chrome://extensions` → DualSub
+## Check that it works
 
-### Uninstall / Disable
+Play a video on Netflix or Disney+. Two lines of subtitles appear: the video's language on top and yours underneath. A video already in your language shows one line. The DualSub button in the toolbar turns DualSub off for the site or changes your language.
 
-- Go to `chrome://extensions`
-- Toggle the switch to disable, or click Remove to uninstall
+## Problems
 
----
+- **"Could not load manifest"**: select the extracted folder that holds `manifest.json`, not the ZIP file.
+- **No DualSub button in the toolbar**: check that DualSub is on at `chrome://extensions`, then pin it from the puzzle-piece menu.
+- **No subtitles**: play the video (a paused title screen shows none), reload the page, and check that the site's own subtitle menu lists subtitles and that DualSub is on for the site.
 
-## Option 2: Install from GitHub Release (Recommended for manual installation)
+The settings page's **Help** section covers these and fixes other common problems, such as subtitles that show twice, in one click.
 
-1. Download the latest release
-    - Go to [GitHub Releases](https://github.com/QuellaMC/DualSub/releases)
-    - Download the latest `dualsub-v*.zip` file
-    - Extract the ZIP file to a folder
-
-2. Load unpacked extension in Chrome
-    - Open `chrome://extensions`
-    - Enable Developer mode (top-right toggle)
-    - Click Load unpacked and select the extracted folder
-
-3. Verify it's working
-    - Visit Netflix or Disney+
-    - Enable subtitles, then click DualSub to enable dual subtitles
-
----
-
-## Option 3: Development Setup (For contributors and developers)
-
-1. Download the source
-    - Clone the repository:
-        ```bash
-        git clone https://github.com/QuellaMC/DualSub.git
-        cd DualSub
-        ```
-
-2. Install dependencies
-
-    ```bash
-    npm ci
-    ```
-
-3. Build the extension
-
-    The extension uses React and requires building before use:
-
-    ```bash
-    npm run build
-    ```
-
-    This will create `dist/chrome-mv3` with the compiled extension.
-
-    For development with auto-rebuild:
-
-    ```bash
-    npm run dev
-    ```
-
-4. Load unpacked extension in Chrome
-    - Open `chrome://extensions`
-    - Enable Developer mode (top-right toggle)
-    - Click Load unpacked and select **`dist/chrome-mv3`** (not the project root!)
-
-5. Verify it's working
-    - Visit Netflix or Disney+
-    - Enable subtitles, then click DualSub to enable dual subtitles
-
-6. Development workflow
-    - Make changes to source files under `src/`
-    - Run `npm run dev` for auto-rebuild on changes
-    - Click the refresh icon on the DualSub card at `chrome://extensions` to reload
-    - Test your changes
-
-7. Update (development installs)
-    - Pull latest changes:
-        ```bash
-        git pull
-        npm ci  # Reinstall exactly from package-lock.json
-        npm run build
-        ```
-    - Then click the refresh icon on the DualSub card at `chrome://extensions`
-
----
-
-## Troubleshooting
-
-- Extension not visible: ensure it's enabled at `chrome://extensions` and optionally pinned in the toolbar
-- "Could not load manifest":
-    - For GitHub releases: make sure you extracted the ZIP and selected the extracted folder
-    - For development: make sure you selected `dist/chrome-mv3` (not the project root!) and ran `npm run build` first
-- Build errors: ensure you have Node.js 24 LTS installed and run `npm ci` before `npm run build`
-- No subtitles: verify the platform provides subtitles and they are enabled in the player
-- Words can't be clicked: in the settings page's Meanings section, turn on "Look up words when I click them"
-- Explain with AI not working: in the settings page's Meanings section, check that the key is in; check the request limit and network connectivity
-- Provider failures: the settings page's Translation section names a failing service and the one covering for it; verify the credentials and endpoint, try another service, or raise the pause between translation requests (an advanced option)
-
-If issues persist, please open an issue: [GitHub Issues](https://github.com/QuellaMC/DualSub/issues)
+For problems with word lookup or AI explanations, see [Word meanings and AI explanations](ai-context.md#problems). For a translation service that fails, see [Translation services](providers.md#problems). If a problem stays, [open an issue](https://github.com/QuellaMC/DualSub/issues).

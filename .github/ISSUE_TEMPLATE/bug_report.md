@@ -1,34 +1,27 @@
 ---
 name: Bug Report
-about: Create a report to help us improve
+about: Something in DualSub doesn't work as it should
 title: '[BUG] '
 labels: bug
 assignees: ''
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+**What happened**
 
-**To Reproduce**
-Steps to reproduce the behavior:
+**How to make it happen**
 
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+The steps from opening the video to the problem.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**What you expected**
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Environment**
 
-**Environment (please complete the following information):**
+- DualSub version (shown at `chrome://extensions`):
+- Chrome version:
+- Site (Netflix or Disney+):
+- Your language and the video's language:
+- Translation service:
 
-- OS: [e.g. macOS, Windows]
-- Browser: [e.g. Chrome, Firefox]
-- Extension Version: [e.g. 1.3.1]
-- Streaming Service: [e.g. Disney+, Netflix]
+**Diagnostic report**
 
-**Additional context**
-Add any other context about the problem here. For example, which languages were you using?
+In the settings page, turn on **Advanced options** in the top bar, open **Advanced**, press **Copy report**, and paste it here. It contains no keys. Screenshots help too.
