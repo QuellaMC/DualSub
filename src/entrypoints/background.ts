@@ -8,6 +8,8 @@ import { markServiceReady, readinessSnapshot } from '@/background/readiness';
 import { registerAiContextHandler } from '@/background/aicontext/handler';
 import { CONTEXT_PROVIDERS } from '@/background/aicontext/providers';
 import { AiContextService } from '@/background/aicontext/service';
+import { registerLookupHandler } from '@/background/lookup/handler';
+import { LookupService } from '@/background/lookup/service';
 import { registerSidePanelHandlers } from '@/background/sidepanel/handler';
 import {
     browserSidePanelDeps,
@@ -33,6 +35,9 @@ export default defineBackground(() => {
         providers: CONTEXT_PROVIDERS,
         config: configService,
     });
+    const lookupService = new LookupService({
+        translation: translationService,
+    });
     const sidePanelService = new SidePanelService(browserSidePanelDeps());
 
     router.handle(ping, () => readinessSnapshot());
@@ -40,6 +45,7 @@ export default defineBackground(() => {
     registerSubtitleHandlers(router);
     registerTranslationHandler(router, translationService);
     registerAiContextHandler(router, aiContextService);
+    registerLookupHandler(router, lookupService);
     registerSidePanelHandlers(router, sidePanelService);
     router.listen();
 

@@ -370,6 +370,14 @@ describe('migrateLegacyConfiguration', () => {
         expect(await syncState()).not.toHaveProperty('sidePanelUseSidePanel');
     });
 
+    it('retires the word explanations switch without touching word lookup', async () => {
+        await fakeBrowser.storage.sync.set({ aiContextEnabled: false });
+        await migrateLegacyConfiguration();
+        const sync = await syncState();
+        expect(sync).not.toHaveProperty('aiContextEnabled');
+        expect(sync).not.toHaveProperty('wordLookupEnabled');
+    });
+
     it('is idempotent, including after a v2 device re-pollutes sync', async () => {
         await fakeBrowser.storage.sync.set({ deeplApiKey: 'k1' });
         await migrateLegacyConfiguration();

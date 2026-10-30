@@ -149,68 +149,8 @@
     "openaiFailedToFetchModels": {
         "message": "モデルの取得に失敗しました：%s"
     },
-    "aiContextUsage": {
-        "message": "💡 使用法と例"
-    },
-    "aiContextLearningTips": {
-        "message": "🎯 学習のヒント"
-    },
-    "aiContextRelatedExpressions": {
-        "message": "🔗 関連表現"
-    },
-    "aiContextKeyInsights": {
-        "message": "🔑 重要な洞察"
-    },
     "sidepanelLoading": {
         "message": "読み込み中..."
-    },
-    "sidepanelTabAIAnalysis": {
-        "message": "AI分析"
-    },
-    "sidepanelAnalyzeButton": {
-        "message": "分析"
-    },
-    "sidepanelAnalyzing": {
-        "message": "分析中..."
-    },
-    "sidepanelWordsToAnalyze": {
-        "message": "分析する単語"
-    },
-    "sidepanelRemoveWordLabel": {
-        "message": "%s（%d 番目）を削除"
-    },
-    "sidepanelWordInputPlaceholder": {
-        "message": "字幕の単語をクリックして分析に追加..."
-    },
-    "sidepanelErrorRetry": {
-        "message": "再試行"
-    },
-    "sidepanelResultsTitle": {
-        "message": "\"%s\" の結果"
-    },
-    "sidepanelSectionDefinition": {
-        "message": "定義"
-    },
-    "sidepanelSectionCultural": {
-        "message": "文化的コンテキスト"
-    },
-    "sidepanelSectionHistorical": {
-        "message": "歴史的コンテキスト"
-    },
-    "sidepanelSectionLinguistic": {
-        "message": "言語学的分析"
-    },
-    "sidepanelErrorNoWords": {
-        "message": "分析する単語が選択されていません"
-    },
-    "sidepanelErrorDisabled": {
-        "message": "単語の解説はオフになっています。DualSubの設定でオンにしてください。"
-    },
-    "sidepanelErrorGeneric": {
-        "message": "分析中にエラーが発生しました。"
-    },
-    "aiContextTypesRequired": {
-        "message": "1つ以上選んでください。"
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL APIテストが成功しました！"
@@ -238,9 +178,6 @@
     },
     "openaiHostPermissionScope": {
         "message": "設定済みエンドポイント: %s。Chrome の権限範囲: %s（このホスト上のすべてのパスとポート）。"
-    },
-    "sidepanelErrorNoContextTypes": {
-        "message": "DualSubの設定で、解説する内容を1つ以上選んでください。"
     },
     "vertexImportSuccessEphemeral": {
         "message": "アクセストークンを生成しました。サービスアカウントキーは保存されていません。トークンの有効期限が切れたら、JSONを再インポートしてください。"
@@ -416,15 +353,6 @@
     "explainSetupHelp": {
         "message": "解説は、ご自分のアカウントを使ってAIサービスが作ります。キーはこのパソコンに保存されたままです。"
     },
-    "explainSetupTitle": {
-        "message": "3つの手順で設定"
-    },
-    "explainStatusOff": {
-        "message": "オフになっています。キーは保存されたままです。"
-    },
-    "explainNeedsSetup": {
-        "message": "設定が必要"
-    },
     "explainSetUpWith": {
         "message": "%sで設定済み"
     },
@@ -440,12 +368,6 @@
     "explainAddress": {
         "message": "アドレス（互換サーバー用）"
     },
-    "explainStatusOn": {
-        "message": "字幕の単語をクリックして試してみてください。"
-    },
-    "explainStatusSetup": {
-        "message": "オンにするには、下の3つの手順を済ませてください。"
-    },
     "explainThemeAuto": {
         "message": "パソコンの設定に合わせる"
     },
@@ -460,12 +382,6 @@
     },
     "explainTimeout": {
         "message": "あきらめるまでの時間（秒）"
-    },
-    "explainTitle": {
-        "message": "単語の解説"
-    },
-    "explainTurnOn": {
-        "message": "オンにする"
     },
     "explainTypeCulture": {
         "message": "背景にある文化"
@@ -1145,12 +1061,6 @@
     "toastEarlier": {
         "message": "字幕を%s秒早めました"
     },
-    "toastExplainOff": {
-        "message": "単語の解説をオフにしました"
-    },
-    "toastExplainOn": {
-        "message": "単語の解説をオンにしました"
-    },
     "toastFallbackOff": {
         "message": "翻訳には選んだサービスだけを使います"
     },
@@ -1648,5 +1558,143 @@
     },
     "startNeedsSetupStopped": {
         "message": "設定が済むまでは、字幕は翻訳されません。"
+    },
+    "sidepanelLanguagePair": {
+        "message": "%s → %s"
+    },
+    "sidepanelEmptyTitle": {
+        "message": "字幕の単語をクリックしてください"
+    },
+    "sidepanelEmptyHelp": {
+        "message": "動画が一時停止して、意味がここに表示されます。さらに単語をクリックするとフレーズで調べられます。続きを見るには動画をクリックしてください。"
+    },
+    "sidepanelElsewhereTitle": {
+        "message": "Netflix か Disney+ で動画を開いてください"
+    },
+    "sidepanelElsewhereHelp": {
+        "message": "字幕の単語をクリックすると、その意味がここに表示されます。"
+    },
+    "sidepanelLineLabel": {
+        "message": "字幕の行"
+    },
+    "sidepanelAddWord": {
+        "message": "クリックしてこの単語を追加"
+    },
+    "sidepanelRemoveWord": {
+        "message": "クリックしてこの単語を外す"
+    },
+    "sidepanelInLanguage": {
+        "message": "%sで"
+    },
+    "sidepanelFormOf": {
+        "message": "変化形"
+    },
+    "sidepanelFrom": {
+        "message": "出典: %s"
+    },
+    "sidepanelNoEntry": {
+        "message": "この単語だけでは辞書に載っていません。前後の単語もクリックして、フレーズ全体で調べてください。"
+    },
+    "sidepanelNoEntryPhrase": {
+        "message": "この単語の組み合わせは辞書に載っていません。"
+    },
+    "explainWithAi": {
+        "message": "AI で解説"
+    },
+    "sidepanelExplaining": {
+        "message": "ここでの使われ方を解説しています…"
+    },
+    "sidepanelKeyGuideTitle": {
+        "message": "AI で解説するにはキーを追加してください"
+    },
+    "sidepanelNotNow": {
+        "message": "今はしない"
+    },
+    "sidepanelKeyRefused": {
+        "message": "そのキーは使えませんでした。確認するか、新しいキーを取得してください。"
+    },
+    "sidepanelCheckAndExplain": {
+        "message": "確認して解説"
+    },
+    "sidepanelAiFailed": {
+        "message": "AI サービスから応答がありませんでした。"
+    },
+    "sidepanelTryAgain": {
+        "message": "もう一度試す"
+    },
+    "sidepanelInThisLine": {
+        "message": "このセリフでは"
+    },
+    "sidepanelExamples": {
+        "message": "例文"
+    },
+    "sidepanelSimilar": {
+        "message": "似た言い方"
+    },
+    "sidepanelTip": {
+        "message": "ヒント"
+    },
+    "sidepanelWrittenBy": {
+        "message": "%s が作成しました。間違えることがあります。"
+    },
+    "sidepanelRegisterEveryday": {
+        "message": "日常"
+    },
+    "sidepanelRegisterCasual": {
+        "message": "くだけた"
+    },
+    "sidepanelRegisterFormal": {
+        "message": "かしこまった"
+    },
+    "sidepanelRegisterSlang": {
+        "message": "スラング"
+    },
+    "sidepanelRegisterOffensive": {
+        "message": "失礼な表現"
+    },
+    "sidepanelWordTypeNoun": {
+        "message": "名詞"
+    },
+    "sidepanelWordTypeVerb": {
+        "message": "動詞"
+    },
+    "sidepanelWordTypeAdjective": {
+        "message": "形容詞"
+    },
+    "sidepanelWordTypeAdverb": {
+        "message": "副詞"
+    },
+    "sidepanelWordTypePronoun": {
+        "message": "代名詞"
+    },
+    "sidepanelWordTypePreposition": {
+        "message": "前置詞"
+    },
+    "sidepanelWordTypeConjunction": {
+        "message": "接続詞"
+    },
+    "sidepanelWordTypeInterjection": {
+        "message": "感動詞"
+    },
+    "sidepanelWordTypeSaying": {
+        "message": "成句"
+    },
+    "explainLookupTitle": {
+        "message": "クリックした単語を調べる"
+    },
+    "explainLookupOn": {
+        "message": "字幕の単語をクリックすると、意味がわかります。"
+    },
+    "explainLookupOff": {
+        "message": "字幕の単語はクリックできません。"
+    },
+    "toastLookupOn": {
+        "message": "単語の検索をオンにしました"
+    },
+    "toastLookupOff": {
+        "message": "単語の検索をオフにしました"
+    },
+    "searchWordsLookup": {
+        "message": "クリック 単語 調べる 辞書 意味 翻訳 字幕"
     }
 }

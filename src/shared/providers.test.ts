@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    aiKeyReady,
     KEYLESS_PROVIDERS,
     missingCredentials,
     PROVIDER_CREDENTIALS,
@@ -73,5 +74,29 @@ describe('provider credentials', () => {
                 openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
             })
         ).toEqual(['openaiCompatibleApiKey']);
+    });
+});
+
+describe('aiKeyReady', () => {
+    const openai = {
+        openaiApiKey: 'sk-test',
+        openaiApiKeyOrigin: 'https://api.openai.com',
+        openaiBaseUrl: 'https://api.openai.com/v1',
+    };
+
+    it('needs a key for the chosen service', () => {
+        expect(aiKeyReady('openai', openai)).toBe(true);
+        expect(aiKeyReady('gemini', openai)).toBe(false);
+        expect(aiKeyReady('gemini', { geminiApiKey: 'AIza-test' })).toBe(true);
+        expect(aiKeyReady('gemini', { geminiApiKey: '   ' })).toBe(false);
+    });
+
+    it('treats an OpenAI key moved to another address as missing', () => {
+        expect(
+            aiKeyReady('openai', {
+                ...openai,
+                openaiBaseUrl: 'https://llm.example.com/v1',
+            })
+        ).toBe(false);
     });
 });

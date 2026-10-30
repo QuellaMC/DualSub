@@ -519,6 +519,28 @@ export class TranslationService {
         }
     }
 
+    /** Run `request` in `providerId`'s turn, as its own translations wait
+     *  for theirs: one pacer guards each endpoint, whoever asks it.
+     *
+     * @throws {TranslationProviderError} when the provider is unknown
+     */
+    async paced<T>(
+        providerId: ProviderId,
+        text: string,
+        request: () => Promise<T>
+    ): Promise<T> {
+        const provider = this.providers.get(providerId);
+        if (!provider) {
+            throw new TranslationProviderError(
+                providerId,
+                'Provider is not available',
+                { code: 'REQUEST_FAILED' }
+            );
+        }
+        await this.pacerFor(provider).acquire(text, this.configuredDelayMs);
+        return request();
+    }
+
     private pacerFor(provider: TranslationProvider): RequestPacer {
         let pacer = this.pacers.get(provider.id);
         if (!pacer) {

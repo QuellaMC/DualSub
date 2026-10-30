@@ -1,4 +1,4 @@
-/** The models offered for word explanations, the recommended one first. */
+/** The models offered for AI explanations, the recommended one first. */
 interface ModelChoice {
     readonly id: string;
     readonly name: string;

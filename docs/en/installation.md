@@ -3,7 +3,7 @@
 ### Prerequisites
 
 - Google Chrome or Chromium-based browser (latest version recommended)
-- Internet connection (for translation providers and word explanations)
+- Internet connection (for translation providers, word lookup, and AI explanations)
 - For development only: Node.js 24 LTS and npm 11+
 
 ---
@@ -116,7 +116,8 @@
     - For development: make sure you selected `dist/chrome-mv3` (not the project root!) and ran `npm run build` first
 - Build errors: ensure you have Node.js 24 LTS installed and run `npm ci` before `npm run build`
 - No subtitles: verify the platform provides subtitles and they are enabled in the player
-- Word explanations not working: in the settings page's Meanings section, check that the key is in and the feature is on; check the request limit and network connectivity
+- Words can't be clicked: in the settings page's Meanings section, turn on "Look up words when I click them"
+- Explain with AI not working: in the settings page's Meanings section, check that the key is in; check the request limit and network connectivity
 - Provider failures: the settings page's Translation section names a failing service and the one covering for it; verify the credentials and endpoint, try another service, or raise the pause between translation requests (an advanced option)
 
 If issues persist, please open an issue: [GitHub Issues](https://github.com/QuellaMC/DualSub/issues)

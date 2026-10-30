@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MessageActions } from '../actions';
 import { nonNegativeSafeInteger, positiveSafeInteger } from './primitives';
-import { selectionState } from './selection';
+import { selectionEditOp, selectionState } from './selection';
 
 export const SIDEPANEL_PORT_NAME = 'sidepanel';
 
@@ -18,7 +18,7 @@ const tabBinding = z.strictObject({
     windowId: nonNegativeSafeInteger,
 });
 
-export const removalStatus = z.enum(['applied', 'rejected']);
+export const editStatus = z.enum(['applied', 'rejected']);
 
 export const panelToBackground = z.discriminatedUnion('action', [
     z.strictObject({
@@ -36,6 +36,7 @@ export const panelToBackground = z.discriminatedUnion('action', [
             selectionRevision: positiveSafeInteger,
             renderRevision: positiveSafeInteger,
             wordIndex: nonNegativeSafeInteger,
+            op: selectionEditOp,
         }),
     }),
 ]);
@@ -67,7 +68,7 @@ export const backgroundToPanel = z.discriminatedUnion('action', [
             binding: sidePanelBinding,
             requestId: positiveSafeInteger,
             selectionOwnerGeneration: positiveSafeInteger,
-            status: removalStatus,
+            status: editStatus,
         }),
     }),
 ]);

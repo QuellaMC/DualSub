@@ -17,4 +17,4 @@
 - Advanced M3U8 playlist parsing to extract subtitle tracks
 - Supports multiple URL patterns and playback modes
 
-See also: `docs/en/providers.md` for translation provider details and `docs/en/ai-context.md` for AI context analysis.
+See also: `docs/en/providers.md` for translation provider details and `docs/en/ai-context.md` for word meanings and AI explanations.

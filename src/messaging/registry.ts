@@ -21,8 +21,6 @@ export interface MessageContract<
     readonly senders: readonly SenderRole[];
     readonly request: Req;
     readonly response: Res;
-    /** Role-specific request variants (analyzeContext). */
-    readonly requestByRole?: Partial<Record<SenderRole, z.ZodType>>;
     /** Snapshot budget applied before parsing; module default otherwise. */
     readonly budget?: SnapshotLimits;
 }

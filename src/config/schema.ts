@@ -206,7 +206,7 @@ function isValidSubtitleBlacklist(
 
 /** Settings a site can hold its own value for; every other setting is
  *  shared by all sites. The translation language is the viewer's own, so it
- *  is the same everywhere, as are the word explanations written in it. */
+ *  is the same everywhere, as are the meanings and explanations written in it. */
 export const SITE_SETTING_KEYS = [
     'subtitlesEnabled',
     'hideOfficialSubtitles',
@@ -578,9 +578,10 @@ export const configSchema = {
         scope: 'local',
     }),
 
-    aiContextEnabled: setting({
+    /** Subtitle words can be clicked to look them up in the side panel. */
+    wordLookupEnabled: setting({
         schema: z.boolean(),
-        default: false,
+        default: true,
         scope: 'sync',
     }),
     aiContextProvider: setting({

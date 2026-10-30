@@ -149,68 +149,8 @@
     "openaiFailedToFetchModels": {
         "message": "Error al obtener modelos: %s"
     },
-    "aiContextUsage": {
-        "message": "💡 Uso y Ejemplos"
-    },
-    "aiContextLearningTips": {
-        "message": "🎯 Consejos de Aprendizaje"
-    },
-    "aiContextRelatedExpressions": {
-        "message": "🔗 Expresiones Relacionadas"
-    },
-    "aiContextKeyInsights": {
-        "message": "🔑 Perspectivas Clave"
-    },
     "sidepanelLoading": {
         "message": "Cargando..."
-    },
-    "sidepanelTabAIAnalysis": {
-        "message": "Análisis IA"
-    },
-    "sidepanelAnalyzeButton": {
-        "message": "Analizar"
-    },
-    "sidepanelAnalyzing": {
-        "message": "Analizando..."
-    },
-    "sidepanelWordsToAnalyze": {
-        "message": "Palabras a Analizar"
-    },
-    "sidepanelRemoveWordLabel": {
-        "message": "Quitar %s en la posición %d"
-    },
-    "sidepanelWordInputPlaceholder": {
-        "message": "Haz clic en las palabras de los subtítulos para añadirlas al análisis..."
-    },
-    "sidepanelErrorRetry": {
-        "message": "Reintentar"
-    },
-    "sidepanelResultsTitle": {
-        "message": "Resultados para \"%s\""
-    },
-    "sidepanelSectionDefinition": {
-        "message": "Definición"
-    },
-    "sidepanelSectionCultural": {
-        "message": "Contexto Cultural"
-    },
-    "sidepanelSectionHistorical": {
-        "message": "Contexto Histórico"
-    },
-    "sidepanelSectionLinguistic": {
-        "message": "Análisis Lingüístico"
-    },
-    "sidepanelErrorNoWords": {
-        "message": "No hay palabras seleccionadas para el análisis"
-    },
-    "sidepanelErrorDisabled": {
-        "message": "Las explicaciones de palabras están desactivadas. Actívalas en la configuración de DualSub."
-    },
-    "sidepanelErrorGeneric": {
-        "message": "Ocurrió un error durante el análisis."
-    },
-    "aiContextTypesRequired": {
-        "message": "Elige al menos una."
     },
     "deeplTestSuccessSimple": {
         "message": "✅ ¡Prueba de API DeepL exitosa!"
@@ -238,9 +178,6 @@
     },
     "openaiHostPermissionScope": {
         "message": "Endpoint configurado: %s. Ámbito del permiso de Chrome: %s (todas las rutas y puertos de este host)."
-    },
-    "sidepanelErrorNoContextTypes": {
-        "message": "En la configuración de DualSub, elige al menos una cosa que explicar."
     },
     "vertexImportSuccessEphemeral": {
         "message": "Token de acceso generado. La clave de la cuenta de servicio no se guardó; vuelve a importar el JSON cuando caduque el token."
@@ -416,15 +353,6 @@
     "explainSetupHelp": {
         "message": "Las explicaciones vienen de un servicio de IA, a través de tu propia cuenta. Tu clave se queda en este equipo."
     },
-    "explainSetupTitle": {
-        "message": "Configúralo en tres pasos"
-    },
-    "explainStatusOff": {
-        "message": "Desactivado. Tu clave sigue guardada."
-    },
-    "explainNeedsSetup": {
-        "message": "Falta configurar"
-    },
     "explainSetUpWith": {
         "message": "Configurado con %s"
     },
@@ -440,12 +368,6 @@
     "explainAddress": {
         "message": "Dirección, para servidores compatibles"
     },
-    "explainStatusOn": {
-        "message": "Haz clic en una palabra de los subtítulos para probarlo."
-    },
-    "explainStatusSetup": {
-        "message": "Completa los tres pasos de abajo para activarlo."
-    },
     "explainThemeAuto": {
         "message": "Igual que mi equipo"
     },
@@ -460,12 +382,6 @@
     },
     "explainTimeout": {
         "message": "Esperar como máximo (segundos)"
-    },
-    "explainTitle": {
-        "message": "Explicaciones de palabras"
-    },
-    "explainTurnOn": {
-        "message": "Activar"
     },
     "explainTypeCulture": {
         "message": "La cultura que hay detrás"
@@ -1145,12 +1061,6 @@
     "toastEarlier": {
         "message": "Subtítulos %s s antes"
     },
-    "toastExplainOff": {
-        "message": "Explicaciones de palabras desactivadas"
-    },
-    "toastExplainOn": {
-        "message": "Explicaciones de palabras activadas"
-    },
     "toastFallbackOff": {
         "message": "Solo traduce el servicio que elegiste"
     },
@@ -1648,5 +1558,143 @@
     },
     "startNeedsSetupStopped": {
         "message": "Mientras tanto, los subtítulos no se traducen."
+    },
+    "sidepanelLanguagePair": {
+        "message": "%s → %s"
+    },
+    "sidepanelEmptyTitle": {
+        "message": "Haz clic en cualquier palabra de los subtítulos"
+    },
+    "sidepanelEmptyHelp": {
+        "message": "El vídeo se pausa y el significado aparece aquí. Haz clic en más palabras para buscar una frase, y haz clic en el vídeo para seguir viendo."
+    },
+    "sidepanelElsewhereTitle": {
+        "message": "Abre un vídeo en Netflix o Disney+"
+    },
+    "sidepanelElsewhereHelp": {
+        "message": "Después haz clic en cualquier palabra de los subtítulos y su significado aparecerá aquí."
+    },
+    "sidepanelLineLabel": {
+        "message": "La línea de subtítulos"
+    },
+    "sidepanelAddWord": {
+        "message": "Haz clic para añadir esta palabra"
+    },
+    "sidepanelRemoveWord": {
+        "message": "Haz clic para quitar esta palabra"
+    },
+    "sidepanelInLanguage": {
+        "message": "En %s"
+    },
+    "sidepanelFormOf": {
+        "message": "una forma de"
+    },
+    "sidepanelFrom": {
+        "message": "De %s"
+    },
+    "sidepanelNoEntry": {
+        "message": "Esta palabra no tiene entrada por sí sola. Haz clic en las palabras de alrededor para buscar la frase entera."
+    },
+    "sidepanelNoEntryPhrase": {
+        "message": "Estas palabras juntas no tienen entrada en el diccionario."
+    },
+    "explainWithAi": {
+        "message": "Explicar con IA"
+    },
+    "sidepanelExplaining": {
+        "message": "Explicando cómo se usa aquí…"
+    },
+    "sidepanelKeyGuideTitle": {
+        "message": "Añade una clave para explicar con IA"
+    },
+    "sidepanelNotNow": {
+        "message": "Ahora no"
+    },
+    "sidepanelKeyRefused": {
+        "message": "Esa clave no ha funcionado. Revísala o consigue una nueva."
+    },
+    "sidepanelCheckAndExplain": {
+        "message": "Comprobar y explicar"
+    },
+    "sidepanelAiFailed": {
+        "message": "El servicio de IA no ha respondido."
+    },
+    "sidepanelTryAgain": {
+        "message": "Intentar de nuevo"
+    },
+    "sidepanelInThisLine": {
+        "message": "En esta línea"
+    },
+    "sidepanelExamples": {
+        "message": "Ejemplos"
+    },
+    "sidepanelSimilar": {
+        "message": "Se dice también"
+    },
+    "sidepanelTip": {
+        "message": "Consejo"
+    },
+    "sidepanelWrittenBy": {
+        "message": "Escrito por %s. Puede equivocarse."
+    },
+    "sidepanelRegisterEveryday": {
+        "message": "Cotidiano"
+    },
+    "sidepanelRegisterCasual": {
+        "message": "Informal"
+    },
+    "sidepanelRegisterFormal": {
+        "message": "Formal"
+    },
+    "sidepanelRegisterSlang": {
+        "message": "Jerga"
+    },
+    "sidepanelRegisterOffensive": {
+        "message": "Ofensivo"
+    },
+    "sidepanelWordTypeNoun": {
+        "message": "sustantivo"
+    },
+    "sidepanelWordTypeVerb": {
+        "message": "verbo"
+    },
+    "sidepanelWordTypeAdjective": {
+        "message": "adjetivo"
+    },
+    "sidepanelWordTypeAdverb": {
+        "message": "adverbio"
+    },
+    "sidepanelWordTypePronoun": {
+        "message": "pronombre"
+    },
+    "sidepanelWordTypePreposition": {
+        "message": "preposición"
+    },
+    "sidepanelWordTypeConjunction": {
+        "message": "conjunción"
+    },
+    "sidepanelWordTypeInterjection": {
+        "message": "interjección"
+    },
+    "sidepanelWordTypeSaying": {
+        "message": "expresión"
+    },
+    "explainLookupTitle": {
+        "message": "Buscar palabras al hacer clic en ellas"
+    },
+    "explainLookupOn": {
+        "message": "Haz clic en una palabra de los subtítulos para ver qué significa."
+    },
+    "explainLookupOff": {
+        "message": "No se puede hacer clic en las palabras de los subtítulos."
+    },
+    "toastLookupOn": {
+        "message": "Búsqueda de palabras activada"
+    },
+    "toastLookupOff": {
+        "message": "Búsqueda de palabras desactivada"
+    },
+    "searchWordsLookup": {
+        "message": "clic palabra buscar diccionario significado traducir subtítulo"
     }
 }

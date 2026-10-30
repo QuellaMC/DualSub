@@ -2,13 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SettingsChanges } from '@/config/service';
 import type { ContextProvider } from './provider';
 import type { UsageStore } from './rateLimiter';
-import { culturalSample } from './schemas.test';
-import {
-    AI_CONTEXT_DISABLED_MESSAGE,
-    AI_CONTEXT_UNVERIFIED_MESSAGE,
-    AiContextService,
-    type AiContextServiceDeps,
-} from './service';
+import { answerSample } from './schemas.test';
+import { AiContextService, type AiContextServiceDeps } from './service';
 
 const RUNTIME = {
     aiContextProvider: 'openai',
@@ -34,7 +29,8 @@ const REQUEST_SETTINGS = {
 
 const REQUEST = {
     text: ' hola ',
-    type: 'cultural',
+    line: 'hola amigo',
+    kinds: ['linguistic', 'cultural', 'historical'],
     sourceLanguage: 'es',
     targetLanguage: 'en',
 } as const;
@@ -54,19 +50,26 @@ function jsonResponse(body: unknown, status = 200): Response {
 function harness(
     options: {
         runtime?: Partial<typeof RUNTIME>;
-        enabled?: () => boolean | Promise<boolean>;
+        /** Whether storage holds a usable key at each check. */
+        keyed?: () => boolean | Promise<boolean>;
     } = {}
 ) {
     let listener: ((changes: SettingsChanges) => unknown) | null = null;
-    const enabled = vi.fn(options.enabled ?? (() => true));
+    const keyed = vi.fn(options.keyed ?? (() => true));
     const config = {
         getMultiple: vi.fn(() =>
             Promise.resolve({ ...RUNTIME, ...options.runtime })
         ),
-        readMultipleResultStrict: vi.fn(() =>
-            Promise.resolve({ values: { ...REQUEST_SETTINGS } })
+        readMultipleResultStrict: vi.fn(async (keys: readonly string[]) =>
+            keys.includes('aiContextTimeout')
+                ? { values: { ...REQUEST_SETTINGS } }
+                : {
+                      values: {
+                          ...REQUEST_SETTINGS,
+                          openaiApiKey: (await keyed()) ? 'sk-test' : '',
+                      },
+                  }
         ),
-        readStoredBooleanStrict: vi.fn(async () => enabled()),
         onChanged: vi.fn((callback: (changes: SettingsChanges) => unknown) => {
             listener = callback;
             return () => {
@@ -75,7 +78,7 @@ function harness(
         }),
     };
     const fetchMock = vi.fn<(url: string) => Promise<Response>>(() =>
-        Promise.resolve(jsonResponse(culturalSample()))
+        Promise.resolve(jsonResponse(answerSample()))
     );
     const sleeps: number[] = [];
     let now = 1_000_000;
@@ -104,7 +107,7 @@ function harness(
     return {
         service,
         config,
-        enabled,
+        keyed,
         fetchMock,
         sleeps,
         emit: (changes: SettingsChanges) => {
@@ -117,37 +120,35 @@ function harness(
 }
 
 describe('AiContextService', () => {
-    it('does not read enablement for an uninitialized service', async () => {
+    it('does not read the key for an uninitialized service', async () => {
         const { service, config } = harness();
         await expect(service.analyze(REQUEST)).rejects.toThrow(
             'not initialized'
         );
-        expect(config.readStoredBooleanStrict).not.toHaveBeenCalled();
-    });
-
-    it('fails closed without analysis work when AI context is disabled', async () => {
-        const { service, fetchMock, config } = harness({
-            enabled: () => false,
-        });
-        await service.initialize();
-        expect(await service.analyze(REQUEST)).toEqual({
-            success: false,
-            error: AI_CONTEXT_DISABLED_MESSAGE,
-            shouldRetry: false,
-        });
-        expect(fetchMock).not.toHaveBeenCalled();
         expect(config.readMultipleResultStrict).not.toHaveBeenCalled();
     });
 
-    it('normalizes rejected enablement reads without leaking storage errors', async () => {
-        const { service } = harness({
-            enabled: () => Promise.reject(new Error('storage exploded')),
+    it('asks for setup, with no work done, while no key is stored', async () => {
+        const { service, fetchMock, config } = harness({
+            keyed: () => false,
         });
         await service.initialize();
         expect(await service.analyze(REQUEST)).toEqual({
             success: false,
-            error: AI_CONTEXT_UNVERIFIED_MESSAGE,
-            shouldRetry: false,
+            reason: 'setup',
+        });
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(config.readMultipleResultStrict).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses when the key cannot be read, without leaking the error', async () => {
+        const { service } = harness({
+            keyed: () => Promise.reject(new Error('storage exploded')),
+        });
+        await service.initialize();
+        expect(await service.analyze(REQUEST)).toEqual({
+            success: false,
+            reason: 'failed',
         });
     });
 
@@ -157,7 +158,7 @@ describe('AiContextService', () => {
         const first = await service.analyze(REQUEST);
         expect(first).toEqual({
             success: true,
-            analysis: culturalSample(),
+            answer: answerSample(),
             cached: false,
         });
         const second = await service.analyze({ ...REQUEST, text: 'hola' });
@@ -165,15 +166,15 @@ describe('AiContextService', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    it('revalidates enablement before dispatch and result publication', async () => {
+    it('re-proves the key before dispatch and before the answer is used', async () => {
         const answers = [true, true, false];
         const { service, fetchMock } = harness({
-            enabled: () => answers.shift() ?? false,
+            keyed: () => answers.shift() ?? false,
         });
         await service.initialize();
-        expect(await service.analyze(REQUEST)).toMatchObject({
+        expect(await service.analyze(REQUEST)).toEqual({
             success: false,
-            error: AI_CONTEXT_DISABLED_MESSAGE,
+            reason: 'setup',
         });
         expect(fetchMock).toHaveBeenCalledTimes(1);
         // The suppressed answer was never cached.
@@ -182,21 +183,21 @@ describe('AiContextService', () => {
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
-    it('proves enablement before returning an existing cached result', async () => {
-        let enabled = true;
-        const { service, fetchMock } = harness({ enabled: () => enabled });
+    it('proves the key before returning an existing cached result', async () => {
+        let stored = true;
+        const { service, fetchMock } = harness({ keyed: () => stored });
         await service.initialize();
         await service.analyze(REQUEST);
-        enabled = false;
-        expect(await service.analyze(REQUEST)).toMatchObject({
+        stored = false;
+        expect(await service.analyze(REQUEST)).toEqual({
             success: false,
-            error: AI_CONTEXT_DISABLED_MESSAGE,
+            reason: 'setup',
         });
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it('retries retryable provider failures with serialized backoff', async () => {
-        const { service, fetchMock, sleeps, enabled } = harness();
+        const { service, fetchMock, sleeps, keyed } = harness();
         fetchMock
             .mockResolvedValueOnce(jsonResponse({}, 503))
             .mockResolvedValueOnce(jsonResponse({}, 429));
@@ -207,7 +208,7 @@ describe('AiContextService', () => {
         expect(fetchMock).toHaveBeenCalledTimes(3);
         expect(sleeps).toEqual([2000, 4000]);
         // Before, after, and during backoff for each attempt, plus the gate.
-        expect(enabled).toHaveBeenCalledTimes(1 + 3 * 2 + 2);
+        expect(keyed).toHaveBeenCalledTimes(1 + 3 * 2 + 2);
     });
 
     it('gives up after the configured attempts and reports retryability', async () => {
@@ -218,34 +219,32 @@ describe('AiContextService', () => {
         await service.initialize();
         expect(await service.analyze(REQUEST)).toEqual({
             success: false,
-            error: 'API request failed: 503',
-            shouldRetry: true,
+            reason: 'failed',
         });
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
-    it('stops before a retry dispatch when enablement is revoked during backoff', async () => {
+    it('stops before a retry dispatch when the key is removed during backoff', async () => {
         const answers = [true, true, true, false];
         const { service, fetchMock } = harness({
-            enabled: () => answers.shift() ?? false,
+            keyed: () => answers.shift() ?? false,
         });
         fetchMock.mockResolvedValueOnce(jsonResponse({}, 503));
         await service.initialize();
-        expect(await service.analyze(REQUEST)).toMatchObject({
+        expect(await service.analyze(REQUEST)).toEqual({
             success: false,
-            error: AI_CONTEXT_DISABLED_MESSAGE,
+            reason: 'setup',
         });
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    it('does not retry a provider failure that requires user action', async () => {
+    it('reports a refused key without retrying it', async () => {
         const { service, fetchMock, sleeps } = harness();
         fetchMock.mockResolvedValueOnce(jsonResponse({}, 401));
         await service.initialize();
         expect(await service.analyze(REQUEST)).toEqual({
             success: false,
-            error: 'API request failed: 401',
-            shouldRetry: false,
+            reason: 'auth',
         });
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(sleeps).toEqual([]);
@@ -269,7 +268,7 @@ describe('AiContextService', () => {
             const pending = service.analyze(REQUEST);
             await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
             emit(rotation);
-            release(jsonResponse(culturalSample()));
+            release(jsonResponse(answerSample()));
             expect(await pending).toMatchObject({
                 success: true,
                 cached: false,
@@ -292,13 +291,22 @@ describe('AiContextService', () => {
         expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
-    it('separates identical text across languages', async () => {
+    it('separates identical text across languages, lines and kinds', async () => {
         const { service, fetchMock } = harness();
         await service.initialize();
         await service.analyze(REQUEST);
         await service.analyze({ ...REQUEST, targetLanguage: 'ja' });
         await service.analyze({ ...REQUEST, sourceLanguage: 'fr' });
-        expect(fetchMock).toHaveBeenCalledTimes(3);
+        await service.analyze({ ...REQUEST, line: 'hola señor' });
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({ meaning: 'Hello.', register: 'everyday' })
+        );
+        expect(await service.analyze({ ...REQUEST, kinds: [] })).toEqual({
+            success: true,
+            answer: { meaning: 'Hello.', register: 'everyday' },
+            cached: false,
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(5);
     });
 
     it('does not read or write the cache when caching is disabled', async () => {
@@ -332,41 +340,40 @@ describe('AiContextService', () => {
         await service.analyze(REQUEST);
         expect(await service.analyze({ ...REQUEST, text: 'adios' })).toEqual({
             success: false,
-            error: 'Too many requests in a short time. Please slow down.',
-            shouldRetry: false,
+            reason: 'failed',
         });
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
     it('rejects empty text and an unknown provider without dispatching', async () => {
-        const { service, fetchMock, config } = harness({
+        const { service, fetchMock, keyed } = harness({
             runtime: { aiContextProvider: 'gemini' },
         });
         await service.initialize();
         expect(await service.analyze({ ...REQUEST, text: '  ' })).toEqual({
             success: false,
-            error: 'Invalid or empty text provided for analysis',
-            shouldRetry: false,
+            reason: 'failed',
         });
-        expect(config.readStoredBooleanStrict).not.toHaveBeenCalled();
         expect(await service.analyze(REQUEST)).toEqual({
             success: false,
-            error: 'AI context provider unavailable',
-            shouldRetry: false,
+            reason: 'failed',
         });
+        expect(keyed).not.toHaveBeenCalled();
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('fails without provider configuration when the strict read fails', async () => {
         const { service, config } = harness();
-        config.readMultipleResultStrict.mockRejectedValue(
-            new Error('storage unavailable')
-        );
         await service.initialize();
+        config.readMultipleResultStrict.mockImplementation(
+            (keys: readonly string[]) =>
+                keys.includes('aiContextTimeout')
+                    ? Promise.reject(new Error('storage unavailable'))
+                    : Promise.resolve({ values: { ...REQUEST_SETTINGS } })
+        );
         expect(await service.analyze(REQUEST)).toEqual({
             success: false,
-            error: 'Required provider configuration is unavailable',
-            shouldRetry: false,
+            reason: 'failed',
         });
     });
 });

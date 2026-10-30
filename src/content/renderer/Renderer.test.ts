@@ -73,7 +73,7 @@ function setup(videoId = '1') {
     const video = makeVideo();
     const state = new RendererState(display);
     const onNavigationMismatch = vi.fn();
-    const onOriginalPainted = vi.fn();
+    const onLinePainted = vi.fn();
     const adapter = {
         getPlaybackTime: (v: HTMLVideoElement) => v.currentTime,
         onClockInvalidated: vi.fn(),
@@ -92,7 +92,7 @@ function setup(videoId = '1') {
         signal: controller.signal,
         logger: createLogger('test'),
         onNavigationMismatch,
-        onOriginalPainted,
+        onLinePainted,
     });
     const tick = (time: number): void => {
         video.time = time;
@@ -142,7 +142,7 @@ function setup(videoId = '1') {
         wordsIn,
         loadCues,
         onNavigationMismatch,
-        onOriginalPainted,
+        onLinePainted,
     };
 }
 
@@ -270,7 +270,7 @@ describe('Renderer', () => {
             block,
             wordsIn,
             loadCues,
-            onOriginalPainted,
+            onLinePainted,
         } = setup();
         renderer.attachMedia({ root: video.parentElement, video });
         renderer.setInteractive(true);
@@ -282,13 +282,63 @@ describe('Renderer', () => {
         tick(2);
         expect(wordsIn('standard')).toBe(2);
         expect(wordsIn('start:0.15')).toBe(0);
-        expect(onOriginalPainted).toHaveBeenLastCalledWith(1);
+        expect(onLinePainted).toHaveBeenLastCalledWith(1, {
+            text: 'Hello there',
+            language: 'en',
+            translation: '你好',
+        });
 
         vi.setSystemTime(101_000);
         tick(4);
         expect(block('standard')).toBeNull();
         expect(wordsIn('start:0.15')).toBe(2);
-        expect(onOriginalPainted).toHaveBeenLastCalledWith(2);
+        expect(onLinePainted).toHaveBeenLastCalledWith(2, {
+            text: 'SIGN TEXT',
+            language: 'en',
+            translation: '标志',
+        });
+    });
+
+    it('paints plain text and reports no line while words are not clickable', () => {
+        const {
+            renderer,
+            video,
+            tick,
+            texts,
+            wordsIn,
+            loadCues,
+            onLinePainted,
+        } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        loadCues([cue(1, 3, 'Hello there', '你好')]);
+        tick(2);
+        expect(texts()).toEqual(['Hello there', '你好']);
+        expect(wordsIn('standard')).toBe(0);
+        expect(onLinePainted).not.toHaveBeenCalled();
+    });
+
+    it('reports the line again, under the same revision, when its translation arrives', () => {
+        const { renderer, video, tick, state, loadCues, onLinePainted } =
+            setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        renderer.setInteractive(true);
+        loadCues([cue(1, 3, 'Hello there')]);
+        tick(2);
+        expect(onLinePainted).toHaveBeenLastCalledWith(1, {
+            text: 'Hello there',
+            language: 'en',
+            translation: null,
+        });
+        state.applyTranslation('1-Hello there', '你好');
+        renderer.cuesChanged();
+        expect(onLinePainted).toHaveBeenLastCalledWith(1, {
+            text: 'Hello there',
+            language: 'en',
+            translation: '你好',
+        });
+        expect(onLinePainted).toHaveBeenCalledTimes(2);
+        tick(2.5);
+        expect(onLinePainted).toHaveBeenCalledTimes(2);
     });
 
     it('drops a finished block at once when another placement stays active', () => {
@@ -320,16 +370,22 @@ describe('Renderer', () => {
     });
 
     it('advances the revision when the clickable line moves to another block with the same text', () => {
-        const { renderer, video, tick, wordsIn, loadCues, onOriginalPainted } =
+        const { renderer, video, tick, wordsIn, loadCues, onLinePainted } =
             setup();
         renderer.attachMedia({ root: video.parentElement, video });
         renderer.setInteractive(true);
         loadCues([cue(1, 3, 'Hello'), cue(1, 5, 'Hello', null, TOP)]);
         tick(2);
-        expect(onOriginalPainted).toHaveBeenLastCalledWith(1);
+        expect(onLinePainted).toHaveBeenLastCalledWith(
+            1,
+            expect.objectContaining({ text: 'Hello' })
+        );
         tick(4);
         expect(wordsIn('start:0.15')).toBe(1);
-        expect(onOriginalPainted).toHaveBeenLastCalledWith(2);
+        expect(onLinePainted).toHaveBeenLastCalledWith(
+            2,
+            expect.objectContaining({ text: 'Hello' })
+        );
     });
 
     it('replaces a dropped block at once when the new cue set draws elsewhere', () => {

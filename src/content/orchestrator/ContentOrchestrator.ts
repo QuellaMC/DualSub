@@ -8,7 +8,7 @@ import {
     sidePanelPauseVideo,
 } from '@/messaging/contracts/control';
 import {
-    selectionRemovalCommand,
+    selectionEditCommand,
     selectionRepublishRequest,
 } from '@/messaging/contracts/selection';
 import { IsolatedBridge } from '../bridge/IsolatedBridge';
@@ -99,9 +99,9 @@ export class ContentOrchestrator {
                 }
         );
         this.router.handle(
-            selectionRemovalCommand,
+            selectionEditCommand,
             (request) =>
-                this.activeSession?.selection.handleRemoval(request.data) ?? {
+                this.activeSession?.selection.handleEdit(request.data) ?? {
                     success: false,
                     requestId: request.data.requestId,
                 }

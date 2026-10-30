@@ -27,6 +27,14 @@ const generation = z.object({
         .min(1),
 });
 
+/** Gemini refuses a key with 400 INVALID_ARGUMENT, naming the reason in
+ *  the error's details. */
+const keyRefusal = z.object({
+    error: z.object({
+        details: z.array(z.object({ reason: z.string().optional() })),
+    }),
+});
+
 export const geminiContextProvider: ContextProvider = {
     id: 'gemini',
 
@@ -89,5 +97,15 @@ export const geminiContextProvider: ContextProvider = {
             );
         }
         return candidate.content.parts[0]!.text;
+    },
+
+    refusesKey(body) {
+        const parsed = keyRefusal.safeParse(body);
+        return (
+            parsed.success &&
+            parsed.data.error.details.some(
+                (detail) => detail.reason === 'API_KEY_INVALID'
+            )
+        );
     },
 };

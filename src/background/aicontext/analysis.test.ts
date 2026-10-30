@@ -4,7 +4,7 @@ import type { ProviderSettings } from './provider';
 import { ContextProviderError } from './providerError';
 import { geminiContextProvider } from './providers/gemini';
 import { openaiApiBase, openaiContextProvider } from './providers/openai';
-import { culturalSample } from './schemas.test';
+import { answerSample } from './schemas.test';
 
 const SETTINGS: ProviderSettings = {
     openaiApiKey: 'sk-test',
@@ -15,7 +15,13 @@ const SETTINGS: ProviderSettings = {
     geminiModel: 'gemini-3.5-flash',
 };
 
-const INPUT = { text: 'hola', type: 'cultural', targetLanguage: 'en' } as const;
+const INPUT = {
+    text: 'hola',
+    line: 'hola amigo',
+    sourceLanguage: 'es',
+    targetLanguage: 'en',
+    kinds: ['linguistic', 'cultural', 'historical'],
+} as const;
 
 function jsonResponse(body: unknown, status = 200): Response {
     return new Response(JSON.stringify(body), {
@@ -65,7 +71,7 @@ describe('openai context provider', () => {
     });
 
     it('posts a strict json_schema chat completion and returns the analysis', async () => {
-        const sample = culturalSample();
+        const sample = answerSample();
         const fetchMock = fetchReturning(
             jsonResponse({
                 choices: [{ message: { content: JSON.stringify(sample) } }],
@@ -89,7 +95,7 @@ describe('openai context provider', () => {
         expect(body.messages).toHaveLength(2);
         expect(body.response_format).toMatchObject({
             type: 'json_schema',
-            json_schema: { name: 'context_analysis', strict: true },
+            json_schema: { name: 'word_explanation', strict: true },
         });
     });
 
@@ -138,6 +144,7 @@ describe('openai context provider', () => {
                 fetch: fetchReturning(jsonResponse({}, 401)),
             })
         );
+        expect(unauthorized.code).toBe('KEY_REFUSED');
         expect(unauthorized.retryable).toBe(false);
     });
 
@@ -243,7 +250,7 @@ describe('openai context provider', () => {
 
 describe('analysis runner', () => {
     it('invokes fetch unbound, as the worker global requires', async () => {
-        const sample = culturalSample();
+        const sample = answerSample();
         const strictFetch = vi.fn(function (this: unknown) {
             if (this !== undefined) {
                 return Promise.reject(new TypeError('Illegal invocation'));
@@ -265,7 +272,7 @@ describe('analysis runner', () => {
 
 describe('gemini context provider', () => {
     it('posts generateContent with the key in a header and a JSON response schema', async () => {
-        const sample = culturalSample();
+        const sample = answerSample();
         const fetchMock = fetchReturning(
             jsonResponse({
                 candidates: [
@@ -311,6 +318,45 @@ describe('gemini context provider', () => {
         );
         expect(error.code).toBe('SAFETY_BLOCKED');
         expect(error.retryable).toBe(false);
+    });
+
+    it('tells a refused key from any other bad request', async () => {
+        const refusal = (reason: string) =>
+            jsonResponse(
+                {
+                    error: {
+                        code: 400,
+                        message:
+                            'API key not valid. Please pass a valid API key.',
+                        status: 'INVALID_ARGUMENT',
+                        details: [
+                            {
+                                '@type':
+                                    'type.googleapis.com/google.rpc.ErrorInfo',
+                                reason,
+                                domain: 'googleapis.com',
+                            },
+                        ],
+                    },
+                },
+                400
+            );
+        const refused = await failure(
+            runProviderAnalysis(geminiContextProvider, SETTINGS, INPUT, {
+                timeoutMs: 1000,
+                fetch: fetchReturning(refusal('API_KEY_INVALID')),
+            })
+        );
+        expect(refused.code).toBe('KEY_REFUSED');
+        expect(refused.retryable).toBe(false);
+
+        const malformed = await failure(
+            runProviderAnalysis(geminiContextProvider, SETTINGS, INPUT, {
+                timeoutMs: 1000,
+                fetch: fetchReturning(refusal('BAD_REQUEST')),
+            })
+        );
+        expect(malformed.code).toBe('UPSTREAM_ERROR');
     });
 
     it('requires a Gemini API key', async () => {

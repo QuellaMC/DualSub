@@ -40,3 +40,15 @@ export function segmentWords(
     }
     return words;
 }
+
+/** A painted subtitle line: its text and the language it is split in. */
+export interface WordLine {
+    readonly text: string;
+    readonly language: string | null;
+}
+
+/** The words of a painted line, numbered as the line is painted: a word's
+ *  index is its position here, wherever the line is split. */
+export function lineWords(line: WordLine): readonly WordSpan[] {
+    return segmentWords(line.text, line.language ?? 'und');
+}

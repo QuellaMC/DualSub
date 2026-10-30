@@ -35,7 +35,7 @@ export const OPTIONS_SETTINGS_KEYS = [
     'vertexLocation',
     'vertexModel',
     'vertexTokenExpiresAt',
-    'aiContextEnabled',
+    'wordLookupEnabled',
     'aiContextProvider',
     'aiContextTypes',
     'aiContextTimeout',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { segmentWords } from './words';
+import { lineWords, segmentWords } from './words';
 
 describe('segmentWords', () => {
     it('splits Latin text into words, keeping contractions whole', () => {
@@ -37,5 +37,19 @@ describe('segmentWords', () => {
         expect(
             segmentWords('hello world', 'not a locale').map(({ word }) => word)
         ).toEqual(['hello', 'world']);
+    });
+});
+
+describe('lineWords', () => {
+    it('numbers a line in its own language, or as undetermined', () => {
+        expect(
+            lineWords({
+                text: 'Está lloviendo a cántaros',
+                language: 'es',
+            }).map(({ word }) => word)
+        ).toEqual(['Está', 'lloviendo', 'a', 'cántaros']);
+        expect(lineWords({ text: 'hello, world', language: null })).toEqual(
+            segmentWords('hello, world', 'und')
+        );
     });
 });
