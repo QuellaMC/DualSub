@@ -77,6 +77,10 @@ function googleEntries(
     });
 }
 
+type Dictionary = Pick<LookupResult, 'entries' | 'source'>;
+
+const NOTHING_FOUND: Dictionary = { entries: [], source: null };
+
 export interface LookupServiceDeps {
     readonly translation: Pick<TranslationService, 'translate' | 'paced'>;
     readonly logger?: Logger;
@@ -90,7 +94,9 @@ export interface LookupServiceDeps {
  * never fails as a whole: what could not be found is simply absent.
  */
 export class LookupService {
-    private readonly cache = new TtlCache<LookupResult>(
+    /** Entries as their dictionary gave them. Every translation goes through
+     *  the translation service, whose cache follows its own configuration. */
+    private readonly cache = new TtlCache<Dictionary>(
         CACHE_MAX_ENTRIES,
         CACHE_TTL_MS
     );
@@ -106,22 +112,11 @@ export class LookupService {
         targetLanguage: string
     ): Promise<LookupResult> {
         const query = text.trim().replace(/\s+/g, ' ');
-        const key = JSON.stringify([language, targetLanguage, query]);
-        const cached = this.cache.get(key);
-        if (cached) {
-            return cached;
-        }
         const [translation, dictionary] = await Promise.all([
             this.translate(query, language ?? 'auto', targetLanguage),
             this.dictionary(query, language, targetLanguage),
         ]);
-        const result: LookupResult = { translation, ...dictionary };
-        // A translation that failed may come back; only a whole answer is
-        // kept.
-        if (translation !== null) {
-            this.cache.set(key, result);
-        }
-        return result;
+        return { translation, ...dictionary };
     }
 
     private async translate(
@@ -144,13 +139,39 @@ export class LookupService {
         }
     }
 
+    /** The entries for `query` in the target language. Entries found are
+     *  kept for a while; nothing found is asked again next time. */
     private async dictionary(
         query: string,
         language: string | null,
         targetLanguage: string
-    ): Promise<Pick<LookupResult, 'entries' | 'source'>> {
+    ): Promise<Dictionary> {
+        const key = JSON.stringify([language, targetLanguage, query]);
+        let found = this.cache.get(key);
+        if (!found) {
+            found = await this.find(query, language, targetLanguage);
+            if (found.source !== null) {
+                this.cache.set(key, found);
+            }
+        }
+        return found.source === 'wiktionary'
+            ? {
+                  entries: await this.inTargetLanguage(
+                      found.entries,
+                      targetLanguage
+                  ),
+                  source: found.source,
+              }
+            : found;
+    }
+
+    private async find(
+        query: string,
+        language: string | null,
+        targetLanguage: string
+    ): Promise<Dictionary> {
         if (query.length > MAX_DICTIONARY_QUERY) {
-            return { entries: [], source: null };
+            return NOTHING_FOUND;
         }
         try {
             const meanings = await this.deps.translation.paced(
@@ -171,20 +192,17 @@ export class LookupService {
             });
         }
         const entries =
-            language === null
-                ? []
-                : await this.wiktionary(query, language, targetLanguage);
+            language === null ? [] : await this.wiktionary(query, language);
         return entries.length > 0
             ? { entries, source: 'wiktionary' }
-            : { entries: [], source: null };
+            : NOTHING_FOUND;
     }
 
     /** Wiktionary's entries, each "form of" entry shown as the word it is a
-     *  form of, and its English definitions in the target language. */
+     *  form of, defined in English. */
     private async wiktionary(
         query: string,
-        language: string,
-        targetLanguage: string
+        language: string
     ): Promise<DictionaryEntry[]> {
         const found = await this.wiktionaryPage(query, language);
         if (!found) {
@@ -225,17 +243,18 @@ export class LookupService {
                     .map((definition) => sense(definition)),
             });
         }
-        return this.inTargetLanguage(entries, targetLanguage);
+        return entries;
     }
 
-    /** The page for `query`: lowercase first, as a word at the start of a
-     *  line is capitalized, then as written. */
+    /** The page for `query` as written, where case can tell words apart
+     *  ("Polish", "polish"), then in lowercase, as a word at the start of a
+     *  line is capitalized. */
     private async wiktionaryPage(
         query: string,
         language: string
     ): Promise<{ title: string; entries: WiktionaryEntry[] } | null> {
         const lower = query.toLocaleLowerCase();
-        for (const title of lower === query ? [query] : [lower, query]) {
+        for (const title of lower === query ? [query] : [query, lower]) {
             const entries = await wiktionaryEntries(title, language);
             if (entries && entries.length > 0) {
                 return { title, entries };

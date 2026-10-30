@@ -156,7 +156,7 @@ describe('LookupService', () => {
         );
     });
 
-    it('tries a capitalized word in lowercase first and keeps English for English viewers', async () => {
+    it('tries a word as written, then in lowercase, and keeps English for English viewers', async () => {
         serve({
             'translate.googleapis.com': () => {
                 throw new TranslationProviderError('google', 'blocked', {
@@ -179,6 +179,43 @@ describe('LookupService', () => {
             { term: 'está', from: null, type: 'verb', senses: ['is (estar)'] },
         ]);
         expect(result.source).toBe('wiktionary');
+        expect(
+            fetchMock.mock.calls
+                .map(([url]) => url)
+                .filter((url) => url.includes('/definition/'))
+                .map((url) => url.split('/definition/')[1])
+        ).toEqual(['Est%C3%A1', 'est%C3%A1']);
+    });
+
+    it('keeps a spelling whose case tells it from another word', async () => {
+        const page = (definition: string) => () =>
+            json({
+                en: [
+                    {
+                        partOfSpeech: 'Adjective',
+                        definitions: [{ definition }],
+                    },
+                ],
+            });
+        serve({
+            'translate.googleapis.com': () => json({}),
+            '/definition/Polish': page('Of or from Poland.'),
+            '/definition/polish': page('Shiny.'),
+        });
+        const { service } = harness();
+        expect((await service.lookup('Polish', 'en', 'en')).entries).toEqual([
+            {
+                term: 'Polish',
+                from: null,
+                type: 'adjective',
+                senses: ['Of or from Poland.'],
+            },
+        ]);
+        expect(
+            fetchMock.mock.calls.some(([url]) =>
+                url.includes('/definition/polish')
+            )
+        ).toBe(false);
     });
 
     it('finds nothing without a language for Wiktionary, or for a sentence', async () => {
@@ -199,26 +236,25 @@ describe('LookupService', () => {
         expect(translation.paced).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps an answer for a while, but not one missing its translation', async () => {
-        serve({ 'translate.googleapis.com': () => json({}) });
-        let fail = true;
-        const { service, translation } = harness((text) =>
-            fail
-                ? Promise.reject(new Error('offline'))
-                : Promise.resolve({
-                      translatedText: `[${text}]`,
-                      cached: false,
-                  })
-        );
-        expect(
-            (await service.lookup('hola', 'es', 'en')).translation
-        ).toBeNull();
-        fail = false;
-        expect((await service.lookup('hola', 'es', 'en')).translation).toBe(
-            '[hola]'
-        );
-        await service.lookup('hola', 'es', 'en');
-        expect(translation.translate).toHaveBeenCalledTimes(2);
+    it('keeps entries found for a while, but asks again for translations and for nothing found', async () => {
+        serve({
+            'q=amigo': () =>
+                json({
+                    dict: [
+                        { pos: 'noun', terms: ['friend'], base_form: 'amigo' },
+                    ],
+                }),
+            'translate.googleapis.com': () => json({}),
+        });
+        const { service, translation } = harness();
+        for (const word of ['amigo', 'amigo', 'zzz', 'zzz']) {
+            await service.lookup(word, 'es', 'en');
+        }
+        expect(translation.paced).toHaveBeenCalledTimes(3);
+        expect(translation.translate).toHaveBeenCalledTimes(4);
+        expect((await service.lookup('amigo', 'es', 'en')).entries).toEqual([
+            { term: 'amigo', from: null, type: 'noun', senses: ['friend'] },
+        ]);
     });
 });
 
