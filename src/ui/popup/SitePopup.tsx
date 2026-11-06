@@ -63,7 +63,7 @@ function Stepper({
     more: ReactNode;
 }) {
     return (
-        <div className="row">
+        <div className="row stepper-row">
             <span className="strong">
                 {label} {tag}
             </span>

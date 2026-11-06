@@ -72,6 +72,16 @@ body {
     font-size: 16px;
 }
 
+/* The buttons keep the label's line and a long label wraps beside them,
+   so no language makes the popup taller than Chrome lets it be. */
+.stepper-row {
+    flex-wrap: nowrap;
+}
+
+.stepper-row > .strong {
+    line-height: 1.25;
+}
+
 .stepper {
     display: flex;
     align-items: center;

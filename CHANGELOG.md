@@ -4,6 +4,10 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Fixed
+
+- In Spanish, the popup no longer grows taller than Chrome allows, which added a scrollbar. The text size buttons used to drop below their label; now each adjustment's buttons stay beside its label in every language.
+
 ## [3.3.0] - 2026-11-06
 
 ### Added

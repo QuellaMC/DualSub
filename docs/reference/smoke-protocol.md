@@ -52,6 +52,7 @@ Each check is an action followed by what should happen.
 ## Settings and locale
 
 16. Change the UI language. The popup, settings page, and panel switch without a reload, and the settings page title follows.
+    - In Spanish, the popup's text size, timing, and position buttons stay beside their labels, and the popup needs no scrollbar.
 17. On a clean profile, open the settings page. It opens on Start, says it is working on Netflix and Disney+, and highlights Start in the menu.
     - Make the text bigger with A+. The notice confirms it and stays while pointed at, and Undo (or Ctrl+Z) puts it back.
     - Scroll down and open Languages from the menu. It opens at the top, with the top bar in view.
