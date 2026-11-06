@@ -184,7 +184,9 @@ function Welcome({
     save: SettingsHandle<WelcomeKey>['save'];
 }) {
     /** The controls whose latest change could not be saved. */
-    const [failed, setFailed] = useState<ReadonlySet<PickedControl>>(new Set());
+    const [failed, setFailed] = useState<ReadonlySet<PickedControl>>(
+        () => new Set()
+    );
     const [changingLanguage, setChangingLanguage] = useState(false);
     /** Each control's latest change, the only one that may report how it
      *  was saved; a change to another control reports on its own. */

@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, use } from 'react';
 import type { SettingsValues, SiteSettingKey } from '@/config/schema';
 import {
     configService,
@@ -87,7 +87,7 @@ export function followAllSites(
 }
 
 export function useFeedback(): Feedback {
-    const feedback = useContext(FeedbackContext);
+    const feedback = use(FeedbackContext);
     if (!feedback) {
         throw new Error('useFeedback needs a FeedbackProvider');
     }
