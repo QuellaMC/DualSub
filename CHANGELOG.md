@@ -4,6 +4,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-06
+
 ### Added
 
 - Click a word in the subtitles to see what it means, with nothing to set up. The side panel shows the word's line with its translation, the word's own translation, and an entry from Google's dictionary, or from Wiktionary when Google has none. Click more words, in the subtitles or in the panel's copy of the line, to look up a phrase; click a picked word in the panel to take it out.
@@ -194,7 +196,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 Versions not listed here, including those before 1.4.0, are on [GitHub Releases](https://github.com/QuellaMC/DualSub/releases).
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.2.1...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.3.0...HEAD
+[3.3.0]: https://github.com/QuellaMC/DualSub/compare/v3.2.1...v3.3.0
 [3.2.1]: https://github.com/QuellaMC/DualSub/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/QuellaMC/DualSub/compare/v3.1.1...v3.2.0
 [3.1.1]: https://github.com/QuellaMC/DualSub/compare/v3.1.0...v3.1.1
