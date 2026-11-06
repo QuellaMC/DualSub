@@ -19,6 +19,10 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 - An AI answer is one explanation of the words in their line, instead of separate cultural, historical, and linguistic analyses, and it explains the meaning even with nothing ticked in What to explain. A failure says whether the key was refused, which reopens the key steps, or the service didn't answer, instead of showing the service's own message.
 - DualSub's description on Chrome's extensions page and in the Chrome Web Store says what it does: subtitles in two languages at once on Netflix and Disney+, and any word's meaning a click away.
 
+### Security
+
+- zod, the library DualSub checks its settings and messages with, is updated to 4.6.7. Earlier versions could run out of memory checking a very large list (CVE-2023-54404, GHSA-mrhx-c7xc-m3w5).
+
 ## [3.2.1] - 2026-10-23
 
 ### Fixed
