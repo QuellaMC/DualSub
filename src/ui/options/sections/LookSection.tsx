@@ -36,6 +36,7 @@ import {
     type TextSize,
 } from '../../adjustments';
 import { Icon, type IconName } from '../../design/Icon';
+import { SiteDot } from '../../design/SiteDot';
 import { Switch } from '../../design/Switch';
 import type { Translate } from '../../hooks/useI18n';
 import { sampleSubtitles, sampleVideoLanguage } from '../../preview/sample';
@@ -212,14 +213,9 @@ function FormatRow({
                 <Icon name={icon} />
                 <span className="format-name">{title}</span>
                 {owner && (
-                    <span
-                        className="format-own"
-                        title={t('scopeSiteOnly', PLATFORM_NAMES[owner])}
-                    >
-                        <span className="sr-only">
-                            {t('scopeSiteOnly', PLATFORM_NAMES[owner])}
-                        </span>
-                    </span>
+                    <SiteDot
+                        label={t('scopeSiteOnly', PLATFORM_NAMES[owner])}
+                    />
                 )}
                 <span className="format-value">{summary}</span>
                 <span className="format-chevron">

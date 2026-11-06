@@ -72,8 +72,8 @@ body {
     font-size: 16px;
 }
 
-/* The buttons keep the label's line and a long label wraps beside them,
-   so no language makes the popup taller than Chrome lets it be. */
+/* Chrome shows a popup no taller than 600px, so a stepper row stays as
+   tall as its buttons whatever its label's language. */
 .stepper-row {
     flex-wrap: nowrap;
 }

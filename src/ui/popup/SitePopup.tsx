@@ -23,6 +23,7 @@ import {
 import { reloadActiveTab, type TabStatus } from '../contentTab';
 import { Icon } from '../design/Icon';
 import { LanguageSelect } from '../design/LanguageSelect';
+import { SiteDot } from '../design/SiteDot';
 import { Switch } from '../design/Switch';
 import { HealthNotice } from '../HealthNotice';
 import { useDraft } from '../hooks/useDraft';
@@ -48,16 +49,16 @@ type SitePopupSettings = Pick<SettingsValues, (typeof SITE_POPUP_KEYS)[number]>;
 const logger = createLogger('Popup');
 
 /** One adjustment: what it is, and where it stands between a button
- *  either side. */
+ *  either side. `siteOnly` names the site when it keeps its own value. */
 function Stepper({
     label,
-    tag,
+    siteOnly,
     value,
     less,
     more,
 }: {
     label: string;
-    tag: ReactNode;
+    siteOnly: string | null;
     value: string;
     less: ReactNode;
     more: ReactNode;
@@ -65,7 +66,7 @@ function Stepper({
     return (
         <div className="row stepper-row">
             <span className="strong">
-                {label} {tag}
+                {label} {siteOnly && <SiteDot label={siteOnly} />}
             </span>
             <div className="stepper">
                 {less}
@@ -209,10 +210,9 @@ function SiteControls({
     );
     const name = PLATFORM_NAMES[site];
     const own = siteProfileOf(settings.siteProfiles, site);
-    const siteTag = (key: SiteSettingKey): ReactNode =>
-        Object.hasOwn(own, key) && (
-            <span className="tag site">{t('scopeSiteOnly', name)}</span>
-        );
+    const siteOnly = (key: SiteSettingKey): string | null =>
+        Object.hasOwn(own, key) ? t('scopeSiteOnly', name) : null;
+    const originalSiteOnly = siteOnly('originalLanguage');
     const size = namedSize(scale.value);
     const bigger = nextSize(scale.value, 1);
     const smaller = nextSize(scale.value, -1);
@@ -283,7 +283,9 @@ function SiteControls({
                 <div className="row">
                     <span className="strong">
                         {t('languagesOriginalTitle')}{' '}
-                        {siteTag('originalLanguage')}
+                        {originalSiteOnly && (
+                            <span className="tag site">{originalSiteOnly}</span>
+                        )}
                     </span>
                     <span className="help">{originalLine}</span>
                 </div>
@@ -292,7 +294,7 @@ function SiteControls({
             <section className="card">
                 <Stepper
                     label={t('lookSizeTitle')}
-                    tag={siteTag('subtitleFontScale')}
+                    siteOnly={siteOnly('subtitleFontScale')}
                     value={
                         size
                             ? t(size.labelKey)
@@ -330,7 +332,7 @@ function SiteControls({
                 />
                 <Stepper
                     label={t('navTiming')}
-                    tag={siteTag('subtitleTimeOffset')}
+                    siteOnly={siteOnly('subtitleTimeOffset')}
                     value={timingLabel(t, offset.value)}
                     less={
                         <button
@@ -365,7 +367,7 @@ function SiteControls({
                 />
                 <Stepper
                     label={t('popupPosition')}
-                    tag={siteTag('subtitleVerticalPosition')}
+                    siteOnly={siteOnly('subtitleVerticalPosition')}
                     value={t(positionWordKey(position.value))}
                     less={
                         <button
