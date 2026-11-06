@@ -1,7 +1,7 @@
 # DualSub
 
 <p align="center">
-  <img src="assets/images/logo1400x560.png" alt="DualSub" width="600" />
+  <img src="assets/store/promo-marquee-1400x560.png" alt="DualSub" width="600" />
 </p>
 
 [English](README.md)

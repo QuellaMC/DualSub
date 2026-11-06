@@ -3,7 +3,7 @@
         "message": "DualSub"
     },
     "appDesc": {
-        "message": "스트리밍 플랫폼에서 이중 언어 자막을 표시합니다."
+        "message": "DualSub은 Netflix와 Disney+에서 자막을 두 언어로 함께 보여 주고, 단어를 클릭하면 그 뜻을 알려 줍니다."
     },
     "optionsPageTitle": {
         "message": "DualSub 설정"
