@@ -1,7 +1,7 @@
+import react from '@eslint-react/eslint-plugin';
 import js from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier/flat';
 import { defineConfig } from 'eslint/config';
-import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -91,18 +91,24 @@ export default defineConfig([
     },
     {
         files: ['src/**/*.tsx'],
-        plugins: {
-            react,
-        },
+        extends: [react.configs['recommended-type-checked']],
         rules: {
-            ...react.configs.recommended.rules,
-            'react/prop-types': 'off',
-            'react/react-in-jsx-scope': 'off',
-        },
-        settings: {
-            react: {
-                version: 'detect',
-            },
+            // A ref is named for what it holds, like any other value.
+            '@eslint-react/naming-convention-ref-name': 'off',
+            // Index keys are kept for lists rendered whole from data that
+            // never reorders, where equal items may repeat.
+            '@eslint-react/no-array-index-key': 'off',
+            // eslint-plugin-react-hooks owns the hook rules; these are this
+            // plugin's own copies of them.
+            '@eslint-react/error-boundaries': 'off',
+            '@eslint-react/exhaustive-deps': 'off',
+            '@eslint-react/purity': 'off',
+            '@eslint-react/rules-of-hooks': 'off',
+            '@eslint-react/set-state-in-effect': 'off',
+            '@eslint-react/set-state-in-render': 'off',
+            '@eslint-react/static-components': 'off',
+            '@eslint-react/unsupported-syntax': 'off',
+            '@eslint-react/use-memo': 'off',
         },
     },
     {

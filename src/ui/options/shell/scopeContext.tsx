@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect } from 'react';
+import { createContext, use, useEffect } from 'react';
 import type { SiteSettingKey } from '@/config/schema';
 import { PLATFORM_NAMES, type PlatformId } from '@/shared/platforms';
 import type { Translate } from '../../hooks/useI18n';
@@ -29,7 +29,7 @@ export const ScopeProvider = ScopeContext.Provider;
 export function useSiteOwner(
     keys: readonly SiteSettingKey[]
 ): PlatformId | null {
-    const context = useContext(ScopeContext);
+    const context = use(ScopeContext);
     return context &&
         context.scope !== 'all' &&
         keys.some((key) => context.ownKeys.has(key))
@@ -40,7 +40,7 @@ export function useSiteOwner(
 /** Under a site's scope, marks a control showing that site's own value,
  *  with the way back to the value for all sites. */
 export function SiteTag({ keys }: { keys: readonly SiteSettingKey[] }) {
-    const context = useContext(ScopeContext);
+    const context = use(ScopeContext);
     const owner = useSiteOwner(keys);
     if (!context || !owner) {
         return null;
@@ -72,7 +72,7 @@ export function useSiteDraft<T>(
     write: (value: T, notice: SaveFeedback) => Promise<boolean>
 ): Draft<T> {
     const draft = useDraft(saved, write, useFeedback().takeBackUndo);
-    const registerDraft = useContext(ScopeContext)?.registerDraft;
+    const registerDraft = use(ScopeContext)?.registerDraft;
     const { cancel } = draft;
     useEffect(() => registerDraft?.(key, cancel), [registerDraft, key, cancel]);
     return draft;
@@ -80,12 +80,12 @@ export function useSiteDraft<T>(
 
 /** Which sites the page is editing; all of them outside a scope. */
 export function useScope(): Scope {
-    return useContext(ScopeContext)?.scope ?? 'all';
+    return use(ScopeContext)?.scope ?? 'all';
 }
 
 /** Under a site's scope, marks a setting that every site shares. */
 export function SharedTag() {
-    const context = useContext(ScopeContext);
+    const context = use(ScopeContext);
     if (!context || context.scope === 'all') {
         return null;
     }
