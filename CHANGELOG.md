@@ -4,6 +4,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-06
+
 ### Added
 
 - Click a word in the subtitles to see what it means, with nothing to set up. The side panel shows the word's line with its translation, the word's own translation, and an entry from Google's dictionary, or from Wiktionary when Google has none. Click more words, in the subtitles or in the panel's copy of the line, to look up a phrase; click a picked word in the panel to take it out.
@@ -16,6 +18,10 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 - The words you click go to Google's dictionary, and to Wiktionary when Google has no entry, whichever translation service you use. The privacy policy says so.
 - An AI answer is one explanation of the words in their line, instead of separate cultural, historical, and linguistic analyses, and it explains the meaning even with nothing ticked in What to explain. A failure says whether the key was refused, which reopens the key steps, or the service didn't answer, instead of showing the service's own message.
 - DualSub's description on Chrome's extensions page and in the Chrome Web Store says what it does: subtitles in two languages at once on Netflix and Disney+, and any word's meaning a click away.
+
+### Security
+
+- zod, the library DualSub checks its settings and messages with, is updated to 4.6.7. Earlier versions could run out of memory checking a very large list (CVE-2023-54404, GHSA-mrhx-c7xc-m3w5).
 
 ## [3.2.1] - 2026-10-23
 
@@ -194,7 +200,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 Versions not listed here, including those before 1.4.0, are on [GitHub Releases](https://github.com/QuellaMC/DualSub/releases).
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.2.1...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.3.0...HEAD
+[3.3.0]: https://github.com/QuellaMC/DualSub/compare/v3.2.1...v3.3.0
 [3.2.1]: https://github.com/QuellaMC/DualSub/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/QuellaMC/DualSub/compare/v3.1.1...v3.2.0
 [3.1.1]: https://github.com/QuellaMC/DualSub/compare/v3.1.0...v3.1.1
