@@ -270,6 +270,9 @@ describe('PopupApp on a site DualSub works on', () => {
         stubTab(NETFLIX_WATCH, true);
         render(<PopupApp />);
         expect(await screen.findByText('Extra large')).toBeInTheDocument();
+        // A stepper row marks it with a dot, which names the site in its
+        // tooltip and to screen readers, so the row keeps its height.
+        expect(screen.getByTitle('Netflix only')).toBeInTheDocument();
         expect(screen.getByText('Netflix only')).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Smaller text' }));
         await waitFor(async () =>

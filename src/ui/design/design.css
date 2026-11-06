@@ -104,6 +104,16 @@ h2 {
     white-space: nowrap;
 }
 
+.site-dot {
+    display: inline-block;
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--focus);
+    vertical-align: middle;
+}
+
 .icon {
     width: 22px;
     height: 22px;

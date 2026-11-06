@@ -857,14 +857,6 @@
     min-width: 0;
 }
 
-.format-own {
-    flex: none;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--focus);
-}
-
 .format-value {
     display: inline-flex;
     align-items: center;
