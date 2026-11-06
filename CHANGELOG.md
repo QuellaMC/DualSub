@@ -15,6 +15,7 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 - Subtitle words are clickable for everyone, and "Look up words when I click them" in Meanings turns that off. Explanations no longer have a switch of their own: a saved OpenAI or Gemini key turns on Explain with AI, so anyone with a key keeps it working after the update.
 - The words you click go to Google's dictionary, and to Wiktionary when Google has no entry, whichever translation service you use. The privacy policy says so.
 - An AI answer is one explanation of the words in their line, instead of separate cultural, historical, and linguistic analyses, and it explains the meaning even with nothing ticked in What to explain. A failure says whether the key was refused, which reopens the key steps, or the service didn't answer, instead of showing the service's own message.
+- DualSub's description on Chrome's extensions page and in the Chrome Web Store says what it does: subtitles in two languages at once on Netflix and Disney+, and any word's meaning a click away.
 
 ## [3.2.1] - 2026-10-23
 

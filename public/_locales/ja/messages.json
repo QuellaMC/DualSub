@@ -3,7 +3,7 @@
         "message": "DualSub"
     },
     "appDesc": {
-        "message": "ストリーミングプラットフォームで二言語字幕を表示します。"
+        "message": "DualSubは、NetflixとDisney+で2つの言語の字幕を同時に表示します。単語をクリックすると、その意味がわかります。"
     },
     "optionsPageTitle": {
         "message": "DualSubの設定"
