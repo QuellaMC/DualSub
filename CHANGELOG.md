@@ -4,6 +4,12 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [3.3.1] - 2026-11-09
+
+### Fixed
+
+- In Spanish, the popup no longer grows taller than Chrome allows, which added a scrollbar. The text size buttons used to drop below their label; now each adjustment's buttons stay beside its label in every language. When a site keeps its own text size, timing, or position, the popup marks that row with a dot, as the settings page's Style section does, instead of a tag that could push the row taller.
+
 ## [3.3.0] - 2026-11-06
 
 ### Added
@@ -200,7 +206,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 Versions not listed here, including those before 1.4.0, are on [GitHub Releases](https://github.com/QuellaMC/DualSub/releases).
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.3.0...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.3.1...HEAD
+[3.3.1]: https://github.com/QuellaMC/DualSub/compare/v3.3.0...v3.3.1
 [3.3.0]: https://github.com/QuellaMC/DualSub/compare/v3.2.1...v3.3.0
 [3.2.1]: https://github.com/QuellaMC/DualSub/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/QuellaMC/DualSub/compare/v3.1.1...v3.2.0

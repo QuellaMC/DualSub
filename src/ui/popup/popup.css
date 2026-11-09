@@ -72,6 +72,16 @@ body {
     font-size: 16px;
 }
 
+/* Chrome shows a popup no taller than 600px, so a stepper row stays as
+   tall as its buttons whatever its label's language. */
+.stepper-row {
+    flex-wrap: nowrap;
+}
+
+.stepper-row > .strong {
+    line-height: 1.25;
+}
+
 .stepper {
     display: flex;
     align-items: center;
