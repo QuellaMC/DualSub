@@ -1,0 +1,7 @@
+DualSub shows subtitles in two languages at once on Netflix and Disney+, and lets you click any word to see what it means.
+
+DualSub shows each subtitle line in the video's language with your translation underneath. It works as soon as you install it: your language is picked for you, the original line follows the language being spoken, and when a show has its own subtitles in your language, DualSub uses them. Click a word in the subtitles and the video pauses while a side panel shows its translation and a dictionary entry. With your own OpenAI or Google Gemini key, Explain with AI also tells you what the words mean in that line, with examples, similar ways to say it, and the culture and history behind them.
+
+While you watch, the DualSub button in Chrome's toolbar changes your language, the text size, the timing, and the position. The settings page lets you style the subtitles, choose how they are translated (Microsoft Translator by default, or Google Translate, DeepL, or an AI service), and give Netflix and Disney+ settings of their own.
+
+DualSub works in Chrome 116 or later, and its interface is available in English, Spanish, Japanese, Korean, and Simplified and Traditional Chinese. It is free and needs no account. It has no server of its own and collects no analytics: subtitle text and the words you click go straight from your browser to the services that translate and look them up. Explain with AI sends the words and their line to your AI service, and only when you press it. DualSub is not affiliated with Netflix or Disney+.
