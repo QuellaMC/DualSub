@@ -55,10 +55,10 @@ DualSub is a Manifest V3 extension written in strict TypeScript with [WXT](https
 A few rules hold the design together:
 
 - Each video gets one player session. Its listeners, timers, and requests share one abort signal and end together.
-- A main-world script per site, declared in the manifest, reads subtitle tracks, the audio language, and the profile's subtitle appearance from the site's own player. It passes them to the content script over a `MessageChannel`. Netflix tracks come from the player API; Disney+ tracks come from HLS (M3U8) playlists.
+- A main-world script per site, declared in the manifest, reads subtitle tracks, the audio language, and the profile's subtitle appearance from the site's own player. It passes them to the content script over a `MessageChannel`. Netflix and YouTube tracks come from the player API; Disney+ tracks come from HLS (M3U8) playlists.
 - Every cross-context message is a zod contract. The router authenticates the sender and checks its role before a typed handler sees the payload.
 - The content script owns the word selection; the side panel shows it and asks for changes.
-- Subtitle files are fetched only from an allowlist of site CDNs, with size caps. Provider requests carry no browser cookies.
+- Subtitle files are fetched only from an allowlist of each site's subtitle hosts, with size caps. Provider requests carry no browser cookies.
 
 ## Adding a translation service
 
@@ -70,9 +70,9 @@ A few rules hold the design together:
 
 ## Adding a streaming site
 
-1. Add the site to `src/shared/platforms.ts` and to sender classification in `src/messaging/sender.ts`, and add a descriptor and adapter under `src/content/platform/`.
+1. Add the site to `src/shared/platforms.ts`, with its subdomains when DualSub works on only some of them; sender classification and the popup read its hosts from there. Add a descriptor and adapter under `src/content/platform/`. The type checker then names every other table keyed by site, such as its look and its badge.
 2. Add its content script and main-world script to `src/entrypoints/`, its recipe to `src/content/bridge/main-world/`, and its messages to `src/content/bridge/protocol.ts`.
-3. Extend the subtitle policy and parsers in `src/background/subtitle/` for its CDN.
+3. Extend the subtitle policy and parsers in `src/background/subtitle/` for its subtitle hosts.
 4. Add its hosts to `wxt.config.ts` and `src/build/manifest.golden.json`, and say why in the commit.
 5. Run the [smoke protocol](docs/reference/smoke-protocol.md) on the site.
 
@@ -86,4 +86,4 @@ A few rules hold the design together:
 
 ## Releases
 
-A merge to `main` that raises the version in `package.json` publishes a GitHub release. The release workflow takes its notes from that version's section in `CHANGELOG.md` and fails if there is none. Run the [smoke protocol](docs/reference/smoke-protocol.md) on Netflix and Disney+ before you raise the version.
+A merge to `main` that raises the version in `package.json` publishes a GitHub release. The release workflow takes its notes from that version's section in `CHANGELOG.md` and fails if there is none. Run the [smoke protocol](docs/reference/smoke-protocol.md) on every site before you raise the version.

@@ -1,8 +1,8 @@
 # Privacy Policy for DualSub
 
-**Last updated:** October 29, 2026
+**Last updated:** November 12, 2026
 
-DualSub is an open-source Chrome extension that shows translated subtitles on Netflix and Disney+, looks up the subtitle words you click, and, with your own key, explains them with an AI service. DualSub has no server of its own and collects no analytics. This policy describes what the extension stores in Chrome and what it sends directly from your browser to third-party services to provide the features you use.
+DualSub is an open-source Chrome extension that shows translated subtitles on Netflix, Disney+, and YouTube, looks up the subtitle words you click, and, with your own key, explains them with an AI service. DualSub has no server of its own and collects no analytics. This policy describes what the extension stores in Chrome and what it sends directly from your browser to third-party services to provide the features you use.
 
 ## What DualSub stores
 
@@ -25,7 +25,7 @@ DualSub sends only what the feature you use needs, directly from your browser to
 
 ### Subtitle files
 
-To show subtitles, DualSub downloads the subtitle files of the video you are watching from the streaming service's own delivery network: `*.nflxvideo.net` for Netflix, and `*.media.dssott.com` and `*.dssedge.com` for Disney+.
+To show subtitles, DualSub downloads the subtitle files of the video you are watching from the site's own servers: `*.nflxvideo.net` for Netflix, `*.media.dssott.com` and `*.dssedge.com` for Disney+, and YouTube's caption address (`www.youtube.com/api/timedtext`) for YouTube. These downloads carry no cookies.
 
 ### Subtitle translation
 
@@ -64,9 +64,9 @@ The OpenAI and Gemini hosts are declared in the extension's manifest. Any other 
 DualSub requests:
 
 - `storage`, for preferences, credentials kept on this device, and the session records above;
-- `activeTab`, to work with the active Netflix or Disney+ tab after you act;
+- `activeTab`, to work with the active tab of a site DualSub works on after you act;
 - `sidePanel`, to show the meaning of the words you click, and AI explanations, in Chrome's side panel;
-- host access to Netflix and Disney+, their subtitle hosts, and the built-in translation and AI hosts listed in `manifest.json` (Wiktionary needs none: it answers any site, and DualSub sends it no cookies);
+- host access to Netflix, Disney+, and YouTube (`www.youtube.com` only), their subtitle hosts, and the built-in translation and AI hosts listed in `manifest.json` (Wiktionary needs none: it answers any site, and DualSub sends it no cookies);
 - optional host access to a custom address, only after you grant it.
 
 DualSub does not request the `scripting` permission.

@@ -1,6 +1,6 @@
 # Settings
 
-DualSub works on Netflix and Disney+ as soon as it is installed. This page covers the popup, the settings page, per-site settings, and how DualSub keeps your keys.
+DualSub works as soon as it is installed. This page covers the popup, the settings page, per-site settings, and how DualSub keeps your keys.
 
 ## Popup
 
@@ -27,7 +27,7 @@ The settings page holds every setting, the popup's included. Each change saves a
 - **Sites**: DualSub on or off for each site, and hiding each site's own subtitles.
 - **Help**: one-click fixes for common problems, such as subtitles that show twice or a show's own translation that goes with the wrong line.
 
-In the Style section's **Look** row, **Like the site** draws the subtitles the way your Netflix or Disney+ profile's subtitle appearance settings say. The ready-made looks (Boxed, Classic, High contrast, and Cinema) start a look of your own, whose font, edge, colors, and box you can change. **Translation color** applies to every look. Text size scales the look's base size, which follows the video's height.
+In the Style section's **Look** row, **Like the site** draws the subtitles the way the site draws its own: as your Netflix or Disney+ profile's subtitle appearance settings say, and on YouTube in its default caption style. The ready-made looks (Boxed, Classic, High contrast, and Cinema) start a look of your own, whose font, edge, colors, and box you can change. **Translation color** applies to every look. Text size scales the look's base size, which follows the video's height.
 
 ### Advanced options
 
@@ -43,7 +43,7 @@ The **Advanced options** switch in the top bar adds:
 
 ## Per-site settings
 
-Netflix and Disney+ can each keep their own value for these settings: DualSub on or off, hiding the site's own subtitles, the original line's language, using the show's own translation, the look and your own look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows **All sites**. Your language, the translation service, word lookup, AI explanations, and keys are the same on every site.
+Each site can keep its own value for these settings: DualSub on or off, hiding the site's own subtitles, the original line's language, using the show's own translation, the look and your own look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows **All sites**. Your language, the translation service, word lookup, AI explanations, and keys are the same on every site.
 
 With advanced options shown, pick a site in the bar at the top of the settings page. What you change then gets a "Netflix only" tag (in Style, a dot on the row), and **Use All sites** drops the site's own value. The Sites section lists what each site keeps and removes it in one click.
 

@@ -18,7 +18,7 @@ The steps from opening the video to the problem.
 
 - DualSub version (shown at `chrome://extensions`):
 - Chrome version:
-- Site (Netflix or Disney+):
+- Site:
 - Your language and the video's language:
 - Translation service:
 

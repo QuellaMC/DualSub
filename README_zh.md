@@ -13,7 +13,7 @@
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue.svg)](https://deepwiki.com/QuellaMC/DualSub)
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome插件商店)](https://chrome.google.com/webstore/detail/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 
-DualSub 是一个 Chrome 扩展，在 Netflix 和 Disney+ 上同时显示两种语言的字幕：视频语言的原文，以及下面的翻译。点一下字幕里的单词，就能看到它的意思。DualSub 需要 Chrome 116 或更高版本，界面支持英语、西班牙语、日语、韩语以及简体和繁体中文。
+DualSub 是一个 Chrome 扩展，在 Netflix、Disney+ 和 YouTube 上同时显示两种语言的字幕：视频语言的原文，以及下面的翻译。点一下字幕里的单词，就能看到它的意思。DualSub 需要 Chrome 116 或更高版本，界面支持英语、西班牙语、日语、韩语以及简体和繁体中文。
 
 ## 安装
 
@@ -22,7 +22,7 @@ DualSub 是一个 Chrome 扩展，在 Netflix 和 Disney+ 上同时显示两种�
 ## 开始使用
 
 1. 安装后会打开欢迎页，语言已经选好。你可以在那里更改翻译语言。
-2. 在 Netflix 或 Disney+ 上播放任意内容。上面是视频的语言，下面是你的语言；视频本来就是你的语言时只显示一行。
+2. 在这些网站上播放任意视频。上面是视频的语言，下面是你的语言；视频本来就是你的语言时只显示一行。
 3. 点一下字幕里的单词。侧边栏会显示它的翻译和词典释义。面板中的 **用 AI 解释** 会通过你自己的 OpenAI 或 Gemini 密钥，说明这个词的用法。
 
 观看时，Chrome 工具栏上的 DualSub 按钮可以为当前网站打开或关闭 DualSub，并更改你的语言、文字大小、时间和位置。其余设置都在设置页中。
@@ -43,4 +43,4 @@ DualSub 是一个 Chrome 扩展，在 Netflix 和 Disney+ 上同时显示两种�
 
 DualSub 采用 [CC BY-NC-SA 4.0](LICENSE) 许可：你可以在署名并采用相同许可的前提下分享和改编，但不得用于商业目的。
 
-DualSub 与 Netflix、Disney+ 没有关联。
+DualSub 与 Netflix、Disney+、YouTube 没有关联。

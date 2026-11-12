@@ -4,6 +4,14 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Added
+
+- Dual subtitles on YouTube, on watch pages and Shorts at www.youtube.com, with YouTube's own captions left off. Automatic captions show and are translated as whole lines, the way YouTube rolls them up, instead of in word-by-word pieces, which also halves the translation requests they need. When "Use the show's own translation" is on, captions a person wrote in your language serve as the translation. After this update, Chrome asks you to approve DualSub's access to www.youtube.com before it runs again, and the privacy policy says the captions come from there without cookies.
+
+### Changed
+
+- Text that named every site DualSub works on no longer does, so it stays short as sites are added. The description and the welcome page speak of video sites and the videos you watch, the side panel points to the buttons for each site, and Start says DualSub is working on every site, or names the sites where it is off. On a page DualSub doesn't work on, the popup has one See the sites button, which opens the Sites section of the settings page, instead of a button per site, so it needs no scrolling.
+
 ## [3.3.1] - 2026-11-09
 
 ### Fixed
