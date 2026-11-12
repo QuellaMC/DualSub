@@ -4,6 +4,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-11-12
+
 ### Added
 
 - Dual subtitles on YouTube, on watch pages and Shorts at www.youtube.com, with YouTube's own captions left off. Automatic captions show and are translated as whole lines, the way YouTube rolls them up, instead of in word-by-word pieces, which also halves the translation requests they need. When "Use the show's own translation" is on, captions a person wrote in your language serve as the translation. After this update, Chrome asks you to approve DualSub's access to www.youtube.com before it runs again, and the privacy policy says the captions come from there without cookies.
@@ -214,7 +216,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 Versions not listed here, including those before 1.4.0, are on [GitHub Releases](https://github.com/QuellaMC/DualSub/releases).
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.3.1...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.4.0...HEAD
+[3.4.0]: https://github.com/QuellaMC/DualSub/compare/v3.3.1...v3.4.0
 [3.3.1]: https://github.com/QuellaMC/DualSub/compare/v3.3.0...v3.3.1
 [3.3.0]: https://github.com/QuellaMC/DualSub/compare/v3.2.1...v3.3.0
 [3.2.1]: https://github.com/QuellaMC/DualSub/compare/v3.2.0...v3.2.1
