@@ -1,9 +1,6 @@
-import {
-    AUTO_PLACEMENT,
-    formatCueSettings,
-    type CuePlacement,
-} from '@/shared/cuePlacement';
+import { AUTO_PLACEMENT, type CuePlacement } from '@/shared/cuePlacement';
 import { normalizeCueText } from '@/shared/cueTextNormalizer';
+import { formatVtt } from '@/shared/vtt';
 
 // Netflix TTML (legacy DFXP and IMSC 1.1) → WebVTT: tick timestamps resolve
 // against the document's ttp:tickRate, ruby readings are dropped so furigana
@@ -407,23 +404,6 @@ function parsePElements(
     return intermediateCues;
 }
 
-function formatMillisecondsAsVtt(totalMilliseconds: number): string {
-    const hours = Math.floor(totalMilliseconds / 3_600_000);
-    const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000);
-    const wholeSeconds = Math.floor((totalMilliseconds % 60_000) / 1000);
-    const milliseconds = totalMilliseconds % 1000;
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
-}
-
-function encodeVttText(text: string): string {
-    // Cue text is plain TTML semantic text. Encode it for the intermediate
-    // VTT transport so decoded literals such as <tag> cannot become markup.
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-}
-
 export function convertTtmlToVtt(ttmlText: string): string {
     if (typeof ttmlText !== 'string' || ttmlText.trim() === '') {
         throw new TTMLConversionError('TTML input must be a non-empty string');
@@ -441,15 +421,14 @@ export function convertTtmlToVtt(ttmlText: string): string {
             'TTML conversion failed: No valid TTML subtitle entries found'
         );
     }
-    const cues = joinCaptionLines(paragraphs).sort(
-        (a, b) => a.startMs - b.startMs
+    return formatVtt(
+        joinCaptionLines(paragraphs)
+            .sort((a, b) => a.startMs - b.startMs)
+            .map((cue) => ({
+                start: cue.startMs / 1000,
+                end: cue.endMs / 1000,
+                text: cue.text,
+                placement: placementOf(cue.box),
+            }))
     );
-
-    let vtt = 'WEBVTT\n\n';
-    for (const cue of cues) {
-        const settings = formatCueSettings(placementOf(cue.box));
-        vtt += `${formatMillisecondsAsVtt(cue.startMs)} --> ${formatMillisecondsAsVtt(cue.endMs)}${settings === '' ? '' : ` ${settings}`}\n`;
-        vtt += `${encodeVttText(cue.text)}\n\n`;
-    }
-    return vtt;
 }

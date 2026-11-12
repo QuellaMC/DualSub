@@ -1,6 +1,7 @@
 import type { ClassifiedContentSender } from '@/messaging/sender';
 import type { FetchVttRequest } from '@/messaging/contracts/fetchVtt';
 import { utf8ByteLength } from '@/messaging/snapshot';
+import { isPlatformId, type PlatformId } from '@/shared/platforms';
 import {
     extractDisneyPlusVideoIdFromUrl,
     extractNetflixVideoIdFromUrl,
@@ -26,9 +27,7 @@ const NETFLIX_TRACK_KEYS = new Set([
     'url',
 ]);
 
-export type SubtitleSource = 'netflix' | 'disneyplus';
-
-const SUBTITLE_CDN_BASES: Record<SubtitleSource, string> = {
+const SUBTITLE_CDN_BASES: Record<PlatformId, string> = {
     disneyplus: 'media.dssott.com',
     netflix: 'nflxvideo.net',
 };
@@ -43,10 +42,9 @@ export class SubtitleRequestPolicyError extends Error {
     constructor(code: string, platform?: string, stage = 'request') {
         super(POLICY_ERROR_MESSAGE);
         this.code = code;
-        this.platform =
-            platform === 'netflix' || platform === 'disneyplus'
-                ? platform
-                : UNKNOWN_POLICY_VALUE;
+        this.platform = isPlatformId(platform)
+            ? platform
+            : UNKNOWN_POLICY_VALUE;
         this.stage = POLICY_STAGE_PATTERN.test(stage)
             ? stage
             : UNKNOWN_POLICY_VALUE;
@@ -108,7 +106,7 @@ function isHostnameAtOrBelow(hostname: string, baseHostname: string): boolean {
 
 function isAllowedSubtitleCdnHostname(
     hostname: string,
-    platform: SubtitleSource,
+    platform: PlatformId,
     allowDisneyEdge: boolean
 ): boolean {
     return (
@@ -129,7 +127,7 @@ function isWithinUrlByteCap(value: string): boolean {
 
 export function canonicalizeAllowedSubtitleUrl(
     rawUrl: unknown,
-    platform: SubtitleSource,
+    platform: PlatformId,
     stage: string,
     allowDisneyEdge = false
 ): string {
@@ -177,7 +175,7 @@ export function canonicalizeAllowedSubtitleUrl(
     return parsedUrl.href;
 }
 
-function requireAuthorizedSnapshot(snapshot: unknown): SubtitleSource {
+function requireAuthorizedSnapshot(snapshot: unknown): PlatformId {
     if (!isAuthorizedSubtitleRequestSnapshot(snapshot)) {
         throw new SubtitleRequestPolicyError(
             'ERR_SUBTITLE_REQUEST_UNAUTHORIZED'

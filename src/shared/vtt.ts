@@ -1,4 +1,8 @@
-import { parseCueSettings, type CuePlacement } from '@/shared/cuePlacement';
+import {
+    formatCueSettings,
+    parseCueSettings,
+    type CuePlacement,
+} from '@/shared/cuePlacement';
 import {
     normalizeCueLineEndings,
     normalizeCueText,
@@ -72,4 +76,37 @@ export function parseVtt(vttString: string): VttCue[] {
         }
     }
     return cues;
+}
+
+function formatTimestamp(seconds: number): string {
+    const totalMilliseconds = Math.round(seconds * 1000);
+    const hours = Math.floor(totalMilliseconds / 3_600_000);
+    const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000);
+    const wholeSeconds = Math.floor((totalMilliseconds % 60_000) / 1000);
+    const milliseconds = totalMilliseconds % 1000;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+}
+
+/** Plain cue text as WebVTT carries it: markup characters escaped, so a
+ *  literal `<tag>` never becomes markup, and no blank line, which would end
+ *  the cue. */
+function encodeCueText(text: string): string {
+    return text
+        .split('\n')
+        .filter((line) => line !== '')
+        .join('\n')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+/** WebVTT for `cues`, which `parseVtt` reads back as written. */
+export function formatVtt(cues: readonly VttCue[]): string {
+    let vtt = 'WEBVTT\n\n';
+    for (const cue of cues) {
+        const settings = formatCueSettings(cue.placement);
+        vtt += `${formatTimestamp(cue.start)} --> ${formatTimestamp(cue.end)}${settings === '' ? '' : ` ${settings}`}\n`;
+        vtt += `${encodeCueText(cue.text)}\n\n`;
+    }
+    return vtt;
 }

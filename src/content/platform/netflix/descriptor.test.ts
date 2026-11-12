@@ -44,12 +44,12 @@ describe('netflixDescriptor', () => {
         expect(netflixDescriptor.parsePlatformLook({})).toBeNull();
     });
 
-    it('keys subtitle events by their own movieId (preload-safe)', () => {
+    it('keys subtitle events by their own video id (preload-safe)', () => {
         expect(
             netflixDescriptor.classifyBridgeEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '99',
+                videoId: '99',
                 languages: ['en'],
                 tracks: [],
             })
@@ -58,7 +58,7 @@ describe('netflixDescriptor', () => {
             netflixDescriptor.classifyBridgeEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: 'not-numeric',
+                videoId: 'not-numeric',
                 languages: ['en'],
                 tracks: [],
             })

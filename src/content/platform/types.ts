@@ -64,9 +64,13 @@ export interface PlatformHandoff {
     readonly platformScratch: unknown;
 }
 
+/** The platforms whose page bridge reads subtitle tracks from the player. */
+export type PageTrackSource = 'netflix';
+
 export type SubtitleFetchSpec =
     | {
-          readonly kind: 'netflix-tracks';
+          readonly kind: 'page-tracks';
+          readonly source: PageTrackSource;
           readonly tracks: unknown[];
       }
     | { readonly kind: 'm3u8-master'; readonly url: string };
@@ -91,8 +95,8 @@ export interface PlatformDescriptor {
     /** videoId from an absolute URL, or null when not a player route. */
     parseVideoIdFromUrl(url: string): string | null;
     /** Route a validated bridge event before any session exists. Netflix
-     *  keys by the event's own movieId so next-episode preloads land under
-     *  the upcoming video. Null → drop. */
+     *  keys by the video the event names, so next-episode preloads land
+     *  under the upcoming video. Null → drop. */
     classifyBridgeEvent(event: CapturedEvent): BridgeEventClassification | null;
     /** How the platform draws its own subtitles by default. */
     readonly look: SubtitleLook;

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createLogger } from '@/shared/logger';
 import type { AdapterContext, SubtitleLanguages } from '../types';
-import { NetflixAdapter, requestedSubtitleLanguages } from './adapter';
+import { requestedSubtitleLanguages } from '../shared/pageTracks';
+import { NetflixAdapter } from './adapter';
 
 const LANGUAGES: SubtitleLanguages = {
     originalLanguage: 'en',
@@ -73,7 +74,7 @@ describe('NetflixAdapter', () => {
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en', 'zh-CN'],
                 tracks: [{ language: 'en', url: 'https://x' }],
             })
@@ -109,16 +110,16 @@ describe('NetflixAdapter', () => {
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en', 'zh-CN'],
                 tracks,
             })
-        ).toEqual({ kind: 'netflix-tracks', tracks });
+        ).toEqual({ kind: 'page-tracks', source: 'netflix', tracks });
         expect(
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en', 'zh-CN'],
                 tracks: [],
             })
@@ -132,7 +133,7 @@ describe('NetflixAdapter', () => {
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en', 'ja'],
                 tracks: [{ language: 'en', url: 'https://x' }],
             })
@@ -141,7 +142,7 @@ describe('NetflixAdapter', () => {
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en'],
                 tracks: [{ language: 'en', url: 'https://x' }],
             })

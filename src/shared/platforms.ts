@@ -24,21 +24,8 @@ export function isPlatformId(value: unknown): value is PlatformId {
     return (PLATFORM_IDS as readonly unknown[]).includes(value);
 }
 
-/** The site an https URL belongs to, or null. */
-export function platformFromUrl(url: string | undefined): PlatformId | null {
-    if (!url) {
-        return null;
-    }
-    let hostname: string;
-    try {
-        const parsed = new URL(url);
-        if (parsed.protocol !== 'https:') {
-            return null;
-        }
-        hostname = parsed.hostname;
-    } catch {
-        return null;
-    }
+/** The site a hostname belongs to, or null. */
+export function platformFromHostname(hostname: string): PlatformId | null {
     return (
         PLATFORM_IDS.find(
             (id) =>
@@ -46,4 +33,19 @@ export function platformFromUrl(url: string | undefined): PlatformId | null {
                 hostname.endsWith(`.${PLATFORM_HOSTS[id]}`)
         ) ?? null
     );
+}
+
+/** The site an https URL belongs to, or null. */
+export function platformFromUrl(url: string | undefined): PlatformId | null {
+    if (!url) {
+        return null;
+    }
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'https:'
+            ? platformFromHostname(parsed.hostname)
+            : null;
+    } catch {
+        return null;
+    }
 }

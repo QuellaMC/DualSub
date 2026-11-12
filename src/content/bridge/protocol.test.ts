@@ -14,7 +14,7 @@ describe('bridge protocol validators', () => {
             isCapturedEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '81234567',
+                videoId: '81234567',
                 languages: ['en', 'zh-CN'],
                 tracks: [],
             })
@@ -47,7 +47,7 @@ describe('bridge protocol validators', () => {
             {
                 t: 'subtitle-data',
                 platform: 'disneyplus',
-                movieId: '1',
+                videoId: '1',
                 languages: ['en'],
                 tracks: [],
             },
@@ -57,7 +57,7 @@ describe('bridge protocol validators', () => {
             {
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '1',
+                videoId: '1',
                 languages: ['en'],
             },
         ],
@@ -66,7 +66,7 @@ describe('bridge protocol validators', () => {
             {
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '1',
+                videoId: '1',
                 tracks: [],
             },
         ],

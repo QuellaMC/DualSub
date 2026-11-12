@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CapturedEvent } from './protocol';
 import { SubtitleEventCache } from './SubtitleEventCache';
 
-function event(movieId: string, marker = 0): CapturedEvent {
+function event(videoId: string, marker = 0): CapturedEvent {
     return {
         t: 'subtitle-data',
         platform: 'netflix',
         languages: ['en'],
-        movieId,
+        videoId,
         tracks: [marker],
     };
 }

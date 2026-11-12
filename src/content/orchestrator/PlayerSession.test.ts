@@ -91,7 +91,7 @@ function resolution(
     return {
         t: 'subtitle-data' as const,
         platform: 'netflix' as const,
-        movieId: '1',
+        videoId: '1',
         languages,
         tracks,
     };

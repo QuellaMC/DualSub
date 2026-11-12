@@ -1,9 +1,9 @@
 import type { Logger } from '@/shared/logger';
+import type { PlatformId } from '@/shared/platforms';
 import type { BridgeControlSender } from '../platform/types';
 import {
     isMainToIsolated,
     mainReadyEventName,
-    type BridgePlatform,
     type CapturedEvent,
     type HelloMessage,
     type IsolatedToMain,
@@ -32,7 +32,7 @@ export class IsolatedBridge implements BridgeControlSender {
     private readonly listeners = new AbortController();
 
     constructor(
-        private readonly platform: BridgePlatform,
+        private readonly platform: PlatformId,
         private readonly options: {
             onEvent: (event: CapturedEvent) => void;
             onConnected?: () => void;

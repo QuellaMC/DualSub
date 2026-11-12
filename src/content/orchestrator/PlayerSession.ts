@@ -602,26 +602,21 @@ export class PlayerSession {
         const pending = { key };
         this.pendingRequest = pending;
         try {
+            const common = {
+                action: 'fetchVTT',
+                videoId: this.videoId,
+                targetLanguage,
+                originalLanguage,
+                useOfficialTranslations,
+            } as const;
             const request: FetchVttRequest =
-                spec.kind === 'netflix-tracks'
+                spec.kind === 'page-tracks'
                     ? {
-                          action: 'fetchVTT',
-                          source: 'netflix',
-                          videoId: this.videoId,
-                          targetLanguage,
-                          originalLanguage,
-                          useOfficialTranslations,
+                          ...common,
+                          source: spec.source,
                           data: { tracks: spec.tracks },
                       }
-                    : {
-                          action: 'fetchVTT',
-                          source: 'disneyplus',
-                          videoId: this.videoId,
-                          url: spec.url,
-                          targetLanguage,
-                          originalLanguage,
-                          useOfficialTranslations,
-                      };
+                    : { ...common, source: 'disneyplus', url: spec.url };
 
             const response = await sendWithRetry(fetchVtt, request, {
                 retries: 3,

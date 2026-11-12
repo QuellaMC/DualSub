@@ -1,8 +1,8 @@
+import type { PlatformId } from '@/shared/platforms';
 import {
     isHelloMessage,
     isIsolatedToMain,
     mainReadyEventName,
-    type BridgePlatform,
     type CapturedEvent,
     type IsolatedToMain,
 } from '../protocol';
@@ -14,7 +14,7 @@ import {
 // parse a manifest.
 
 export interface InterceptorRecipe {
-    readonly platform: BridgePlatform;
+    readonly platform: PlatformId;
     /** Inspect every JSON.parse result and emit anything worth capturing. */
     onParsed?(parsed: unknown, emit: (event: CapturedEvent) => void): void;
     /** Control messages from the isolated world (timeline polling, track
