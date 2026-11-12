@@ -22,6 +22,9 @@ import { ResolutionSlot, ValueWatch, waitFor } from './waitFor';
 
 const PLAYER_POLL_INTERVAL_MS = 250;
 const PLAYER_WAIT_TIMEOUT_MS = 60_000;
+/** The player signs its tracks together; a translation still unsigned this
+ *  long after the original is left to the translation service. */
+const TRANSLATION_SIGNING_GRACE_MS = 5000;
 const SPOKEN_LANGUAGE_POLL_INTERVAL_MS = 1000;
 const SPOKEN_LANGUAGE_UNKNOWN_AFTER_MS = 15_000;
 /** The audio track id when the player does not know the language. */
@@ -145,39 +148,55 @@ function downloadUrl(track: CaptionTrack, clientName: string): string | null {
     return url.href;
 }
 
-/** The requested languages' tracks once the routed video's player has
- *  signed them, none when the video has no captions, and null while either
- *  is still loading. */
-function readReadyTracks(
+interface SignedTracks {
+    /** The original's track first, then each translation's that is signed. */
+    readonly tracks: unknown[];
+    /** Every selected track is signed. */
+    readonly complete: boolean;
+}
+
+/** The requested languages' signed tracks once the routed video's player
+ *  has signed the original's, none when the video has no captions, and
+ *  null while either is still loading. */
+function readSignedTracks(
     videoId: string,
     languages: readonly string[]
-): unknown[] | null {
+): SignedTracks | null {
     const player = findActivePlayer(videoId);
     if (!player) {
         return null;
     }
     const candidates = readCaptionTracks(player, videoId);
     if (candidates.length === 0) {
-        return listsCaptions(player) ? null : [];
+        return listsCaptions(player) ? null : { tracks: [], complete: true };
     }
     const clientName = readClientName();
     if (!clientName) {
         return null;
     }
-    const tracks: unknown[] = [];
-    for (const track of selectTracks(candidates, languages)) {
-        const url = downloadUrl(track, clientName);
-        if (url === null) {
-            return null;
-        }
-        tracks.push({
-            language: track.language,
-            displayName: track.displayName,
-            asr: track.asr,
-            url,
-        });
+    const [original, ...translations] = selectTracks(candidates, languages);
+    const originalUrl = original ? downloadUrl(original, clientName) : null;
+    if (!original || originalUrl === null) {
+        return null;
     }
-    return tracks;
+    const tracks = [sentTrack(original, originalUrl)];
+    for (const translation of translations) {
+        const url = downloadUrl(translation, clientName);
+        if (url !== null) {
+            tracks.push(sentTrack(translation, url));
+        }
+    }
+    return { tracks, complete: tracks.length === translations.length + 1 };
+}
+
+/** A selected track as it crosses the bridge. */
+function sentTrack(track: CaptionTrack, url: string): unknown {
+    return {
+        language: track.language,
+        displayName: track.displayName,
+        asr: track.asr,
+        url,
+    };
 }
 
 const trackResolution = new ResolutionSlot();
@@ -190,8 +209,22 @@ async function resolveSubtitleTracks(
 ): Promise<void> {
     const token = trackResolution.begin();
     try {
+        let partSignedSince: number | null = null;
         const tracks = await waitFor(
-            () => readReadyTracks(videoId, languages),
+            () => {
+                const signed = readSignedTracks(videoId, languages);
+                if (!signed) {
+                    return null;
+                }
+                if (signed.complete) {
+                    return signed.tracks;
+                }
+                partSignedSince ??= Date.now();
+                return Date.now() - partSignedSince >=
+                    TRANSLATION_SIGNING_GRACE_MS
+                    ? signed.tracks
+                    : null;
+            },
             PLAYER_POLL_INTERVAL_MS,
             PLAYER_WAIT_TIMEOUT_MS,
             token
@@ -202,7 +235,10 @@ async function resolveSubtitleTracks(
                 platform: 'youtube',
                 videoId,
                 languages: [...languages],
-                tracks: tracks ?? [],
+                tracks:
+                    tracks ??
+                    readSignedTracks(videoId, languages)?.tracks ??
+                    [],
             });
         }
     } catch {

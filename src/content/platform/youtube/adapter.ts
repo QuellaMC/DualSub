@@ -8,7 +8,11 @@ import type {
 } from '../types';
 import { pauseMedia, playMedia } from '../shared/directMedia';
 import { PageTrackRequests } from '../shared/pageTracks';
-import { YOUTUBE_PLAYER_SELECTOR, visibleVideoOf } from './player';
+import {
+    YOUTUBE_PLAYER_SELECTOR,
+    onScreenArea,
+    visibleVideoOf,
+} from './player';
 
 // YouTube keeps updating its caption window while it is hidden, so hiding
 // the container is enough.
@@ -69,14 +73,21 @@ export class YouTubeAdapter implements PlatformAdapter {
 
     onClockInvalidated(): void {}
 
+    /** The route's player with a picture, the one most on screen when a
+     *  preload player is laid out beside it. A lone player stays bound
+     *  while the page scrolls it out of view. */
     discoverVideo(): HTMLVideoElement | null {
+        let best: HTMLVideoElement | null = null;
+        let bestArea = -1;
         for (const player of document.querySelectorAll(routePlayerSelector())) {
             const video = visibleVideoOf(player);
-            if (video) {
-                return video;
+            const area = video ? onScreenArea(video) : -1;
+            if (area > bestArea) {
+                best = video;
+                bestArea = area;
             }
         }
-        return null;
+        return best;
     }
 
     getPlayerContainer(video: HTMLVideoElement): HTMLElement | null {

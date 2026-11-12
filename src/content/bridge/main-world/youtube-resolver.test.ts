@@ -14,6 +14,8 @@ interface FakeTrack {
     readonly languageCode: string;
     readonly asr?: true;
     readonly isDefault?: true;
+    /** The player has not signed this track yet. */
+    readonly unsigned?: true;
 }
 
 const EN: FakeTrack = { languageCode: 'en' };
@@ -104,7 +106,7 @@ function installPlayer(
                 url: playerUrl(
                     state.trackVideoId ?? state.videoId,
                     track,
-                    state.signed
+                    state.signed && !track.unsigned
                 ),
             })),
         }),
@@ -197,6 +199,39 @@ describe('youtubeRecipe track resolution', () => {
                 asr: false,
                 url: sentUrl(VIDEO, EN),
             },
+        ]);
+    });
+
+    it('sends a signed original once its translation stays unsigned past a grace period', async () => {
+        installPlayer('movie_player', {
+            tracks: [EN, { languageCode: 'zh-Hans', unsigned: true }],
+        });
+        request(['en', 'zh-CN']);
+        await settle(4500);
+        expect(emitted).toEqual([]);
+
+        await settle(1000);
+        expect(sentTracks()).toEqual([
+            expect.objectContaining({
+                language: 'en',
+                url: sentUrl(VIDEO, EN),
+            }),
+        ]);
+    });
+
+    it('waits for a translation the player signs within the grace period', async () => {
+        const page = installPlayer('movie_player', {
+            tracks: [EN, { languageCode: 'zh-Hans', unsigned: true }],
+        });
+        request(['en', 'zh-CN']);
+        await settle(2000);
+        expect(emitted).toEqual([]);
+
+        page.set({ tracks: [EN, ZH] });
+        await settle(250);
+        expect(sentTracks()).toEqual([
+            expect.objectContaining({ language: 'en' }),
+            expect.objectContaining({ language: 'zh-Hans' }),
         ]);
     });
 

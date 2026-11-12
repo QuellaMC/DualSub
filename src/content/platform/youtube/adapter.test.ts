@@ -21,14 +21,24 @@ function setup() {
     return { adapter: new YouTubeAdapter(context), sendControl };
 }
 
-function addPlayer(id: string, visible: boolean): HTMLVideoElement {
+/** A player whose video is laid out `top` pixels down the viewport. */
+function addPlayer(id: string, visible: boolean, top = 0): HTMLVideoElement {
     const player = document.createElement('div');
     player.id = id;
     player.className = 'html5-video-player';
     const video = document.createElement('video');
     video.className = 'video-stream html5-main-video';
+    const width = visible ? 394 : 0;
+    const height = visible ? 700 : 0;
     video.getBoundingClientRect = () =>
-        ({ width: visible ? 394 : 0, height: visible ? 700 : 0 }) as DOMRect;
+        ({
+            left: 0,
+            top,
+            width,
+            height,
+            right: width,
+            bottom: top + height,
+        }) as DOMRect;
     player.append(video);
     document.body.append(player);
     return video;
@@ -54,6 +64,21 @@ describe('YouTubeAdapter', () => {
         addPlayer('movie_player', false);
         const short = addPlayer('shorts-player', true);
         expect(adapter.discoverVideo()).toBe(short);
+    });
+
+    it('binds the Short on screen over one laid out off screen', () => {
+        history.replaceState(null, '', '/shorts/xmQVy2w3FyQ');
+        const { adapter } = setup();
+        addPlayer('shorts-player', true, -2000);
+        const onScreen = addPlayer('shorts-player', true);
+        expect(adapter.discoverVideo()).toBe(onScreen);
+    });
+
+    it('keeps a lone watch player bound while the page scrolls it out of view', () => {
+        history.replaceState(null, '', '/watch?v=arj7oStGLkU');
+        const { adapter } = setup();
+        const video = addPlayer('movie_player', true, -1500);
+        expect(adapter.discoverVideo()).toBe(video);
     });
 
     it('binds nothing while the route’s player shows no picture', () => {
