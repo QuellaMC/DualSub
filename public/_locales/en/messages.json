@@ -3,7 +3,7 @@
         "message": "DualSub"
     },
     "appDesc": {
-        "message": "DualSub shows subtitles in two languages at once on Netflix and Disney+, and lets you click any word to see what it means."
+        "message": "DualSub shows subtitles in two languages at once on video sites, and lets you click any word to see what it means."
     },
     "optionsPageTitle": {
         "message": "DualSub settings"
@@ -642,7 +642,7 @@
         "message": "Like %s"
     },
     "lookStylePlatformHelp": {
-        "message": "Set by your Netflix or Disney+ subtitle settings."
+        "message": "Looks like each site's own subtitles."
     },
     "lookStyleTitle": {
         "message": "Look and ready-made styles"
@@ -978,10 +978,10 @@
         "message": "Dual subtitles are on"
     },
     "startStatusWorking": {
-        "message": "Working on %s"
+        "message": "Working on every site"
     },
     "startStatusWorkingSome": {
-        "message": "Working on %s, off on %s"
+        "message": "Working on every site but %s"
     },
     "startSitesUnreadable": {
         "message": "Couldn't read where DualSub is on."
@@ -1266,7 +1266,7 @@
         "message": "address url endpoint host server"
     },
     "searchWordsSiteOnOff": {
-        "message": "netflix disney site off on enable disable turn"
+        "message": "netflix disney youtube site off on enable disable turn"
     },
     "searchWordsDualSubtitles": {
         "message": "on off enable disable turn everywhere every site all two lines"
@@ -1416,16 +1416,16 @@
         "message": "%s %s"
     },
     "welcomeArrangeVideoFirst": {
-        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: the video's own language on top, and yours underneath."
+        "message": "DualSub puts two lines of subtitles on the videos you watch: the video's own language on top, and yours underneath."
     },
     "welcomeArrangeMineFirst": {
-        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: yours on top, and the video's own language underneath."
+        "message": "DualSub puts two lines of subtitles on the videos you watch: yours on top, and the video's own language underneath."
     },
     "welcomeArrangeSideBySide": {
-        "message": "DualSub puts two lines of subtitles side by side on Netflix and Disney+: the video's own language, and yours."
+        "message": "DualSub puts two lines of subtitles side by side on the videos you watch: the video's own language, and yours."
     },
     "welcomeArrangeOneLine": {
-        "message": "DualSub puts subtitles on Netflix and Disney+ in your language. The original line is set to it too, so one line shows."
+        "message": "DualSub puts subtitles on the videos you watch in your language. The original line is set to it too, so one line shows."
     },
     "welcomeStateReady": {
         "message": "There is nothing to set up."
@@ -1452,7 +1452,7 @@
         "message": "Click the puzzle piece at the top right of your browser, then the pin next to DualSub. Its button then stays in view while you watch."
     },
     "welcomeOpenTitle": {
-        "message": "Open Netflix or Disney+"
+        "message": "Open one of these sites"
     },
     "welcomePlayTitle": {
         "message": "Play any video"
@@ -1527,13 +1527,16 @@
         "message": "Bigger text"
     },
     "popupElsewhereTitle": {
-        "message": "DualSub works on %s"
+        "message": "DualSub doesn't work on this page"
     },
     "popupElsewhereHelp": {
-        "message": "This page isn't one of them. Open one, play any video, and the two lines appear by themselves."
+        "message": "Play a video on one of the sites it works on, and the two lines appear by themselves."
+    },
+    "popupSeeSites": {
+        "message": "See the sites"
     },
     "popupAlreadyTitle": {
-        "message": "Already on %s?"
+        "message": "Already on one of them?"
     },
     "popupAlreadyPlay": {
         "message": "Play a video. Subtitles show up once it starts."
@@ -1569,7 +1572,7 @@
         "message": "The video pauses and the meaning shows up here. Click more words to look up a phrase, and click the video to keep watching."
     },
     "sidepanelElsewhereTitle": {
-        "message": "Open a video on Netflix or Disney+"
+        "message": "Open a video on one of these sites"
     },
     "sidepanelElsewhereHelp": {
         "message": "Then click any word in the subtitles, and its meaning shows up here."

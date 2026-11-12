@@ -206,6 +206,149 @@ describe('Netflix authorization', () => {
     });
 });
 
+const YOUTUBE_VIDEO_ID = 'arj7oStGLkU';
+const YOUTUBE_CAPTION_URL = `https://www.youtube.com/api/timedtext?v=${YOUTUBE_VIDEO_ID}&lang=en&pot=token&c=WEB&fmt=vtt`;
+
+function youtubeSender(
+    tabUrl = `https://www.youtube.com/watch?v=${YOUTUBE_VIDEO_ID}`
+): ClassifiedContentSender {
+    return contentSender({
+        platform: 'youtube',
+        origin: 'https://www.youtube.com',
+        senderUrl: tabUrl,
+        tabUrl,
+    });
+}
+
+function youtubeRequest(tracks: unknown[], videoId = YOUTUBE_VIDEO_ID) {
+    return {
+        action: 'fetchVTT' as const,
+        source: 'youtube' as const,
+        videoId,
+        targetLanguage: 'zh-CN',
+        originalLanguage: 'en',
+        useOfficialTranslations: true,
+        data: { tracks },
+    };
+}
+
+describe('YouTube authorization', () => {
+    const goodTrack = {
+        language: 'en',
+        displayName: 'English (auto-generated)',
+        asr: true,
+        url: YOUTUBE_CAPTION_URL,
+    };
+
+    it('vets each track URL for the routed video and freezes the snapshot', () => {
+        const snapshot = authorizeSubtitleRequest(
+            youtubeRequest([goodTrack]),
+            youtubeSender()
+        );
+        expect(snapshot).toMatchObject({
+            source: 'youtube',
+            videoId: YOUTUBE_VIDEO_ID,
+            tracks: [
+                {
+                    language: 'en',
+                    displayName: 'English (auto-generated)',
+                    asr: true,
+                    downloadUrl: YOUTUBE_CAPTION_URL,
+                },
+            ],
+        });
+        expect(Object.isFrozen(snapshot)).toBe(true);
+    });
+
+    it('authorizes a Short by its path', () => {
+        expect(
+            authorizeSubtitleRequest(
+                youtubeRequest([goodTrack]),
+                youtubeSender(
+                    `https://www.youtube.com/shorts/${YOUTUBE_VIDEO_ID}`
+                )
+            ).source
+        ).toBe('youtube');
+    });
+
+    const withUrl = (url: string) => ({ ...goodTrack, url });
+    it.each([
+        ['another host', withUrl(YOUTUBE_CAPTION_URL.replace('www.', 'm.'))],
+        [
+            'a Google video host',
+            withUrl(
+                YOUTUBE_CAPTION_URL.replace(
+                    'www.youtube.com',
+                    'rr1---sn.googlevideo.com'
+                )
+            ),
+        ],
+        [
+            'another path',
+            withUrl(YOUTUBE_CAPTION_URL.replace('/api/timedtext', '/api/x')),
+        ],
+        [
+            'an explicit port',
+            withUrl(YOUTUBE_CAPTION_URL.replace('.com/', '.com:8443/')),
+        ],
+        [
+            'credentials',
+            withUrl(YOUTUBE_CAPTION_URL.replace('https://', 'https://a:b@')),
+        ],
+        ['an http URL', withUrl(YOUTUBE_CAPTION_URL.replace('https', 'http'))],
+        [
+            'another video in its URL',
+            withUrl(
+                YOUTUBE_CAPTION_URL.replace(YOUTUBE_VIDEO_ID, 'Ks-_Mh1QhMc')
+            ),
+        ],
+        [
+            'two videos in its URL',
+            withUrl(`${YOUTUBE_CAPTION_URL}&v=${YOUTUBE_VIDEO_ID}`),
+        ],
+        [
+            'no video in its URL',
+            withUrl(YOUTUBE_CAPTION_URL.replace(`v=${YOUTUBE_VIDEO_ID}&`, '')),
+        ],
+        [
+            'an overlong URL',
+            withUrl(`${YOUTUBE_CAPTION_URL}&x=${'a'.repeat(16 * 1024)}`),
+        ],
+        ['a missing asr flag', { language: 'en', url: YOUTUBE_CAPTION_URL }],
+        ['a non-boolean asr flag', { ...goodTrack, asr: 'asr' }],
+        ['an unknown key', { ...goodTrack, kind: 'asr' }],
+        ['a blank language', { ...goodTrack, language: ' ' }],
+    ])('rejects a track with %s', (_label, track) => {
+        expect(() =>
+            authorizeSubtitleRequest(youtubeRequest([track]), youtubeSender())
+        ).toThrow(SubtitleRequestPolicyError);
+    });
+
+    it('rejects a videoId that is not the tab route', () => {
+        expect(() =>
+            authorizeSubtitleRequest(
+                youtubeRequest([goodTrack]),
+                youtubeSender('https://www.youtube.com/watch?v=Ks-_Mh1QhMc')
+            )
+        ).toThrow(SubtitleRequestPolicyError);
+        expect(() =>
+            authorizeSubtitleRequest(
+                youtubeRequest([goodTrack]),
+                youtubeSender('https://www.youtube.com/')
+            )
+        ).toThrow(SubtitleRequestPolicyError);
+    });
+
+    it('rejects a YouTube request from another site', () => {
+        expect(() =>
+            authorizeSubtitleRequest(
+                youtubeRequest([goodTrack]),
+                netflixSender()
+            )
+        ).toThrow(SubtitleRequestPolicyError);
+    });
+});
+
 describe('URL gates for authorized snapshots', () => {
     const snapshot = authorizeSubtitleRequest(disneyRequest, contentSender());
 

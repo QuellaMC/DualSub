@@ -7,7 +7,7 @@ import { isPlatformId, type PlatformId } from '@/shared/platforms';
 export type CapturedEvent =
     | {
           t: 'subtitle-data';
-          platform: 'netflix';
+          platform: 'netflix' | 'youtube';
           videoId: string;
           /** The languages this resolution answers, in request order. */
           languages: string[];
@@ -55,8 +55,8 @@ export type IsolatedToMain =
     | { t: 'request-playback-timeline' }
     | { t: 'playback-bridge-resume' }
     | { t: 'playback-bridge-pause' }
-    /** Netflix: resolve subtitle track URLs for these languages, in
-     *  priority order, from the page's player. Supersedes any pending request. */
+    /** Resolve subtitle track URLs for these languages, in priority
+     *  order, from the page's player. Supersedes any pending request. */
     | { t: 'request-subtitle-tracks'; videoId: string; languages: string[] }
     | { t: 'cancel-subtitle-tracks' }
     /** Report the viewer's subtitle appearance settings once readable. */
@@ -168,7 +168,8 @@ export function isCapturedEvent(value: unknown): value is CapturedEvent {
     switch (value.t) {
         case 'subtitle-data':
             return (
-                value.platform === 'netflix' &&
+                (value.platform === 'netflix' ||
+                    value.platform === 'youtube') &&
                 isBoundedString(value.videoId, MAX_ROUTE_ID_LENGTH) &&
                 isLanguageList(value.languages) &&
                 Array.isArray(value.tracks)

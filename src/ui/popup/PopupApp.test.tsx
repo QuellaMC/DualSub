@@ -397,25 +397,26 @@ describe('PopupApp on a site DualSub works on', () => {
 });
 
 describe('PopupApp anywhere else', () => {
-    it('shows what DualSub does and opens the sites', async () => {
+    it('says DualSub does not work here and opens the list of its sites', async () => {
+        const create = vi
+            .spyOn(browser.tabs, 'create')
+            .mockResolvedValue({} as never);
         stubTab('https://example.com/');
         render(<PopupApp />);
         expect(
             await screen.findByRole('heading', {
-                name: 'DualSub works on Netflix and Disney+',
+                name: "DualSub doesn't work on this page",
             })
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('heading', {
-                name: 'Already on Netflix or Disney+?',
-            })
+            screen.getByRole('heading', { name: 'Already on one of them?' })
         ).toBeInTheDocument();
-        expect(
-            screen.getByRole('link', { name: 'Open Netflix' })
-        ).toHaveAttribute('href', 'https://www.netflix.com/');
-        expect(
-            screen.getByRole('link', { name: 'Open Disney+' })
-        ).toHaveAttribute('href', 'https://www.disneyplus.com/');
+        expect(screen.queryAllByRole('link', { name: /^Open / })).toEqual([]);
+
+        fireEvent.click(screen.getByRole('button', { name: 'See the sites' }));
+        expect(create).toHaveBeenCalledWith({
+            url: `${TEST_EXTENSION_ORIGIN}/options.html#sites`,
+        });
     });
 
     it('opens the settings and help, and links to the source', async () => {

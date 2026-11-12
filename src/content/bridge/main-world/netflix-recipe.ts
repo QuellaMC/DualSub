@@ -263,13 +263,13 @@ const appearanceResolution = new ResolutionSlot();
 const spokenLanguageWatch = new ValueWatch();
 
 /** The language of the audio track playing in `videoId`'s session. */
-function readSpokenLanguage(videoId: string): string | null {
+function readSpokenLanguage(videoId: string): string | undefined {
     const session = findReadyPlayerSession(videoId);
     const language = readProperty(
         callMethod(session?.player, 'getAudioTrack'),
         'bcp47'
     );
-    return isBridgeLanguage(language) ? language : null;
+    return isBridgeLanguage(language) ? language : undefined;
 }
 
 function watchSpokenLanguage(

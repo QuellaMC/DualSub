@@ -53,22 +53,34 @@ function sameRequest(
             a.useOfficialTranslations === b.useOfficialTranslations
         );
     }
-    if (a.source === 'netflix' && b.source === 'netflix') {
+    if (
+        (a.source === 'netflix' && b.source === 'netflix') ||
+        (a.source === 'youtube' && b.source === 'youtube')
+    ) {
         return (
             a.useOfficialTranslations === b.useOfficialTranslations &&
-            a.tracks.length === b.tracks.length &&
-            a.tracks.every((track, index) => {
-                const other = b.tracks[index]!;
-                return (
-                    track.language === other.language &&
-                    track.displayName === other.displayName &&
-                    track.trackType === other.trackType &&
-                    track.downloadUrl === other.downloadUrl
-                );
-            })
+            sameTracks(a.tracks, b.tracks)
         );
     }
     return false;
+}
+
+/** Sanitized tracks are flat records of strings and booleans. */
+function sameTracks(
+    left: readonly object[],
+    right: readonly object[]
+): boolean {
+    return (
+        left.length === right.length &&
+        left.every((track, index) => {
+            const entries = Object.entries(track);
+            const other = right[index] as Record<string, unknown>;
+            return (
+                entries.length === Object.keys(other).length &&
+                entries.every(([key, value]) => other[key] === value)
+            );
+        })
+    );
 }
 
 /**

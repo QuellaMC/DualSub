@@ -99,8 +99,8 @@ export function siteNames(
     );
 }
 
-/** Where dual subtitles are on and off, or the switch's own state while
- *  the sites are not read. */
+/** Whether dual subtitles are on everywhere, naming the sites where they
+ *  are off, or the switch's own state while the sites are not read. */
 export function sitesOnTitle(
     t: Translate,
     language: string,
@@ -114,10 +114,6 @@ export function sitesOnTitle(
         return t('startStatusOff');
     }
     return sites.off.length === 0
-        ? t('startStatusWorking', siteNames(language, sites.on))
-        : t(
-              'startStatusWorkingSome',
-              siteNames(language, sites.on),
-              siteNames(language, sites.off)
-          );
+        ? t('startStatusWorking')
+        : t('startStatusWorkingSome', siteNames(language, sites.off));
 }

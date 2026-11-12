@@ -21,6 +21,15 @@ describe('bridge protocol validators', () => {
         ).toBe(true);
         expect(
             isCapturedEvent({
+                t: 'subtitle-data',
+                platform: 'youtube',
+                videoId: 'arj7oStGLkU',
+                languages: ['en'],
+                tracks: [],
+            })
+        ).toBe(true);
+        expect(
+            isCapturedEvent({
                 t: 'subtitle-url',
                 platform: 'disneyplus',
                 url: 'https://x/master.m3u8',

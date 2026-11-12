@@ -217,12 +217,12 @@ const spokenLanguageWatch = new ValueWatch();
 
 /** The language of the audio track the player has selected, while the
  *  route still shows `videoId`. */
-function readSpokenLanguage(videoId: string): string | null {
+function readSpokenLanguage(videoId: string): string | undefined {
     try {
         if (
             extractDisneyPlusVideoIdFromPathname(location.pathname) !== videoId
         ) {
-            return null;
+            return undefined;
         }
         const playerApi = readHostProperty(
             'disney-web-player-ui',
@@ -230,9 +230,9 @@ function readSpokenLanguage(videoId: string): string | null {
         );
         const audio = isRecord(playerApi) ? playerApi.audio : null;
         const language = isRecord(audio) ? audio.selectedLanguage : null;
-        return isBridgeLanguage(language) ? language : null;
+        return isBridgeLanguage(language) ? language : undefined;
     } catch {
-        return null;
+        return undefined;
     }
 }
 

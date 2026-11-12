@@ -1,14 +1,14 @@
 import { detectBrowserLanguage } from '@/config/schema';
-import { PLATFORM_IDS, PLATFORM_NAMES } from '@/shared/platforms';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
-import { SiteLinks } from '../SiteLinks';
+import { openSettings } from '../openSettings';
 import { PopupShell, PopupUnavailable } from './PopupShell';
 
 const ELSEWHERE_KEYS = ['uiLanguage'] as const;
 
-/** The popup anywhere DualSub does not work: what it does, and the sites
- *  it works on. */
+/** The popup anywhere DualSub does not work: that it does not work here,
+ *  and the way to the settings page's list of the sites it works on. One
+ *  button stands for them all, so the popup never grows with the list. */
 export function ElsewherePopup() {
     const { settings, status } = useSettings(ELSEWHERE_KEYS);
     const { t, loadedLocale } = useI18n(
@@ -23,24 +23,22 @@ export function ElsewherePopup() {
         return <div className="popup" aria-busy="true" />;
     }
 
-    const sites = (type: 'conjunction' | 'disjunction'): string =>
-        new Intl.ListFormat(settings.uiLanguage, { type }).format(
-            PLATFORM_IDS.map((site) => PLATFORM_NAMES[site])
-        );
     return (
         <PopupShell t={t}>
             <div className="guide">
                 <section className="card">
-                    <h1 className="title">
-                        {t('popupElsewhereTitle', sites('conjunction'))}
-                    </h1>
+                    <h1 className="title">{t('popupElsewhereTitle')}</h1>
                     <p className="help">{t('popupElsewhereHelp')}</p>
-                    <SiteLinks t={t} className="button big" />
+                    <button
+                        type="button"
+                        className="button big"
+                        onClick={() => openSettings('sites')}
+                    >
+                        {t('popupSeeSites')}
+                    </button>
                 </section>
                 <section className="card">
-                    <h2 className="title small">
-                        {t('popupAlreadyTitle', sites('disjunction'))}
-                    </h2>
+                    <h2 className="title small">{t('popupAlreadyTitle')}</h2>
                     <ol className="checklist">
                         <li>{t('popupAlreadyPlay')}</li>
                         <li>{t('popupAlreadyNone')}</li>

@@ -3,7 +3,7 @@
         "message": "DualSub"
     },
     "appDesc": {
-        "message": "DualSub muestra subtítulos en dos idiomas a la vez en Netflix y Disney+. Haz clic en cualquier palabra para ver qué significa."
+        "message": "DualSub muestra subtítulos en dos idiomas a la vez en sitios de video. Haz clic en cualquier palabra para ver qué significa."
     },
     "optionsPageTitle": {
         "message": "Configuración de DualSub"
@@ -642,7 +642,7 @@
         "message": "Como %s"
     },
     "lookStylePlatformHelp": {
-        "message": "Lo deciden tus ajustes de subtítulos de Netflix o Disney+."
+        "message": "Se ve como los subtítulos de cada sitio."
     },
     "lookStyleTitle": {
         "message": "Diseño y estilos listos para usar"
@@ -978,10 +978,10 @@
         "message": "Los subtítulos duales están activados"
     },
     "startStatusWorking": {
-        "message": "Funcionando en %s"
+        "message": "Funcionando en todos los sitios"
     },
     "startStatusWorkingSome": {
-        "message": "Funcionando en %s, desactivado en %s"
+        "message": "Funcionando en todos los sitios menos %s"
     },
     "startSitesUnreadable": {
         "message": "No se pudo leer dónde está activado DualSub."
@@ -1266,7 +1266,7 @@
         "message": "dirección direccion url servidor punto de acceso"
     },
     "searchWordsSiteOnOff": {
-        "message": "netflix disney sitios página pagina web desactivar desactivado encender apagar prender aqui"
+        "message": "netflix disney youtube sitios página pagina web desactivar desactivado encender apagar prender aqui"
     },
     "searchWordsDualSubtitles": {
         "message": "activar desactivar encender apagar todos los sitios en todas partes dos líneas"
@@ -1416,16 +1416,16 @@
         "message": "%s %s"
     },
     "welcomeArrangeVideoFirst": {
-        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el idioma del propio video, y debajo, el tuyo."
+        "message": "DualSub pone dos líneas de subtítulos en los videos que ves: arriba, el idioma del propio video, y debajo, el tuyo."
     },
     "welcomeArrangeMineFirst": {
-        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el tuyo, y debajo, el idioma del propio video."
+        "message": "DualSub pone dos líneas de subtítulos en los videos que ves: arriba, el tuyo, y debajo, el idioma del propio video."
     },
     "welcomeArrangeSideBySide": {
-        "message": "DualSub pone dos líneas de subtítulos una al lado de la otra en Netflix y Disney+: el idioma del propio video y el tuyo."
+        "message": "DualSub pone dos líneas de subtítulos una al lado de la otra en los videos que ves: el idioma del propio video y el tuyo."
     },
     "welcomeArrangeOneLine": {
-        "message": "DualSub pone subtítulos en tu idioma en Netflix y Disney+. La línea original también está en ese idioma, así que se ve una sola línea."
+        "message": "DualSub pone subtítulos en tu idioma en los videos que ves. La línea original también está en ese idioma, así que se ve una sola línea."
     },
     "welcomeStateReady": {
         "message": "No hay nada que configurar."
@@ -1452,7 +1452,7 @@
         "message": "Arriba a la derecha del navegador, haz clic en «Extensiones» (la pieza de rompecabezas) y luego en «Fijar», junto a DualSub. Así su botón queda a la vista mientras ves algo."
     },
     "welcomeOpenTitle": {
-        "message": "Abre Netflix o Disney+"
+        "message": "Abre uno de estos sitios"
     },
     "welcomePlayTitle": {
         "message": "Pon cualquier video"
@@ -1527,13 +1527,16 @@
         "message": "Texto más grande"
     },
     "popupElsewhereTitle": {
-        "message": "DualSub funciona en %s"
+        "message": "DualSub no funciona en esta página"
     },
     "popupElsewhereHelp": {
-        "message": "Esta página no es ninguno de ellos. Abre uno, pon cualquier video y las dos líneas aparecen por sí solas."
+        "message": "Pon un video en uno de los sitios donde funciona y las dos líneas aparecen por sí solas."
+    },
+    "popupSeeSites": {
+        "message": "Ver los sitios"
     },
     "popupAlreadyTitle": {
-        "message": "¿Ya estás en %s?"
+        "message": "¿Ya estás en uno de ellos?"
     },
     "popupAlreadyPlay": {
         "message": "Pon un video. Los subtítulos aparecen cuando empieza."
@@ -1569,7 +1572,7 @@
         "message": "El vídeo se pausa y el significado aparece aquí. Haz clic en más palabras para buscar una frase, y haz clic en el vídeo para seguir viendo."
     },
     "sidepanelElsewhereTitle": {
-        "message": "Abre un vídeo en Netflix o Disney+"
+        "message": "Abre un vídeo en uno de estos sitios"
     },
     "sidepanelElsewhereHelp": {
         "message": "Después haz clic en cualquier palabra de los subtítulos y su significado aparecerá aquí."

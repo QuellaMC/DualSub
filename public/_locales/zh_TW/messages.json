@@ -3,7 +3,7 @@
         "message": "DualSub"
     },
     "appDesc": {
-        "message": "DualSub 在 Netflix 和 Disney+ 上同時顯示兩種語言的字幕，點一下任一個單字就能看到它的意思。"
+        "message": "DualSub 在影音網站上同時顯示兩種語言的字幕，點一下任一個單字就能看到它的意思。"
     },
     "optionsPageTitle": {
         "message": "DualSub 設定"
@@ -642,7 +642,7 @@
         "message": "跟 %s 一樣"
     },
     "lookStylePlatformHelp": {
-        "message": "由你在 Netflix 或 Disney+ 的字幕設定決定。"
+        "message": "跟每個網站自己的字幕看起來一樣。"
     },
     "lookStyleTitle": {
         "message": "外觀和現成樣式"
@@ -978,10 +978,10 @@
         "message": "雙語字幕已開啟"
     },
     "startStatusWorking": {
-        "message": "正在 %s 上運作"
+        "message": "正在所有網站上運作"
     },
     "startStatusWorkingSome": {
-        "message": "正在 %s 上運作，%s 上已關閉"
+        "message": "正在除了 %s 以外的所有網站上運作"
     },
     "startSitesUnreadable": {
         "message": "無法讀取 DualSub 在哪些網站上開啟。"
@@ -1266,7 +1266,7 @@
         "message": "網址 位址 服務網址 端點 伺服器 url"
     },
     "searchWordsSiteOnOff": {
-        "message": "netflix disney 網飛 迪士尼 網站 平台 開啟 關閉 打開 關掉 啟用 停用 開關 不想用 暫時關掉 雙語字幕 開啟字幕 關閉字幕 關掉字幕"
+        "message": "netflix disney youtube 網飛 迪士尼 網站 平台 開啟 關閉 打開 關掉 啟用 停用 開關 不想用 暫時關掉 雙語字幕 開啟字幕 關閉字幕 關掉字幕"
     },
     "searchWordsDualSubtitles": {
         "message": "開 關 開啟 關閉 啟用 停用 所有網站 全部 兩行"
@@ -1416,16 +1416,16 @@
         "message": "%s%s"
     },
     "welcomeArrangeVideoFirst": {
-        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示兩行字幕：上面是影片本身的語言，下面是你的語言。"
+        "message": "DualSub 會在你看的影片上顯示兩行字幕：上面是影片本身的語言，下面是你的語言。"
     },
     "welcomeArrangeMineFirst": {
-        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示兩行字幕：上面是你的語言，下面是影片本身的語言。"
+        "message": "DualSub 會在你看的影片上顯示兩行字幕：上面是你的語言，下面是影片本身的語言。"
     },
     "welcomeArrangeSideBySide": {
-        "message": "DualSub 會在 Netflix 和 Disney+ 上並排顯示兩行字幕：影片本身的語言，和你的語言。"
+        "message": "DualSub 會在你看的影片上並排顯示兩行字幕：影片本身的語言，和你的語言。"
     },
     "welcomeArrangeOneLine": {
-        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示你的語言的字幕。原文字幕也設成了這種語言，所以只顯示一行。"
+        "message": "DualSub 會在你看的影片上顯示你的語言的字幕。原文字幕也設成了這種語言，所以只顯示一行。"
     },
     "welcomeStateReady": {
         "message": "什麼都不用設定。"
@@ -1452,7 +1452,7 @@
         "message": "點一下瀏覽器右上角拼圖形狀的「擴充功能」，再點 DualSub 旁邊的圖釘「固定」。之後看影片時，它的按鈕就會一直在那裡。"
     },
     "welcomeOpenTitle": {
-        "message": "打開 Netflix 或 Disney+"
+        "message": "打開下面任一個網站"
     },
     "welcomePlayTitle": {
         "message": "隨便播放一部影片"
@@ -1527,13 +1527,16 @@
         "message": "放大文字"
     },
     "popupElsewhereTitle": {
-        "message": "DualSub 可以在 %s 上使用"
+        "message": "DualSub 無法在這個頁面上使用"
     },
     "popupElsewhereHelp": {
-        "message": "這個頁面不在其中。打開其中一個網站，隨便播放一部影片，兩行字幕就會自動出現。"
+        "message": "在 DualSub 支援的網站上播放影片，兩行字幕就會自動出現。"
+    },
+    "popupSeeSites": {
+        "message": "查看支援的網站"
     },
     "popupAlreadyTitle": {
-        "message": "已經在 %s 上了嗎？"
+        "message": "已經在其中一個網站上了嗎？"
     },
     "popupAlreadyPlay": {
         "message": "播放一部影片，開始播放後字幕就會出現。"
@@ -1569,7 +1572,7 @@
         "message": "影片會暫停，意思會顯示在這裡。多點幾個單字可以查整個片語，想繼續看就點一下影片。"
     },
     "sidepanelElsewhereTitle": {
-        "message": "在 Netflix 或 Disney+ 上打開一部影片"
+        "message": "在下面任一個網站上打開一部影片"
     },
     "sidepanelElsewhereHelp": {
         "message": "然後點一下字幕裡的任一個單字，它的意思就會顯示在這裡。"

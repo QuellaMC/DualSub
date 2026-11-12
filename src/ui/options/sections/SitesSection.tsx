@@ -23,6 +23,7 @@ type Rules = SettingsValues['subtitleBlacklist'];
 const SITE_BADGES: Record<PlatformId, string> = {
     netflix: 'N',
     disneyplus: 'D+',
+    youtube: 'YT',
 };
 
 /** Each own value's name in the summary; a key shares a name with its

@@ -6,8 +6,9 @@ import type { PlatformId } from '@/shared/platforms';
 
 /** Fixed per-platform behavior flags — data, not overridable escape hatches. */
 export interface PlatformCapabilities {
-    /** video.pause()/play() are safe (Netflix). false → the adapter must go
-     *  through the platform's own UI control (Disney toggle button). */
+    /** video.pause()/play() are safe (Netflix, YouTube). false → the
+     *  adapter must go through the platform's own UI control (Disney toggle
+     *  button). */
     readonly directMediaControl: boolean;
     /** The <video> element is replaced across episodes, so media detection
      *  after navigation must refuse the previous element. */
@@ -65,7 +66,10 @@ export interface PlatformHandoff {
 }
 
 /** The platforms whose page bridge reads subtitle tracks from the player. */
-export type PageTrackSource = 'netflix';
+export type PageTrackSource = Extract<
+    CapturedEvent,
+    { t: 'subtitle-data' }
+>['platform'];
 
 export type SubtitleFetchSpec =
     | {

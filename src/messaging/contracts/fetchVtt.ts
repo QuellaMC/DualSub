@@ -19,6 +19,8 @@ const FETCH_VTT_BUDGET = Object.freeze({
     maxTotalBytes: 256 * 1024,
 });
 const MAX_NETFLIX_TRACKS = 8;
+/** One per language the page bridge may be asked for. */
+const MAX_YOUTUBE_TRACKS = 4;
 
 export const fetchVtt = defineContract({
     action: MessageActions.FETCH_VTT,
@@ -44,6 +46,17 @@ export const fetchVtt = defineContract({
             useOfficialTranslations: z.boolean(),
             data: z.strictObject({
                 tracks: z.array(z.unknown()).min(1).max(MAX_NETFLIX_TRACKS),
+            }),
+        }),
+        z.strictObject({
+            action: z.literal(MessageActions.FETCH_VTT),
+            source: z.literal('youtube'),
+            videoId: boundedNonBlankString(MAX_ROUTE_ID_BYTES),
+            targetLanguage: languageTag,
+            originalLanguage: languageTag,
+            useOfficialTranslations: z.boolean(),
+            data: z.strictObject({
+                tracks: z.array(z.unknown()).min(1).max(MAX_YOUTUBE_TRACKS),
             }),
         }),
     ]),

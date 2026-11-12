@@ -875,7 +875,7 @@ describe('SidePanelApp', () => {
         ] as never);
         render(<SidePanelApp />);
         expect(
-            await screen.findByText('Open a video on Netflix or Disney+')
+            await screen.findByText('Open a video on one of these sites')
         ).toBeInTheDocument();
         expect(
             screen.getByRole('link', { name: 'Open Netflix' })
@@ -911,7 +911,7 @@ describe('SidePanelApp', () => {
             { id: 12 } as never
         );
         expect(
-            await screen.findByText('Open a video on Netflix or Disney+')
+            await screen.findByText('Open a video on one of these sites')
         ).toBeInTheDocument();
         expect(screen.queryByText('Spanish → English')).toBeNull();
     });
