@@ -20,6 +20,8 @@ import type {
 } from '@/messaging/contracts/fetchVtt';
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import { netflixDescriptor } from '../platform/netflix/descriptor';
+import type { PlatformDescriptor } from '../platform/types';
+import { youtubeDescriptor } from '../platform/youtube/descriptor';
 import { UiRoot } from '../renderer/domLayer';
 import {
     PlayerSession,
@@ -91,7 +93,7 @@ function resolution(
     return {
         t: 'subtitle-data' as const,
         platform: 'netflix' as const,
-        movieId: '1',
+        videoId: '1',
         languages,
         tracks,
     };
@@ -99,7 +101,9 @@ function resolution(
 
 function startSession(
     languageSettings: LanguageSettings = LANGUAGES,
-    settings: Partial<ContentSettings> = {}
+    settings: Partial<ContentSettings> = {},
+    descriptor: PlatformDescriptor = netflixDescriptor,
+    videoId = '1'
 ) {
     const controller = new AbortController();
     const cache = new SubtitleEventCache();
@@ -107,9 +111,9 @@ function startSession(
     const video = makeVideo();
     const session = new PlayerSession({
         id: 1,
-        videoId: '1',
-        descriptor: netflixDescriptor,
-        config: configService.forSite('netflix'),
+        videoId,
+        descriptor,
+        config: configService.forSite(descriptor.id),
         bridge: { connected: true, sendControl },
         cache,
         uiRoot: new UiRoot(controller.signal),
@@ -142,7 +146,7 @@ function startSession(
     session.start();
     // The orchestrator hands the session its site's changes.
     const unsubscribe = configService
-        .forSite('netflix')
+        .forSite(descriptor.id)
         .onChanged((changes) => session.applySettings(changes));
     controller.signal.addEventListener('abort', unsubscribe, { once: true });
     const tick = (time: number): void => {
@@ -205,6 +209,44 @@ describe('PlayerSession', () => {
         ]);
         active.tick(1.5);
         expect(texts()).toEqual(['Hello', '你好']);
+    });
+
+    it('asks the background for the tracks a YouTube page answered with', async () => {
+        setUrl('https://www.youtube.com/watch?v=arj7oStGLkU');
+        const requests = stubBackground({ 'zh-CN': '你好' });
+        active = startSession(LANGUAGES, {}, youtubeDescriptor, 'arj7oStGLkU');
+        expect(active.sendControl).toHaveBeenCalledWith({
+            t: 'request-subtitle-tracks',
+            videoId: 'arj7oStGLkU',
+            languages: ['en', 'zh-CN'],
+        });
+        const tracks = [
+            {
+                language: 'en',
+                displayName: 'English',
+                asr: false,
+                url: 'https://www.youtube.com/api/timedtext?v=arj7oStGLkU',
+            },
+        ];
+        active.cache.publish('arj7oStGLkU', {
+            t: 'subtitle-data',
+            platform: 'youtube',
+            videoId: 'arj7oStGLkU',
+            languages: ['en', 'zh-CN'],
+            tracks,
+        });
+        await settle();
+        expect(requests).toEqual([
+            {
+                action: 'fetchVTT',
+                source: 'youtube',
+                videoId: 'arj7oStGLkU',
+                targetLanguage: 'zh-CN',
+                originalLanguage: 'en',
+                useOfficialTranslations: true,
+                data: { tracks },
+            },
+        ]);
     });
 
     it('keeps the current cues up behind a placeholder while new languages load', async () => {

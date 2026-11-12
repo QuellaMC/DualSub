@@ -1,6 +1,13 @@
 import { normalizeLanguageCode } from '@/shared/languageNormalization';
 import { isBridgeLanguage, type CapturedEvent } from '../protocol';
 import type { InterceptorRecipe } from './interceptor-core';
+import {
+    callMethod,
+    isRecord,
+    readPath,
+    readProperty,
+    type PageRecord,
+} from './pageRecord';
 import { ResolutionSlot, ValueWatch, waitFor } from './waitFor';
 
 // Netflix resolves its manifest inside the player core, so subtitle track
@@ -25,8 +32,6 @@ const STATE_WALK_MAX_DEPTH = 20;
 const MAX_APPEARANCE_KEYS = 40;
 const MAX_APPEARANCE_STRING_LENGTH = 512;
 
-type PageRecord = Record<string, unknown>;
-
 interface CandidateTrack {
     /** The player's own track object; setTimedTextTrack wants it verbatim. */
     readonly raw: PageRecord;
@@ -40,48 +45,6 @@ interface CandidateTrack {
 interface PlayerSession {
     readonly player: PageRecord;
     readonly stateRoot: unknown;
-}
-
-function isRecord(value: unknown): value is PageRecord {
-    return value !== null && typeof value === 'object';
-}
-
-function readProperty(target: unknown, key: string): unknown {
-    if (!isRecord(target)) {
-        return undefined;
-    }
-    try {
-        return target[key];
-    } catch {
-        return undefined;
-    }
-}
-
-function readPath(target: unknown, ...keys: string[]): unknown {
-    let current = target;
-    for (const key of keys) {
-        current = readProperty(current, key);
-    }
-    return current;
-}
-
-function callMethod(
-    target: unknown,
-    name: string,
-    ...args: unknown[]
-): unknown {
-    const method = readProperty(target, name);
-    if (typeof method !== 'function') {
-        return undefined;
-    }
-    try {
-        return (method as (...callArgs: unknown[]) => unknown).apply(
-            target,
-            args
-        );
-    } catch {
-        return undefined;
-    }
 }
 
 function readNetflixGlobal(): unknown {
@@ -300,13 +263,13 @@ const appearanceResolution = new ResolutionSlot();
 const spokenLanguageWatch = new ValueWatch();
 
 /** The language of the audio track playing in `videoId`'s session. */
-function readSpokenLanguage(videoId: string): string | null {
+function readSpokenLanguage(videoId: string): string | undefined {
     const session = findReadyPlayerSession(videoId);
     const language = readProperty(
         callMethod(session?.player, 'getAudioTrack'),
         'bcp47'
     );
-    return isBridgeLanguage(language) ? language : null;
+    return isBridgeLanguage(language) ? language : undefined;
 }
 
 function watchSpokenLanguage(
@@ -345,7 +308,7 @@ async function resolveSubtitleTracks(
                 emit({
                     t: 'subtitle-data',
                     platform: 'netflix',
-                    movieId: videoId,
+                    videoId,
                     languages: [...languages],
                     tracks: [],
                 });
@@ -411,7 +374,7 @@ async function resolveSubtitleTracks(
         emit({
             t: 'subtitle-data',
             platform: 'netflix',
-            movieId: videoId,
+            videoId,
             languages: [...languages],
             tracks,
         });

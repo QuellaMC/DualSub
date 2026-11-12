@@ -1,9 +1,8 @@
 import { browser } from 'wxt/browser';
+import { platformFromHostname, type PlatformId } from '@/shared/platforms';
 
 export type SenderRole =
     'background' | 'content' | 'options' | 'popup' | 'sidepanel';
-
-export type ContentPlatform = 'netflix' | 'disneyplus';
 
 export interface ClassifiedExtensionSender {
     readonly role: Exclude<SenderRole, 'content'>;
@@ -11,7 +10,7 @@ export interface ClassifiedExtensionSender {
 
 export interface ClassifiedContentSender {
     readonly role: 'content';
-    readonly platform: ContentPlatform;
+    readonly platform: PlatformId;
     readonly tabId: number;
     readonly windowId: number;
     readonly documentId: string;
@@ -108,7 +107,7 @@ function readRuntimeEndpoints(runtime: RuntimeLike): RuntimeEndpoints | null {
 interface ParsedContentUrl {
     href: string;
     origin: string;
-    platform: ContentPlatform;
+    platform: PlatformId;
 }
 
 function parseSupportedContentUrl(rawUrl: unknown): ParsedContentUrl | null {
@@ -125,23 +124,10 @@ function parseSupportedContentUrl(rawUrl: unknown): ParsedContentUrl | null {
     ) {
         return null;
     }
-
-    let platform: ContentPlatform | null = null;
-    if (
-        parsedUrl.hostname === 'netflix.com' ||
-        parsedUrl.hostname.endsWith('.netflix.com')
-    ) {
-        platform = 'netflix';
-    } else if (
-        parsedUrl.hostname === 'disneyplus.com' ||
-        parsedUrl.hostname.endsWith('.disneyplus.com')
-    ) {
-        platform = 'disneyplus';
-    }
-    if (!platform) {
-        return null;
-    }
-    return { href: parsedUrl.href, origin: parsedUrl.origin, platform };
+    const platform = platformFromHostname(parsedUrl.hostname);
+    return platform
+        ? { href: parsedUrl.href, origin: parsedUrl.origin, platform }
+        : null;
 }
 
 /**

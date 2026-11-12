@@ -24,6 +24,7 @@ import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { getDefaultValue } from '@/config/schema';
 import { configService } from '@/config/service';
+import { PLATFORM_IDS } from '@/shared/platforms';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
 import { installPermissionEvents } from '@/test-utils/permissionEvents';
 import { resetCatalogsForTests } from '../hooks/useI18n';
@@ -98,7 +99,7 @@ describe('OptionsApp', () => {
         const title = await renderReady();
         expect(title).toHaveTextContent('Start');
         expect(
-            await screen.findByText('Working on Netflix and Disney+')
+            await screen.findByText('Working on every site')
         ).toBeInTheDocument();
         expect(
             screen.getByText('Picked from your browser')
@@ -751,7 +752,7 @@ describe('OptionsApp', () => {
         });
         await renderReady();
         expect(
-            await screen.findByText('Working on Netflix, off on Disney+')
+            await screen.findByText('Working on every site but Disney+')
         ).toBeInTheDocument();
     });
 
@@ -2345,7 +2346,7 @@ describe('OptionsApp', () => {
         await renderReady();
         expect(screen.getByText(/isn't set up yet$/)).toBeInTheDocument();
         expect(
-            screen.queryByText('Working on Netflix and Disney+')
+            screen.queryByText('Working on every site')
         ).not.toBeInTheDocument();
     });
 
@@ -2363,7 +2364,7 @@ describe('OptionsApp', () => {
         });
         await renderReady();
         expect(
-            await screen.findByText('Working on Netflix and Disney+')
+            await screen.findByText('Working on every site')
         ).toBeInTheDocument();
         expect(
             await screen.findByText(
@@ -2385,7 +2386,7 @@ describe('OptionsApp', () => {
             screen.getByText("Until it is, subtitles aren't translated.")
         ).toBeInTheDocument();
         expect(
-            screen.queryByText('Working on Netflix and Disney+')
+            screen.queryByText('Working on every site')
         ).not.toBeInTheDocument();
     });
 
@@ -2404,7 +2405,7 @@ describe('OptionsApp', () => {
             await screen.findByText("AI translation isn't set up yet")
         ).toBeInTheDocument();
         expect(
-            screen.queryByText('Working on Netflix and Disney+')
+            screen.queryByText('Working on every site')
         ).not.toBeInTheDocument();
     });
 
@@ -2428,7 +2429,7 @@ describe('OptionsApp', () => {
         );
         permissionsChanged('added', ['https://llm.example.com/*']);
         expect(
-            await screen.findByText('Working on Netflix and Disney+')
+            await screen.findByText('Working on every site')
         ).toBeInTheDocument();
     });
 
@@ -2436,7 +2437,7 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.sync.set({ selectedProvider: 'deepl' });
         await renderReady();
         expect(
-            await screen.findByText('Working on Netflix and Disney+')
+            await screen.findByText('Working on every site')
         ).toBeInTheDocument();
         expect(
             screen.getByText('Until it is, Microsoft Translator translates.')
@@ -2463,10 +2464,9 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.sync.set({
             selectedProvider: 'deepl',
             translationFallback: false,
-            siteProfiles: {
-                netflix: { subtitlesEnabled: false },
-                disneyplus: { subtitlesEnabled: false },
-            },
+            siteProfiles: Object.fromEntries(
+                PLATFORM_IDS.map((site) => [site, { subtitlesEnabled: false }])
+            ),
         });
         await renderReady();
         expect(
@@ -2502,7 +2502,7 @@ describe('OptionsApp', () => {
         });
         await renderReady();
         expect(
-            await screen.findByText('Working on Netflix and Disney+')
+            await screen.findByText('Working on every site')
         ).toBeInTheDocument();
         expect(
             screen.queryByText("DeepL isn't set up yet")

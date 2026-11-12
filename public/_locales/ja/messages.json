@@ -3,7 +3,7 @@
         "message": "DualSub"
     },
     "appDesc": {
-        "message": "DualSubは、NetflixとDisney+で2つの言語の字幕を同時に表示します。単語をクリックすると、その意味がわかります。"
+        "message": "DualSubは、動画サイトで2つの言語の字幕を同時に表示します。単語をクリックすると、その意味がわかります。"
     },
     "optionsPageTitle": {
         "message": "DualSubの設定"
@@ -642,7 +642,7 @@
         "message": "%sと同じ"
     },
     "lookStylePlatformHelp": {
-        "message": "NetflixやDisney+の字幕設定で決まります。"
+        "message": "それぞれのサイトの字幕と同じ見た目になります。"
     },
     "lookStyleTitle": {
         "message": "見た目と用意されたスタイル"
@@ -978,10 +978,10 @@
         "message": "二言語字幕はオンです"
     },
     "startStatusWorking": {
-        "message": "%sで動いています"
+        "message": "すべてのサイトで動いています"
     },
     "startStatusWorkingSome": {
-        "message": "%sで動いています（%sではオフ）"
+        "message": "%s以外のすべてのサイトで動いています"
     },
     "startSitesUnreadable": {
         "message": "DualSubがどのサイトでオンになっているか読み取れませんでした。"
@@ -1266,7 +1266,7 @@
         "message": "アドレス url 接続先 エンドポイント サーバー"
     },
     "searchWordsSiteOnOff": {
-        "message": "netflix disney ネットフリックス ネトフリ ディズニー ディズニープラス オン オフ 有効 無効 使わない 止める 切る 消す 入れる 切り替え スイッチ 二言語字幕 2言語 ２言語"
+        "message": "netflix disney youtube ユーチューブ ネットフリックス ネトフリ ディズニー ディズニープラス オン オフ 有効 無効 使わない 止める 切る 消す 入れる 切り替え スイッチ 二言語字幕 2言語 ２言語"
     },
     "searchWordsDualSubtitles": {
         "message": "オン オフ 有効 無効 切り替え すべてのサイト 全体 2行"
@@ -1416,16 +1416,16 @@
         "message": "%s%s"
     },
     "welcomeArrangeVideoFirst": {
-        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は動画そのものの言語、下は自分の言語です。"
+        "message": "DualSubは、見ている動画に2行の字幕を表示します。上は動画そのものの言語、下は自分の言語です。"
     },
     "welcomeArrangeMineFirst": {
-        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は自分の言語、下は動画そのものの言語です。"
+        "message": "DualSubは、見ている動画に2行の字幕を表示します。上は自分の言語、下は動画そのものの言語です。"
     },
     "welcomeArrangeSideBySide": {
-        "message": "DualSubは、NetflixとDisney+に2つの字幕を横に並べて表示します。動画そのものの言語と、自分の言語です。"
+        "message": "DualSubは、見ている動画に2つの字幕を横に並べて表示します。動画そのものの言語と、自分の言語です。"
     },
     "welcomeArrangeOneLine": {
-        "message": "DualSubは、NetflixとDisney+に自分の言語の字幕を表示します。原文の行も同じ言語に設定されているので、表示は1行です。"
+        "message": "DualSubは、見ている動画に自分の言語の字幕を表示します。原文の行も同じ言語に設定されているので、表示は1行です。"
     },
     "welcomeStateReady": {
         "message": "設定は何もいりません。"
@@ -1452,7 +1452,7 @@
         "message": "ブラウザの右上にある、パズルのピースの形をした「拡張機能」をクリックし、DualSubの横にあるピンの「固定」をクリックします。これで動画を見ている間もボタンが見えたままになります。"
     },
     "welcomeOpenTitle": {
-        "message": "NetflixかDisney+を開く"
+        "message": "下のサイトのどれかを開く"
     },
     "welcomePlayTitle": {
         "message": "好きな動画を再生する"
@@ -1527,13 +1527,16 @@
         "message": "文字を大きく"
     },
     "popupElsewhereTitle": {
-        "message": "DualSubは%sで使えます"
+        "message": "このページではDualSubは使えません"
     },
     "popupElsewhereHelp": {
-        "message": "このページでは使えません。下のサイトを開いて好きな動画を再生すると、2行の字幕が自動で表示されます。"
+        "message": "DualSubが使えるサイトで動画を再生すると、2行の字幕が自動で表示されます。"
+    },
+    "popupSeeSites": {
+        "message": "使えるサイトを見る"
     },
     "popupAlreadyTitle": {
-        "message": "もう%sを開いていますか？"
+        "message": "もうどれかを開いていますか？"
     },
     "popupAlreadyPlay": {
         "message": "動画を再生してください。始まると字幕が表示されます。"
@@ -1569,7 +1572,7 @@
         "message": "動画が一時停止して、意味がここに表示されます。さらに単語をクリックするとフレーズで調べられます。続きを見るには動画をクリックしてください。"
     },
     "sidepanelElsewhereTitle": {
-        "message": "Netflix か Disney+ で動画を開いてください"
+        "message": "下のサイトのどれかで動画を開いてください"
     },
     "sidepanelElsewhereHelp": {
         "message": "字幕の単語をクリックすると、その意味がここに表示されます。"

@@ -22,6 +22,7 @@ import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { getDefaultValue } from '@/config/schema';
 import { configService } from '@/config/service';
+import { PLATFORM_IDS } from '@/shared/platforms';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
 import { installPermissionEvents } from '@/test-utils/permissionEvents';
 import { resetCatalogsForTests } from '../hooks/useI18n';
@@ -99,6 +100,9 @@ describe('WelcomeApp', () => {
         expect(
             screen.getByRole('link', { name: 'Open Disney+' })
         ).toHaveAttribute('href', 'https://www.disneyplus.com/');
+        expect(
+            screen.getByRole('link', { name: 'Open YouTube' })
+        ).toHaveAttribute('href', 'https://www.youtube.com/');
     });
 
     it('says when its sample shows English for a language it has no sample in', async () => {
@@ -129,7 +133,7 @@ describe('WelcomeApp', () => {
             ).toBe(true)
         );
         expect(
-            await screen.findByText('Working on Netflix and Disney+')
+            await screen.findByText('Working on every site')
         ).toBeInTheDocument();
         expect(
             screen.getByRole('switch', { name: 'Dual subtitles' })
@@ -138,10 +142,9 @@ describe('WelcomeApp', () => {
 
     it('offers the switch when every site has dual subtitles off, and turns them on everywhere', async () => {
         await fakeBrowser.storage.sync.set({
-            siteProfiles: {
-                netflix: { subtitlesEnabled: false },
-                disneyplus: { subtitlesEnabled: false },
-            },
+            siteProfiles: Object.fromEntries(
+                PLATFORM_IDS.map((site) => [site, { subtitlesEnabled: false }])
+            ),
         });
         render(<WelcomeApp />);
         expect(
@@ -235,7 +238,7 @@ describe('WelcomeApp', () => {
         });
         render(<WelcomeApp />);
         expect(
-            await screen.findByText('Working on Netflix, off on Disney+')
+            await screen.findByText('Working on every site but Disney+')
         ).toBeInTheDocument();
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'Welcome to DualSub'
@@ -299,7 +302,7 @@ describe('WelcomeApp', () => {
         );
         render(<WelcomeApp />);
         expect(
-            await screen.findByText('Working on Netflix, off on Disney+')
+            await screen.findByText('Working on every site but Disney+')
         ).toBeInTheDocument();
     });
 
@@ -381,7 +384,7 @@ describe('WelcomeApp', () => {
         });
         expect(
             await screen.findByText(
-                /two lines of subtitles side by side on Netflix and Disney\+/
+                /two lines of subtitles side by side on the videos you watch/
             )
         ).toBeInTheDocument();
     });
@@ -472,10 +475,9 @@ describe('WelcomeApp', () => {
 
     it("keeps the switch's failure in view when the language saves after it", async () => {
         await fakeBrowser.storage.sync.set({
-            siteProfiles: {
-                netflix: { subtitlesEnabled: false },
-                disneyplus: { subtitlesEnabled: false },
-            },
+            siteProfiles: Object.fromEntries(
+                PLATFORM_IDS.map((site) => [site, { subtitlesEnabled: false }])
+            ),
         });
         render(<WelcomeApp />);
         const switchWrite = Promise.withResolvers<never>();

@@ -165,7 +165,7 @@ describe('netflixRecipe track resolution', () => {
             {
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en', 'ja'],
                 tracks: [
                     {
@@ -324,7 +324,7 @@ describe('netflixRecipe track resolution', () => {
             {
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '1',
+                videoId: '1',
                 languages: ['en'],
                 tracks: [],
             },
@@ -338,7 +338,7 @@ describe('netflixRecipe track resolution', () => {
             {
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '1',
+                videoId: '1',
                 languages: ['en'],
                 tracks: [],
             },

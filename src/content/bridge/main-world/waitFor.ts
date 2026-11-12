@@ -77,17 +77,18 @@ export function waitFor<T>(
 }
 
 /**
- * Polls `read` until stopped and reports every new value. Once nothing has
- * been readable for `unknownAfterMs`, from the start or since the last value,
- * it reports null, so the listener stops waiting on or trusting a stale
- * value; a shorter gap reports nothing. Starting again replaces the previous
- * watch.
+ * Polls `read` until stopped and reports every new answer: a value, or null
+ * when the source says it cannot tell. `read` returns undefined while
+ * nothing is readable; once that has lasted `unknownAfterMs`, from the start
+ * or since the last answer, the watch reports null, so the listener stops
+ * waiting on or trusting a stale value, and a shorter gap reports nothing.
+ * Starting again replaces the previous watch.
  */
 export class ValueWatch {
     private timer: number | null = null;
 
     start(
-        read: () => string | null,
+        read: () => string | null | undefined,
         report: (value: string | null) => void,
         intervalMs: number,
         unknownAfterMs: number
@@ -97,7 +98,7 @@ export class ValueWatch {
         let reported: string | null | undefined;
         const poll = (): void => {
             const value = read();
-            if (value !== null) {
+            if (value !== undefined) {
                 silentSince = Date.now();
                 if (value !== reported) {
                     reported = value;

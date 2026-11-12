@@ -75,6 +75,41 @@ describe('SubtitleFlightTable', () => {
         expect(observedSignal?.aborted).toBe(true);
     });
 
+    it('coalesces identical page-track requests and reruns a changed track', async () => {
+        const youtubeRequest = (asr: boolean): AuthorizedSubtitleRequest => ({
+            source: 'youtube',
+            tabId: 1,
+            videoId: 'arj7oStGLkU',
+            targetLanguage: 'zh-CN',
+            originalLanguage: 'en',
+            useOfficialTranslations: true,
+            tracks: [
+                {
+                    language: 'en',
+                    displayName: 'English',
+                    asr,
+                    downloadUrl:
+                        'https://www.youtube.com/api/timedtext?v=arj7oStGLkU',
+                },
+            ],
+        });
+        const table = new SubtitleFlightTable();
+        const { run, resolve } = deferredRun();
+        const first = table.admit(youtubeRequest(false), run);
+        void table.admit(youtubeRequest(false), run);
+        expect(run).toHaveBeenCalledTimes(1);
+
+        const rerun = vi.fn(() => Promise.resolve(OK));
+        await expect(table.admit(youtubeRequest(true), rerun)).resolves.toEqual(
+            OK
+        );
+        expect(rerun).toHaveBeenCalledOnce();
+        resolve(OK);
+        await expect(first).resolves.toEqual(
+            SUBTITLE_REQUEST_REJECTED_RESPONSE
+        );
+    });
+
     it('caps coalesced responders at 8', async () => {
         const table = new SubtitleFlightTable();
         const { run, resolve } = deferredRun();

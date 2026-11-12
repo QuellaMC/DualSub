@@ -73,6 +73,55 @@ describe('classifyExtensionMessageSender', () => {
         ).toBe('disneyplus');
     });
 
+    it('classifies YouTube content senders on its desktop host only', () => {
+        const youtube = (url: string) =>
+            classifyExtensionMessageSender(
+                contentSender({
+                    url,
+                    origin: new URL(url).origin,
+                    tab: { id: 5, windowId: 1, active: true, url },
+                }),
+                runtime
+            );
+        const classified = youtube(
+            'https://www.youtube.com/shorts/xmQVy2w3FyQ'
+        );
+        expect(
+            classified?.role === 'content' ? classified.platform : null
+        ).toBe('youtube');
+        expect(youtube('https://m.youtube.com/watch?v=arj7oStGLkU')).toBeNull();
+        expect(
+            youtube('https://music.youtube.com/watch?v=arj7oStGLkU')
+        ).toBeNull();
+        expect(
+            youtube('https://www.youtube-nocookie.com/embed/arj7oStGLkU')
+        ).toBeNull();
+    });
+
+    it('rejects a YouTube sender that is not the active top frame', () => {
+        const url = 'https://www.youtube.com/watch?v=arj7oStGLkU';
+        const sender = {
+            url,
+            origin: 'https://www.youtube.com',
+            tab: { id: 5, windowId: 1, active: true, url },
+        };
+        expect(
+            classifyExtensionMessageSender(
+                contentSender({ ...sender, frameId: 3 }),
+                runtime
+            )
+        ).toBeNull();
+        expect(
+            classifyExtensionMessageSender(
+                contentSender({
+                    ...sender,
+                    tab: { ...sender.tab, active: false },
+                }),
+                runtime
+            )
+        ).toBeNull();
+    });
+
     it('classifies extension page roles by exact URL', () => {
         for (const [page, role] of [
             ['background.js', 'background'],

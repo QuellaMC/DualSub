@@ -22,7 +22,7 @@ To build DualSub from source, see [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 ## Check that it works
 
-Play a video on Netflix or Disney+. Two lines of subtitles appear: the video's language on top and yours underneath. A video already in your language shows one line. The DualSub button in the toolbar turns DualSub off for the site or changes your language.
+Play a video on a site DualSub works on (the [README](../../README.md) lists them). Two lines of subtitles appear: the video's language on top and yours underneath. A video already in your language shows one line. The DualSub button in the toolbar turns DualSub off for the site or changes your language.
 
 ## Problems
 

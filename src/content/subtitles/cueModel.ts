@@ -6,7 +6,7 @@ import {
     type CuePlacement,
 } from '@/shared/cuePlacement';
 import type { FetchVttResponse } from '@/messaging/contracts/fetchVtt';
-import { parseVtt, type VttCue } from './vtt';
+import { parseVtt, type VttCue } from '@/shared/vtt';
 
 export type CueId = string;
 

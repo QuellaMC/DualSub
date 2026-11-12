@@ -64,7 +64,7 @@ describe('disneyPlusDescriptor', () => {
             disneyPlusDescriptor.classifyBridgeEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '1',
+                videoId: '1',
                 languages: ['en'],
                 tracks: [],
             })

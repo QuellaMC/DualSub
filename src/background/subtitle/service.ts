@@ -14,6 +14,7 @@ import {
     processM3U8PlaylistText,
 } from './parsers/m3u8';
 import { isCallerAbortError, processNetflixSubtitles } from './parsers/netflix';
+import { processYouTubeSubtitles } from './parsers/youtube';
 
 export interface SubtitleProcessingResult {
     vttText: string;
@@ -299,7 +300,12 @@ export async function processSubtitleRequest(
     snapshot: AuthorizedSubtitleRequest,
     options: { signal?: AbortSignal } = {}
 ): Promise<SubtitleProcessingResult> {
-    return snapshot.source === 'netflix'
-        ? processNetflixSubtitles(snapshot, options)
-        : processDisneyPlusSubtitles(snapshot, options);
+    switch (snapshot.source) {
+        case 'netflix':
+            return processNetflixSubtitles(snapshot, options);
+        case 'disneyplus':
+            return processDisneyPlusSubtitles(snapshot, options);
+        case 'youtube':
+            return processYouTubeSubtitles(snapshot, options);
+    }
 }
