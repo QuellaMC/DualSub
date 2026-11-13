@@ -16,8 +16,8 @@ const COLUMNS = [
         links: [
             { href: sectionHref('how-it-works'), label: 'How it works' },
             { href: sectionHref('customize'), label: 'Customize' },
-            { href: sectionHref('ai-context'), label: 'AI Context' },
-            { href: sectionHref('engines'), label: 'Translation engines' },
+            { href: sectionHref('word-lookup'), label: 'Word lookup' },
+            { href: sectionHref('translation'), label: 'Translation services' },
         ],
     },
     {
@@ -45,7 +45,10 @@ export function SiteFooter() {
                 <div className="site-footer-top">
                     <div className="site-footer-brand">
                         <Wordmark />
-                        <p>Dual-language subtitles for Netflix and Disney+.</p>
+                        <p>
+                            Dual-language subtitles for Netflix, Disney+ and
+                            YouTube.
+                        </p>
                     </div>
                     {COLUMNS.map(({ heading, links }) => (
                         <nav key={heading} aria-label={heading}>
@@ -66,8 +69,8 @@ export function SiteFooter() {
                         QuellaMC &amp; 1jifang
                     </p>
                     <p>
-                        DualSub is not affiliated with Netflix, Disney+ or any
-                        streaming platform.
+                        DualSub is not affiliated with Netflix, Disney+, YouTube
+                        or any streaming platform.
                     </p>
                 </div>
             </div>

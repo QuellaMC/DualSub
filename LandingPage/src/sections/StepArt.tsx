@@ -85,13 +85,14 @@ export function SubtitleMenuArt() {
     );
 }
 
-/** The popup with the switch and the language to turn on outlined. */
+/** The popup with its switch and your language outlined. */
 export function ChooseLanguagesArt() {
     return (
         <div className="languages-art">
             <PopupMock
                 className="languages-art-popup"
-                highlighted={['enable', 'translateTo']}
+                state="ready"
+                highlighted={['enabled', 'languages']}
             />
         </div>
     );

@@ -19,7 +19,6 @@
 .customize-hint .icon {
     flex-shrink: 0;
     margin-top: 3px;
-    color: var(--amber);
 }
 
 .previews {
@@ -31,7 +30,7 @@
 .previews h3 {
     margin-top: 14px;
     font-size: 17px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.4;
 }
 
@@ -48,11 +47,13 @@
     border-radius: 14px;
 }
 
+/* The sunset dimmed to dusk, so four of them sit quietly side by side. */
 .preview-board > .scene {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+    filter: brightness(0.6) saturate(0.85);
 }
 
 .preview-board .subtitles {
@@ -98,7 +99,7 @@
 .offset-intro h3 {
     margin-bottom: 8px;
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.35;
 }
 
@@ -109,7 +110,7 @@
 }
 
 .offset-intro strong {
-    color: var(--amber-light);
+    color: var(--text);
 }
 
 .offset-figure {
@@ -133,7 +134,7 @@
     top: 0;
     bottom: 0;
     left: 242px;
-    border-left: 1.5px dashed rgba(61, 220, 151, 0.7);
+    border-left: 1.5px dashed rgba(255, 255, 255, 0.3);
     content: '';
 }
 
@@ -171,8 +172,8 @@
 
 .offset-on-time {
     left: 121px;
-    background: var(--amber);
-    color: var(--amber-ink);
+    background: var(--accent);
+    color: #ffffff;
     font-weight: 700;
 }
 

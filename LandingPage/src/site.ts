@@ -7,7 +7,7 @@ export const NEW_ISSUE_URL = `${GITHUB_URL}/issues/new/choose`;
 export const PRIVACY_POLICY_URL = `${GITHUB_URL}/blob/main/PRIVACY_POLICY.md`;
 export const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
 
-/** The popup's Translate to choices (src/ui/popup/LanguageSelector.tsx). */
+/** The languages DualSub offers for either subtitle line (src/shared/subtitleLanguages.ts). */
 export const SUBTITLE_LANGUAGES = [
     'English',
     'Spanish',
@@ -39,8 +39,8 @@ export type SectionId =
     | 'how-it-works'
     | 'popup'
     | 'customize'
-    | 'ai-context'
-    | 'engines'
+    | 'word-lookup'
+    | 'translation'
     | 'platforms'
     | 'privacy'
     | 'faq';

@@ -77,7 +77,7 @@
 }
 
 .player-played {
-    background: var(--amber);
+    background: #e9ecf1;
 }
 
 .player-played::after {
@@ -87,9 +87,8 @@
     width: 16px;
     height: 16px;
     margin-top: -8px;
-    border: 2px solid #ffe2a3;
     border-radius: 50%;
-    background: var(--amber);
+    background: #ffffff;
     content: '';
 }
 

@@ -3,16 +3,19 @@ import { LogoMark } from '../components/Brand';
 import { Icon } from '../components/Icon';
 import './Browser.css';
 
-/** A dark-theme Chrome window on a streaming page, with DualSub open. */
+/** A dark-theme Chrome window with DualSub in its toolbar; the tab shows a
+ *  video by default. */
 export function BrowserWindow({
     tabTitle,
     host,
     path,
+    favicon = <Icon name="play" />,
     children,
 }: {
     tabTitle: string;
     host: string;
     path: string;
+    favicon?: ReactNode;
     children: ReactNode;
 }) {
     return (
@@ -24,9 +27,7 @@ export function BrowserWindow({
                     <span />
                 </span>
                 <span className="browser-tab">
-                    <span className="browser-favicon">
-                        <Icon name="play" />
-                    </span>
+                    <span className="browser-favicon">{favicon}</span>
                     <span className="browser-tab-title">{tabTitle}</span>
                     <Icon name="close" className="browser-tab-close" />
                 </span>

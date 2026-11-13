@@ -2,70 +2,63 @@ import { Icon, type IconName } from '../components/Icon';
 import { Section, SectionHeading } from '../components/Section';
 import './Engines.css';
 
-type Tone = 'green' | 'amber' | 'blue';
-
+/** The translation services in Settings → Translation (src/ui/providerNames.ts). */
 const ENGINES: readonly {
     name: string;
     icon: IconName;
-    tone: Tone;
     access: string;
     body: string;
 }[] = [
     {
-        name: 'Microsoft Translate',
+        name: 'Microsoft Translator',
         icon: 'zap',
-        tone: 'green',
         access: 'Free · no key',
-        body: 'The default engine. Fast and dependable, with nothing to set up.',
+        body: 'Good quality in most languages. Works right away.',
     },
     {
         name: 'Google Translate',
         icon: 'globe',
-        tone: 'green',
         access: 'Free · no key',
-        body: 'Free, with very broad language coverage.',
+        body: 'Also works right away. Worth a try if Microsoft reads oddly in your language.',
     },
     {
         name: 'DeepL',
         icon: 'star',
-        tone: 'amber',
         access: 'API key',
-        body: 'Natural-sounding translations with a DeepL API Free or Pro key.',
+        body: 'Very natural translations. Needs a DeepL account, which has a free plan.',
     },
     {
-        name: 'OpenAI Compatible',
+        name: 'AI translation',
         icon: 'server',
-        tone: 'amber',
         access: 'API key',
-        body: 'Any OpenAI-compatible endpoint and model you choose, with your own key.',
+        body: 'ChatGPT, Gemini or another AI model translates, aware of the whole scene.',
     },
     {
-        name: 'Vertex AI Gemini',
+        name: 'Google Vertex AI',
         icon: 'cloud',
-        tone: 'blue',
         access: 'Google Cloud',
-        body: 'Gemini through your Google Cloud project. Import a service-account JSON once; the key isn’t stored.',
+        body: 'Gemini through your Google Cloud project. Its private key is never stored.',
     },
 ];
 
 export function Engines() {
     return (
-        <Section id="engines">
+        <Section id="translation">
             <SectionHeading
-                eyebrow="Translation engines"
-                title="Pick the engine that suits you"
-                lead="Microsoft Translate is on by default — free, with nothing to configure. Switch any time in Settings → Translation; the next line uses the new engine, no reload needed."
+                eyebrow="Translation services"
+                title="Pick the service that suits you"
+                lead="Microsoft Translator is on by default: free, with nothing to set up. Switch any time in Settings → Translation, and the next line uses it. No reload needed."
                 align="start"
             />
             <ul className="engines">
-                {ENGINES.map(({ name, icon, tone, access, body }, index) => (
+                {ENGINES.map(({ name, icon, access, body }, index) => (
                     <li
                         key={name}
                         className={
                             index === 0 ? 'engine engine-default' : 'engine'
                         }
                     >
-                        <span className={`feature-icon feature-icon-${tone}`}>
+                        <span className="feature-icon">
                             <Icon name={icon} />
                         </span>
                         {index === 0 ? (
@@ -74,18 +67,16 @@ export function Engines() {
                             </span>
                         ) : null}
                         <h3>{name}</h3>
-                        <span className={`engine-access engine-access-${tone}`}>
-                            {access}
-                        </span>
+                        <span className="engine-access">{access}</span>
                         <p>{body}</p>
                     </li>
                 ))}
             </ul>
             <p className="engines-note">
                 <Icon name="key" />
-                Keys go in Settings → Providers and are stored on this device
-                only. The no-key engines are best-effort services and can change
-                without notice.
+                Keys go in Settings → Translation and stay on this computer. If
+                your service stops working, Microsoft Translator and then Google
+                Translate cover for it, so the subtitles keep coming.
             </p>
         </Section>
     );

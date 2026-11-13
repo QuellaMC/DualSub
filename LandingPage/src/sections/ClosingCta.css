@@ -7,20 +7,15 @@
     flex-direction: column;
     align-items: center;
     padding: 49px 32px 56px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--line);
     border-radius: 32px;
     background:
         radial-gradient(
-            620px 440px at 6% 18%,
-            rgba(245, 184, 61, 0.36),
-            transparent
+            760px 320px at 50% 0%,
+            rgba(150, 168, 205, 0.1),
+            transparent 70%
         ),
-        radial-gradient(
-            640px 440px at 96% 92%,
-            rgba(77, 163, 255, 0.4),
-            transparent
-        ),
-        #0f1728;
+        var(--surface);
     text-align: center;
 }
 
@@ -32,7 +27,8 @@
 .closing-card h2 {
     margin-top: 17px;
     font-size: 46px;
-    font-weight: 700;
+    font-weight: 600;
+    letter-spacing: -0.02em;
     line-height: 1.2;
     text-wrap: balance;
 }

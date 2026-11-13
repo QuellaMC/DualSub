@@ -9,30 +9,11 @@
     border-radius: 24px;
 }
 
-.platform-streaming {
-    background:
-        radial-gradient(
-            380px 260px at 18% 0%,
-            rgba(77, 163, 255, 0.16),
-            transparent
-        ),
-        var(--surface);
-}
-
-.platform-languages {
-    background:
-        radial-gradient(
-            380px 260px at 85% 0%,
-            rgba(245, 184, 61, 0.1),
-            transparent
-        ),
-        var(--surface);
-}
-
 .platform h3 {
     margin-top: 24px;
     font-size: 28px;
-    font-weight: 700;
+    font-weight: 600;
+    letter-spacing: -0.01em;
     line-height: 1.2;
 }
 
@@ -61,7 +42,7 @@
     margin-top: 6px;
     width: 16px;
     height: 16px;
-    color: var(--green);
+    color: var(--text-faint);
     stroke-width: 2.5;
 }
 
@@ -74,9 +55,9 @@
 
 .platform-chips li {
     padding: 4px 14px;
-    border: 1px solid #2a3446;
+    border: 1px solid var(--line-strong);
     border-radius: 999px;
-    background: #1b2334;
+    background: rgba(255, 255, 255, 0.05);
     color: #d6dbe4;
     font-size: 14px;
 }
@@ -84,7 +65,7 @@
 .platform-interface {
     margin-top: 16px;
     padding-top: 13px;
-    border-top: 1px solid var(--line-strong);
+    border-top: 1px solid var(--line);
 }
 
 .platform-interface p {

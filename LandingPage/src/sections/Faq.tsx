@@ -5,37 +5,37 @@ import './Faq.css';
 const QUESTIONS = [
     {
         question: 'I only see one subtitle line.',
-        answer: 'Check that subtitles are turned on in the Netflix or Disney+ player and that Enable Dual Subtitles is on in the DualSub popup. Also make sure the show offers subtitles at all.',
+        answer: 'Turn on subtitles in the player, and check Dual subtitles is on in the DualSub popup. If the video is already in your language, DualSub shows one line on purpose.',
     },
     {
-        question: 'The second line says “[Translation API Error…]”.',
-        answer: 'Switch engines in Settings → Translation, or raise Request Delay (ms) under Performance. For keyed engines, re-check your key in Settings → Providers.',
+        question: 'The words don’t match what I hear.',
+        answer: 'Press the Timing arrows in the popup. Each press moves the subtitles half a second earlier or later.',
     },
     {
-        question: 'The subtitles are out of sync.',
-        answer: 'Open Subtitle Appearance & Timing and change Time Offset(s). Positive numbers show subtitles earlier, negative numbers later.',
+        question: 'I see subtitles twice.',
+        answer: 'Turn on Hide the site’s own subtitles in Settings → Sites, or press Fix it for me in Settings → Help.',
     },
     {
-        question: 'AI Context doesn’t answer.',
-        answer: 'Make sure it’s enabled in Settings → AI Context, your API key and model are set, and at least one context type is on. The side panel shows the provider’s own error message if a request fails.',
+        question: 'The translation reads badly.',
+        answer: 'Try another service in Settings → Translation. If the show has its own translation in your language, turn on Use the show’s own translation in Settings → Languages.',
     },
     {
-        question: 'Can I keep the platform’s own subtitles?',
-        answer: 'Yes. Turn off Hide Official Subtitles in Settings → General.',
+        question: 'No subtitles appear.',
+        answer: 'Play the video, since a paused title screen shows none, and check the player’s subtitle menu has subtitles. If DualSub was just installed or updated, reload the page.',
     },
     {
         question: 'Is DualSub free?',
-        answer: 'Yes. The default engines need no account or key. Keyed engines and AI Context are billed by your own provider account.',
+        answer: 'Yes. Word lookup and the default translation services need no account or key. DeepL, AI translation, Vertex AI and Explain with AI use your own account.',
     },
 ];
 
 export function Faq() {
     return (
-        <Section id="faq" alt>
+        <Section id="faq">
             <SectionHeading
                 eyebrow="Help"
                 title="Troubleshooting & FAQ"
-                lead="Quick fixes for the most common questions."
+                lead="Quick fixes for the most common questions. Settings → Help fixes most of them in one click."
             />
             <dl className="faq">
                 {QUESTIONS.map(({ question, answer }) => (

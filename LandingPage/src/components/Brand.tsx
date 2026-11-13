@@ -19,9 +19,7 @@ export function Wordmark() {
     return (
         <span className="wordmark">
             <LogoMark className="wordmark-mark" />
-            <span className="wordmark-text">
-                Dual<span className="wordmark-accent">Sub</span>
-            </span>
+            <span className="wordmark-text">DualSub</span>
         </span>
     );
 }

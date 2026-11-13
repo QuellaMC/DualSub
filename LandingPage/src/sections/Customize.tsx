@@ -1,36 +1,36 @@
 import { Artboard } from '../components/Artboard';
 import { Icon } from '../components/Icon';
 import { Section, SectionHeading } from '../components/Section';
-import { AppearancePanel } from '../mocks/Popup';
 import { SunsetScene } from '../mocks/scenes';
+import { StylePane } from '../mocks/StylePane';
 import { DualSubtitles } from '../mocks/Subtitles';
 import './Customize.css';
 
 const PREVIEWS = [
     {
-        title: 'Top / Bottom',
-        detail: 'Layout · the default',
+        title: 'Stacked',
+        detail: 'How the two lines sit · the default',
         variant: 'preview-default',
         sideBySide: false,
         translationFirst: false,
     },
     {
-        title: 'Left / Right',
-        detail: 'Layout',
+        title: 'Side by side',
+        detail: 'How the two lines sit',
         variant: 'preview-side',
         sideBySide: true,
         translationFirst: false,
     },
     {
-        title: 'Translation First',
-        detail: 'Display Order',
+        title: 'Translation on top',
+        detail: 'Which line goes on top',
         variant: 'preview-default',
         sideBySide: false,
         translationFirst: true,
     },
     {
         title: 'Bigger and higher',
-        detail: 'Font Size 1.6 · Vertical Position 6.0',
+        detail: 'Size: Large · Position: Raised',
         variant: 'preview-bigger',
         sideBySide: false,
         translationFirst: false,
@@ -62,7 +62,7 @@ function OffsetDiagram() {
     ];
     return (
         <div className="offset-diagram">
-            <span className="offset-label">Dialogue</span>
+            <span className="offset-label">Voice</span>
             <svg
                 className="offset-wave"
                 viewBox="0 0 350 40"
@@ -76,15 +76,15 @@ function OffsetDiagram() {
                         width="9"
                         height={height}
                         rx="2"
-                        fill={on ? 'var(--green)' : '#384152'}
+                        fill={on ? '#cfd5df' : '#384152'}
                     />
                 ))}
             </svg>
-            <span className="offset-label">Without offset</span>
+            <span className="offset-label">Subtitles</span>
             <span className="offset-track">
                 <span className="offset-pill offset-late">Shows up late</span>
             </span>
-            <span className="offset-label">Time Offset +0.5</span>
+            <span className="offset-label">0.5 s earlier</span>
             <span className="offset-track">
                 <span className="offset-pill offset-on-time">
                     Right on time
@@ -100,15 +100,15 @@ export function Customize() {
             <SectionHeading
                 eyebrow="Make it yours"
                 title="Subtitles that fit your screen"
-                lead="Open Subtitle Appearance & Timing in the popup. Every change previews live on the video while you adjust it."
+                lead="Settings → Style draws your subtitles on a stage at the video’s true proportions. Change the size, position, look and lines, and the video follows at once."
             />
             <div className="customize">
                 <div className="customize-controls">
-                    <AppearancePanel />
+                    <StylePane />
                     <p className="customize-hint">
                         <Icon name="sliders" />
-                        Drag a slider and the subtitles on the video move with
-                        it, no reload needed.
+                        Click a line to style it. Drag the subtitles to move
+                        them.
                     </p>
                 </div>
                 <ul className="previews">
@@ -143,23 +143,23 @@ export function Customize() {
             </div>
             <div className="card offset-card">
                 <div className="offset-intro">
-                    <span className="feature-icon feature-icon-amber">
+                    <span className="feature-icon">
                         <Icon name="clock" />
                     </span>
                     <div>
                         <h3>Out of sync? Nudge the timing.</h3>
                         <p>
-                            Set <strong>Time Offset(s)</strong> in Subtitle
-                            Appearance &amp; Timing. Positive numbers show
-                            subtitles earlier, negative numbers show them later,
-                            in steps of 0.1 s.
+                            Press the <strong>Timing</strong> arrows in the
+                            popup, or use Settings → Timing. Each press shows
+                            the subtitles half a second earlier or later, and
+                            the video follows at once.
                         </p>
                     </div>
                 </div>
                 <div className="offset-figure">
                     <Artboard
                         className="offset-board"
-                        label="Dialogue on a timeline: without an offset the subtitle shows up late; with Time Offset +0.5 it lands right on time"
+                        label="A voice on a timeline: the subtitle shows up late, and half a second earlier it lands right on time"
                     >
                         <OffsetDiagram />
                     </Artboard>

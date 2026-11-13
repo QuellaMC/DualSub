@@ -8,13 +8,7 @@
 /* Step 1 */
 
 .pin-art {
-    background:
-        radial-gradient(
-            230px 170px at 50% 30%,
-            rgba(64, 118, 204, 0.38),
-            transparent
-        ),
-        #0b1220;
+    background: linear-gradient(180deg, #161b24, #10141b);
     color: #e8eaed;
 }
 
@@ -66,7 +60,7 @@
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: #6366f1;
+    background: #4b5563;
 }
 
 .pin-menu {
@@ -225,7 +219,7 @@
     position: absolute;
     left: 13px;
     font-size: 14px;
-    color: var(--amber);
+    color: #ffffff;
     stroke-width: 3;
 }
 
@@ -260,24 +254,19 @@
     left: 0;
     width: 18%;
     border-radius: inherit;
-    background: var(--amber);
+    background: #e9ecf1;
 }
 
 /* Step 3 */
 
 .languages-art {
-    background:
-        radial-gradient(
-            280px 130px at 50% 100%,
-            rgba(245, 184, 61, 0.28),
-            transparent
-        ),
-        #0b1120;
+    background: linear-gradient(180deg, #161b24, #10141b);
 }
 
 .languages-art-popup {
     position: absolute;
-    top: 20px;
-    left: 40px;
-    font-size: 13.43px;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.78);
+    transform-origin: top center;
 }

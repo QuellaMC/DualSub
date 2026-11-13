@@ -17,23 +17,23 @@ const STEPS: readonly {
 }[] = [
     {
         title: 'Add DualSub to Chrome',
-        body: 'Install it from the Chrome Web Store. Then open the puzzle-piece menu in the toolbar and pin DualSub so it’s always one click away.',
+        body: 'Install it from the Chrome Web Store. A welcome page opens and shows you how to pin DualSub, so it’s always one click away.',
         art: <PinExtensionArt />,
         artLabel:
             'Chrome’s extensions menu with the pin button next to DualSub',
     },
     {
         title: 'Turn on subtitles in your show',
-        body: 'Open Netflix or Disney+, start any show or movie and turn subtitles on in the player’s audio & subtitles menu.',
+        body: 'Open Netflix, Disney+ or YouTube, start a video and turn on subtitles in the player.',
         art: <SubtitleMenuArt />,
         artLabel: 'A player’s subtitle menu with English selected',
     },
     {
-        title: 'Choose your languages',
-        body: 'Click the DualSub icon and switch on Enable Dual Subtitles. Then pick the show’s language under Language Set and yours under Translate to.',
+        title: 'Choose your language',
+        body: 'Click the DualSub icon and check Dual subtitles is on. Pick your language under I speak; the original line follows the video by itself.',
         art: <ChooseLanguagesArt />,
         artLabel:
-            'The DualSub popup with Enable Dual Subtitles and Translate to outlined',
+            'The DualSub popup with the Dual subtitles switch and I speak outlined',
     },
 ];
 
@@ -60,14 +60,14 @@ export function GetStarted() {
                 ))}
             </ol>
             <aside className="overlap-note">
-                <span className="feature-icon feature-icon-amber">
+                <span className="feature-icon">
                     <Icon name="eyeOff" />
                 </span>
                 <p>
                     <strong>No overlapping lines.</strong> DualSub hides the
-                    platform’s own subtitles while it’s active. Want them back
-                    as well? Turn off <em>Hide Official Subtitles</em> in
-                    Settings → General.
+                    site’s own subtitles while it’s on. Want them back as well?
+                    Turn off <em>Hide the site’s own subtitles</em> in Settings
+                    → Sites.
                 </p>
             </aside>
         </Section>

@@ -1,175 +1,159 @@
 import type { ReactNode } from 'react';
 import { LogoMark } from '../components/Brand';
 import { Icon } from '../components/Icon';
+import { ExtensionIcon } from './ExtensionIcon';
+import './extension.css';
 import './Popup.css';
 
 export type PopupControl =
-    | 'enable'
-    | 'official'
-    | 'languageSet'
-    | 'translateTo'
-    | 'appearance'
-    | 'settings';
+    'status' | 'enabled' | 'languages' | 'adjustments' | 'settings';
 
 /** The numbers the popup tour uses for each control. */
 export const POPUP_CONTROL_NUMBERS: Record<PopupControl, number> = {
-    enable: 1,
-    official: 2,
-    languageSet: 3,
-    translateTo: 4,
-    appearance: 5,
-    settings: 6,
+    status: 1,
+    enabled: 2,
+    languages: 3,
+    adjustments: 4,
+    settings: 5,
 };
 
-function PopupValue({ children }: { children: ReactNode }) {
+/** What the popup says on Netflix before a video plays, and while one does. */
+const STATES = {
+    ready: {
+        title: 'Ready on Netflix',
+        help: 'Play a video and the two lines appear by themselves.',
+        original: 'Automatic',
+    },
+    playing: {
+        title: 'Working on this video',
+        help: 'Netflix · English, with your translation',
+        original: 'Automatic: English',
+    },
+} as const;
+
+function Stepper({
+    label,
+    less,
+    value,
+    more,
+}: {
+    label: string;
+    less: ReactNode;
+    value: string;
+    more: ReactNode;
+}) {
     return (
-        <span className="popup-value">
-            {children}
-            <Icon name="chevronDown" />
-        </span>
+        <div className="popup-row">
+            <span className="popup-strong">{label}</span>
+            <span className="popup-stepper">
+                <span className="ext-step">{less}</span>
+                <span className="popup-stepper-value">{value}</span>
+                <span className="ext-step">{more}</span>
+            </span>
+        </div>
     );
 }
 
 /**
- * The extension popup as it ships in 3.0.2, drawn at 1:1 when its font size
- * is 16px. `highlighted` outlines controls; `numbered` tags each one with its
- * number from the popup tour.
+ * The extension popup on a site DualSub works on (src/ui/popup/SitePopup.tsx),
+ * drawn at 1:1. `highlighted` outlines controls; `numbered` tags each one with
+ * its number from the popup tour.
  */
 export function PopupMock({
     className,
+    state,
     highlighted = [],
     numbered = false,
 }: {
     className: string;
+    state: keyof typeof STATES;
     highlighted?: readonly PopupControl[];
     numbered?: boolean;
 }) {
-    const row = (control: PopupControl, label: string, value: ReactNode) => (
-        <div
-            className={
-                highlighted.includes(control)
-                    ? 'popup-row popup-highlight'
-                    : 'popup-row'
-            }
-        >
-            {numbered ? (
-                <span className="popup-marker">
-                    <span className="callout">
-                        {POPUP_CONTROL_NUMBERS[control]}
-                    </span>
-                </span>
-            ) : null}
-            <span>{label}</span>
-            {value}
-        </div>
-    );
+    const { title, help, original } = STATES[state];
+    const marker = (control: PopupControl) =>
+        numbered ? (
+            <span className="callout popup-marker">
+                {POPUP_CONTROL_NUMBERS[control]}
+            </span>
+        ) : null;
+    const ring = (control: PopupControl) =>
+        highlighted.includes(control) ? <span className="popup-ring" /> : null;
     return (
-        <div className={`popup ${className}`}>
-            <div className="popup-header">
-                <LogoMark className="popup-logo" />
-                <span className="popup-title">DualSub</span>
-                <Icon name="github" className="popup-action" />
-                <span className="popup-settings">
-                    <Icon name="gear" className="popup-action" />
-                    {numbered ? (
-                        <span className="popup-marker-settings">
-                            <span className="callout">
-                                {POPUP_CONTROL_NUMBERS.settings}
-                            </span>
+        <div className={`extension-ui popup ${className}`}>
+            <div className="popup-head">
+                <span className="popup-brand">
+                    <LogoMark className="popup-logo" />
+                    DualSub
+                </span>
+                <span className="ext-icon-button popup-settings">
+                    <ExtensionIcon name="settings" />
+                    {marker('settings')}
+                </span>
+            </div>
+            <div className="popup-body">
+                <div className="popup-card">
+                    <div className="popup-status">
+                        {marker('status')}
+                        <span className="ext-status-icon">
+                            <ExtensionIcon name="check" />
                         </span>
-                    ) : null}
-                </span>
-            </div>
-            <div className="popup-card">
-                {row(
-                    'enable',
-                    'Enable Dual Subtitles:',
-                    <span className="popup-switch" />
-                )}
-            </div>
-            <div className="popup-card">
-                {row(
-                    'official',
-                    'Use Official Subtitles:',
-                    <span className="popup-switch" />
-                )}
-            </div>
-            <div className="popup-card">
-                {row(
-                    'languageSet',
-                    'Language Set:',
-                    <PopupValue>English</PopupValue>
-                )}
-                {row(
-                    'translateTo',
-                    'Translate to:',
-                    <PopupValue>Chinese (Simp)</PopupValue>
-                )}
-            </div>
-            <div className="popup-card">
-                {row(
-                    'appearance',
-                    'Subtitle Appearance & Timing',
-                    <Icon name="chevronDown" className="popup-disclosure" />
-                )}
-            </div>
-        </div>
-    );
-}
-
-const SLIDERS = [
-    { label: 'Font Size:', value: 1.1, min: 1, max: 3 },
-    { label: 'Vertical Gap:', value: 0.3, min: 0, max: 1 },
-    { label: 'Vertical Position:', value: 2.8, min: 0.1, max: 9.9 },
-] as const;
-
-/** The popup's Subtitle Appearance & Timing section, opened, at its defaults. */
-export function AppearancePanel() {
-    return (
-        <div className="appearance-panel">
-            <div className="popup-row appearance-header">
-                <span>Subtitle Appearance &amp; Timing</span>
-                <Icon name="chevronUp" className="popup-disclosure" />
-            </div>
-            <div className="appearance-body">
-                <div className="popup-row">
-                    <span>Display Order:</span>
-                    <PopupValue>Original First</PopupValue>
-                </div>
-                <div className="popup-row">
-                    <span>Layout:</span>
-                    <PopupValue>Top / Bottom</PopupValue>
-                </div>
-                {SLIDERS.map(({ label, value, min, max }) => {
-                    const fraction = (value - min) / (max - min);
-                    return (
-                        <div
-                            key={label}
-                            className="popup-row appearance-slider"
-                        >
-                            <span className="appearance-label">{label}</span>
-                            <span className="appearance-track">
-                                <span
-                                    className="appearance-fill"
-                                    style={{ width: `${fraction * 100}%` }}
-                                />
-                                <span
-                                    className="appearance-thumb"
-                                    style={{
-                                        left: `calc(0.875em + (100% - 1.75em) * ${fraction})`,
-                                    }}
-                                />
-                            </span>
-                            <span className="appearance-value">
-                                {value.toFixed(1)}
-                            </span>
+                        <div>
+                            <p className="popup-label">{title}</p>
+                            <p className="popup-help">{help}</p>
                         </div>
-                    );
-                })}
-                <div className="popup-row">
-                    <span>Time Offset(s):</span>
-                    <span className="popup-value">0</span>
+                    </div>
+                    <div className="popup-row">
+                        {marker('enabled')}
+                        {ring('enabled')}
+                        <span className="popup-strong">Dual subtitles</span>
+                        <span className="ext-switch" />
+                    </div>
                 </div>
+                <div className="popup-card">
+                    {marker('languages')}
+                    <div className="popup-row">
+                        {ring('languages')}
+                        <span className="popup-strong">I speak</span>
+                        <span className="ext-select popup-select" lang="zh-CN">
+                            中文（简体）
+                            <Icon name="chevronDown" />
+                        </span>
+                    </div>
+                    <div className="popup-row">
+                        <span className="popup-strong">Original line</span>
+                        <span className="popup-help">{original}</span>
+                    </div>
+                </div>
+                <div className="popup-card">
+                    {marker('adjustments')}
+                    <Stepper
+                        label="Text size"
+                        less="A−"
+                        value="Medium"
+                        more="A+"
+                    />
+                    <Stepper
+                        label="Timing"
+                        less={<ExtensionIcon name="earlier" />}
+                        value="On time"
+                        more={<ExtensionIcon name="later" />}
+                    />
+                    <Stepper
+                        label="Position"
+                        less={<ExtensionIcon name="up" />}
+                        value="Lowest"
+                        more={<ExtensionIcon name="down" />}
+                    />
+                </div>
+            </div>
+            <div className="popup-foot">
+                <span className="ext-icon-button">
+                    <Icon name="github" />
+                </span>
+                <span className="ext-icon-button">
+                    <ExtensionIcon name="help" />
+                </span>
             </div>
         </div>
     );

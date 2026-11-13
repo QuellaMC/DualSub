@@ -4,27 +4,27 @@ import { INTERFACE_LANGUAGES, SUBTITLE_LANGUAGES } from '../site';
 import './Platforms.css';
 
 const PLATFORM_FACTS = [
-    'Reads subtitles straight from the player: nothing to download',
+    'Looks like the site’s own subtitles, in your two languages',
     'Keeps up when you move to the next episode',
     'Stays on screen in fullscreen',
-    'Hides the platform’s own subtitles so lines never overlap',
+    'Hides the site’s own subtitles so lines never overlap',
 ];
 
 export function Platforms() {
     return (
-        <Section id="platforms" alt>
+        <Section id="platforms">
             <SectionHeading
                 eyebrow="Where it works"
                 title="Your shows, your languages"
             />
             <div className="platforms">
-                <div className="card platform platform-streaming">
-                    <span className="feature-icon feature-icon-blue">
+                <div className="card platform">
+                    <span className="feature-icon">
                         <Icon name="monitor" />
                     </span>
-                    <h3>Netflix and Disney+</h3>
+                    <h3>Netflix, Disney+ and YouTube</h3>
                     <p className="platform-sub">
-                        Full support on both platforms
+                        Full support on all three, YouTube Shorts included
                     </p>
                     <ul className="platform-facts">
                         {PLATFORM_FACTS.map((fact) => (
@@ -35,15 +35,15 @@ export function Platforms() {
                         ))}
                     </ul>
                 </div>
-                <div className="card platform platform-languages">
-                    <span className="feature-icon feature-icon-amber">
+                <div className="card platform">
+                    <span className="feature-icon">
                         <Icon name="languages" />
                     </span>
                     <h3>
                         Translate into {SUBTITLE_LANGUAGES.length} languages
                     </h3>
                     <p className="platform-sub">
-                        Pick one under Translate to in the popup
+                        Pick yours under I speak in the popup
                     </p>
                     <ul className="platform-chips">
                         {SUBTITLE_LANGUAGES.map((language) => (

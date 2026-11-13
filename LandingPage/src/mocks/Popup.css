@@ -1,52 +1,85 @@
-/* Sizes follow src/ui/popup/popup.css, in em of a 16px popup. The
-   disclosure box is as tall as the popup's 24px '›' glyph. */
+/* Sizes follow src/ui/popup/popup.css. */
 
 .popup {
-    width: 20.25em;
-    padding: 0.75em 0.75em 3.5em;
-    border-radius: 1em;
-    background: #f0f2f5;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 380px;
+    border-radius: 12px;
+    background: var(--ext-ground);
     box-shadow:
-        inset 0 0.125em 0.5em rgba(0, 0, 0, 0.35),
-        inset 0 0 1.2em rgba(0, 0, 0, 0.3),
-        0 1.5em 3.5em rgba(0, 0, 0, 0.45);
-    color: #000;
-    line-height: 1.25;
+        0 24px 48px -16px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(0, 0, 0, 0.25);
+    font-size: 16px;
 }
 
-.popup-header {
+.popup .extension-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.popup-head {
     display: flex;
     align-items: center;
-    gap: 0.5em;
-    padding: 0.25em 0.5em 0.75em;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--ext-line);
+    border-radius: 12px 12px 0 0;
+    background: var(--ext-surface);
+}
+
+.popup-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 800;
 }
 
 .popup-logo {
-    width: 1.75em;
-    height: 1.75em;
+    width: 28px;
+    height: 28px;
 }
 
-.popup-title {
-    flex: 1;
-    font-size: 1.0625em;
-    font-weight: 700;
-}
-
-.popup-action {
-    width: 1.375em;
-    height: 1.375em;
-    margin-left: 0.5em;
-    color: #6d6d72;
+.popup-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
 }
 
 .popup-card {
-    margin-bottom: 0.9375em;
-    border-radius: 0.75em;
-    background: #fff;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--ext-line);
+    border-radius: 12px;
+    background: var(--ext-surface);
 }
 
-.popup-card:last-child {
-    margin-bottom: 0;
+.popup-status {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.popup-status .ext-status-icon {
+    width: 36px;
+    height: 36px;
+}
+
+.popup-label {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.popup-help {
+    color: var(--ext-ink-soft);
+    font-size: 14px;
+    line-height: 1.45;
 }
 
 .popup-row {
@@ -54,174 +87,73 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5em;
-    padding: 0.75em 1em;
-    border-radius: 0.75em;
+    gap: 16px;
 }
 
-.popup-row + .popup-row {
-    border-top: 1px solid #f0f2f5;
+.popup-strong {
+    font-weight: 700;
+    line-height: 1.25;
 }
 
-.popup-value {
-    display: inline-flex;
+.popup-select {
+    width: 190px;
+    min-height: 40px;
+}
+
+.popup-stepper {
+    display: flex;
     align-items: center;
-    gap: 0.35em;
-    color: #8e8e93;
-    white-space: nowrap;
+    gap: 6px;
 }
 
-.popup-value .icon {
-    width: 0.75em;
-    height: 0.75em;
+.popup-stepper-value {
+    min-width: 92px;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
 }
 
-.popup-switch {
-    position: relative;
-    flex-shrink: 0;
-    width: 3.1875em;
-    height: 1.9375em;
-    border-radius: 1em;
-    background: #34c759;
+.popup-foot {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 14px 12px;
 }
 
-.popup-switch::after {
+.popup-foot .icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* What an illustration outlines. */
+.popup-ring {
     position: absolute;
-    top: 0.125em;
-    right: 0.125em;
-    width: 1.6875em;
-    height: 1.6875em;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 0.0625em 0.125em rgba(0, 0, 0, 0.2);
-    content: '';
+    inset: -7px;
+    border: 2px solid var(--accent);
+    border-radius: 12px;
 }
 
-.popup-disclosure {
-    width: 0.875em;
-    height: 1.8em;
-    color: #c6c6c8;
-}
-
-.popup-highlight {
-    box-shadow:
-        0 0 0 2px var(--amber),
-        0 0 0.75em rgba(245, 184, 61, 0.45);
-}
-
-/* Tour markers sit outside the popup, joined to their control by a rule. */
-
+/* Tour markers line up in one column 28px outside the popup's left edge,
+   or its right edge for the settings gear. Each offset counts the padding
+   between the popup's edge and the control the marker sits in. */
 .popup-marker {
     position: absolute;
     top: 50%;
-    right: 100%;
-    display: flex;
-    align-items: center;
-    transform: translateY(-50%);
+    transform: translate(-50%, -50%);
 }
 
-.popup-marker::after {
-    width: calc(0.75em + 11px);
-    height: 1.5px;
-    background: rgba(245, 184, 61, 0.8);
-    content: '';
+.popup-card > .popup-marker {
+    left: -40px;
+}
+
+.popup-status > .popup-marker,
+.popup-row > .popup-marker {
+    left: -55px;
 }
 
 .popup-settings {
     position: relative;
-    display: flex;
 }
 
-.popup-marker-settings {
-    position: absolute;
-    top: 50%;
-    left: calc(50% + 0.25em);
-}
-
-.popup-marker-settings::before {
-    position: absolute;
-    width: 75px;
-    height: 1.5px;
-    background: rgba(245, 184, 61, 0.8);
-    content: '';
-    transform: rotate(-42deg) translateX(15px);
-    transform-origin: left center;
-}
-
-.popup-marker-settings .callout {
-    position: absolute;
-    top: -71px;
-    left: 79px;
-    transform: translate(-50%, -50%);
-}
-
-/* The Subtitle Appearance & Timing section on its own */
-
-.appearance-panel {
-    width: 100%;
-    max-width: 360px;
-    overflow: hidden;
-    border-radius: 0.75em;
-    background: #fff;
-    box-shadow: 0 1.5em 3em rgba(0, 0, 0, 0.4);
-    color: #000;
-    font-size: 19px;
-    line-height: 1.25;
-}
-
-.appearance-header {
-    border-radius: 0;
-    border-bottom: 1px solid #f0f2f5;
-}
-
-.appearance-body {
-    padding: 0 1em;
-}
-
-.appearance-body .popup-row {
-    padding-inline: 0;
-    border-radius: 0;
-}
-
-.appearance-label {
-    flex: 0 0 6.875em;
-}
-
-.appearance-track {
-    position: relative;
-    flex: 1;
-    height: 0.4em;
-    border-radius: 0.4em;
-    background: #e9e9eb;
-}
-
-.appearance-fill {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    border-radius: inherit;
-    background: #007aff;
-}
-
-.appearance-thumb {
-    position: absolute;
-    top: 50%;
-    width: 1.75em;
-    height: 1.75em;
-    border: 0.5px solid rgba(0, 0, 0, 0.04);
-    border-radius: 50%;
-    background: #fff;
-    box-shadow:
-        0 0.5px 4px rgba(0, 0, 0, 0.12),
-        0 4px 8px rgba(0, 0, 0, 0.1);
-    transform: translate(-50%, -50%);
-}
-
-.appearance-value {
-    min-width: 1.6em;
-    color: #8e8e93;
-    font-size: 0.875em;
-    font-variant-numeric: tabular-nums;
-    text-align: right;
+.popup-settings > .popup-marker {
+    left: calc(100% + 42px);
 }

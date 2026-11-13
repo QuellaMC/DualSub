@@ -1,4 +1,3 @@
-import { AiContext } from './sections/AiContext';
 import { ClosingCta } from './sections/ClosingCta';
 import { Customize } from './sections/Customize';
 import { Engines } from './sections/Engines';
@@ -10,6 +9,7 @@ import { PopupTour } from './sections/PopupTour';
 import { Privacy } from './sections/Privacy';
 import { SiteFooter } from './sections/SiteFooter';
 import { SiteHeader } from './sections/SiteHeader';
+import { WordLookup } from './sections/WordLookup';
 
 export function App() {
     return (
@@ -20,7 +20,7 @@ export function App() {
                 <GetStarted />
                 <PopupTour />
                 <Customize />
-                <AiContext />
+                <WordLookup />
                 <Engines />
                 <Platforms />
                 <Privacy />

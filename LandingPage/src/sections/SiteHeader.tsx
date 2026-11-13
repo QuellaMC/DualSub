@@ -8,8 +8,8 @@ import './SiteHeader.css';
 const NAV: readonly SectionLink[] = [
     { id: 'how-it-works', label: 'How it works' },
     { id: 'customize', label: 'Customize' },
-    { id: 'ai-context', label: 'AI Context' },
-    { id: 'engines', label: 'Engines' },
+    { id: 'word-lookup', label: 'Word lookup' },
+    { id: 'translation', label: 'Translation' },
     { id: 'faq', label: 'FAQ' },
 ];
 

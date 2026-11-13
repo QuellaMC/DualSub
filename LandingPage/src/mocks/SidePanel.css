@@ -1,155 +1,301 @@
-/* Colors follow src/ui/sidepanel/sidepanel.css in its dark theme. */
+/* Sizes follow src/ui/sidepanel/sidepanel.css. */
 
 .side-panel {
-    position: relative;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    border-left: 1px solid #000;
-    background: #101922;
-    color: #fff;
+    background: var(--ext-ground);
+    font-size: 17px;
 }
 
-.side-panel::after {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: 90px;
-    background: linear-gradient(transparent, #101922 85%);
-    content: '';
-}
-
-.side-panel-bar {
+.side-panel-head {
     display: flex;
     flex-shrink: 0;
     align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 56px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--ext-line);
+    background: var(--ext-surface);
+}
+
+.side-panel-brand {
+    display: flex;
+    align-items: center;
     gap: 8px;
-    height: 45px;
-    padding: 0 14px;
-    border-bottom: 1px solid #2a2f37;
-    background: #1c1f24;
-    font-size: 14px;
+    font-size: 18px;
+    font-weight: 800;
 }
 
 .side-panel-logo {
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
 }
 
-.side-panel-menu {
-    margin-right: auto;
-    font-size: 12px;
-    color: #9aa0a6;
-}
-
-.side-panel-tool {
-    margin-left: 10px;
-    font-size: 16px;
-    color: #c4c7c5;
+.side-panel-pair {
+    color: var(--ext-ink-soft);
+    font-size: 14px;
+    font-weight: 700;
 }
 
 .side-panel-body {
     display: flex;
+    flex: 1 1 auto;
     flex-direction: column;
-    gap: 24px;
-    padding: 16px 16px 0;
+    gap: 14px;
+    min-height: 0;
+    padding: 18px 12px 12px;
 }
 
-.side-panel-heading {
+/* Scrolled to the end: what overflows leaves at the top. */
+.side-panel-scrolled {
+    justify-content: flex-end;
+    overflow: hidden;
+}
+
+.side-panel-body > * {
+    flex-shrink: 0;
+}
+
+.side-panel-foot {
     display: flex;
-    align-items: center;
+    flex-shrink: 0;
     justify-content: space-between;
+    padding: 8px;
+    border-top: 1px solid var(--ext-line);
+    background: var(--ext-surface);
 }
 
-.side-panel-title {
-    font-size: 24px;
-    font-weight: 700;
+.side-panel-foot .ext-icon-button {
+    width: 48px;
+    height: 48px;
+    color: var(--ext-ink);
 }
 
-.side-panel-analyze {
+/* The line the words came from */
+
+.side-panel-quote {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 4px;
+}
+
+.side-panel-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0 -4px;
+    font-size: 20px;
+    line-height: 1.25;
+}
+
+/* Words space themselves with their padding, so picked neighbors join up. */
+.side-panel-token {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 18px;
-    border-radius: 12px;
-    background: #137fec;
-    font-size: 15px;
-    font-weight: 600;
 }
 
-.side-panel-box {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 16px;
-    border: 1px solid #324d67;
-    border-radius: 12px;
-    background: #192633;
-}
-
-.side-panel-label {
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.side-panel-words {
-    position: relative;
-    display: flex;
-    gap: 8px;
-    padding: 12px;
-    border: 1px solid #324d67;
-    border-radius: 12px;
-    background: #101922;
+.side-panel-trail {
+    margin-left: -2px;
+    padding-right: 4px;
 }
 
 .side-panel-word {
     display: inline-flex;
     align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: underline dotted var(--ext-line-hover);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 6px;
+}
+
+.side-panel-picked {
+    background: var(--ext-accent);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.side-panel-line-translation {
+    color: var(--ext-ink-soft);
+    font-size: 15px;
+}
+
+/* What the picked words are */
+
+.side-panel-card {
+    gap: 16px;
+    padding: 18px 16px;
+}
+
+.side-panel-lookup-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.side-panel-headword-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.side-panel-headword {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+}
+
+.side-panel-headword-row .ext-tag {
+    font-size: 14px;
+}
+
+.side-panel-translation {
+    display: flex;
+    align-items: center;
     gap: 8px;
-    padding: 4px 6px 4px 8px;
-    border-radius: 6px;
-    background: #0f5fb8;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 19px;
+    line-height: 1.3;
 }
 
-.side-panel-remove {
-    display: grid;
-    place-items: center;
-    width: 20px;
-    height: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.25);
-    font-size: 12px;
+.side-panel-translation .extension-icon {
+    color: var(--ext-ink-soft);
 }
 
-.side-panel-results {
-    gap: 0;
+.side-panel-dictionary {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.side-panel-results-title {
-    margin-bottom: 16px;
+.side-panel-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.side-panel-entry-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.side-panel-entry-head strong {
     font-size: 18px;
-    font-weight: 600;
+    font-weight: 800;
 }
 
-.side-panel-section {
-    margin-bottom: 8px;
-    color: #2f8cf0;
-    font-weight: 600;
-}
-
-.side-panel-results p {
-    margin-bottom: 16px;
-    color: #92adc9;
+.side-panel-entry-head em {
+    color: var(--ext-ink-soft);
     font-size: 14px;
-    line-height: 1.6;
 }
 
-.side-panel-results strong {
-    margin-bottom: 4px;
-    font-size: 14px;
+.side-panel-entry-from,
+.side-panel-entry-arrow {
+    color: var(--ext-ink-soft);
+}
+
+.side-panel-entry-arrow .extension-icon {
+    display: block;
+    width: 18px;
+    height: 18px;
+}
+
+.side-panel-source {
+    color: var(--ext-ink-soft);
+    font-size: 13px;
+}
+
+.side-panel-explain {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    border: 1px solid var(--ext-accent-tint);
+    border-radius: 10px;
+    background: var(--ext-accent-soft);
+    color: var(--ext-accent-text);
+    font-weight: 800;
+}
+
+/* What Explain with AI adds */
+
+.side-panel-ai {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--ext-line-soft);
+}
+
+.side-panel-ai h4 {
+    font-size: 15px;
+    font-weight: 800;
+}
+
+.side-panel-ai-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.side-panel-examples {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.side-panel-examples li {
+    display: flex;
+    flex-direction: column;
+}
+
+.side-panel-example-translation {
+    color: var(--ext-ink-soft);
+    font-size: 15px;
+}
+
+.side-panel-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.side-panel-chips li {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--ext-fill);
+    font-size: 15px;
+}
+
+.side-panel-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--ext-note-soft);
+    color: var(--ext-note);
+}
+
+.side-panel-more {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 48px;
+    border-top: 1px solid var(--ext-line-soft);
+    font-weight: 800;
+}
+
+.side-panel-byline {
+    color: var(--ext-ink-soft);
+    font-size: 13px;
 }

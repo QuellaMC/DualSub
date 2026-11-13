@@ -3,20 +3,18 @@ import type { SectionId } from '../site';
 
 export function Section({
     id,
-    alt = false,
     className,
     children,
 }: {
     id?: SectionId;
-    alt?: boolean;
     className?: string;
     children: ReactNode;
 }) {
-    const classes = ['section', alt && 'section-alt', className].filter(
-        Boolean
-    );
     return (
-        <section id={id} className={classes.join(' ')}>
+        <section
+            id={id}
+            className={className ? `section ${className}` : 'section'}
+        >
             <div className="container">{children}</div>
         </section>
     );

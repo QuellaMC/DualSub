@@ -17,11 +17,10 @@ export function Hero() {
             <div className="container hero-intro">
                 <p className="hero-badge">
                     <span className="hero-badge-dot" />
-                    Free Chrome extension for Netflix &amp; Disney+
+                    Free Chrome extension for Netflix, Disney+ &amp; YouTube
                 </p>
                 <h1 className="hero-title">
-                    Watch in{' '}
-                    <span className="text-gradient">two languages</span>
+                    Watch in <span className="text-accent">two languages</span>
                     <br /> at the same time.
                 </h1>
                 <p className="hero-lead">
@@ -76,7 +75,7 @@ export function Hero() {
                             time="12:48 / 48:02"
                         />
                     </BrowserWindow>
-                    <PopupMock className="hero-popup" />
+                    <PopupMock className="hero-popup" state="playing" />
                 </Artboard>
             </div>
         </section>

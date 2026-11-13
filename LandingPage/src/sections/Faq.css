@@ -13,7 +13,7 @@
     align-items: center;
     gap: 16px;
     font-size: 18px;
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.4;
 }
 
@@ -21,7 +21,7 @@
     flex-shrink: 0;
     width: 20px;
     height: 20px;
-    color: var(--amber);
+    color: var(--text-faint);
 }
 
 .faq-item dd {

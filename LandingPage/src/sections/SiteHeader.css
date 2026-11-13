@@ -5,8 +5,8 @@
     left: 0;
     z-index: 10;
     height: var(--header-height);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(7, 11, 20, 0.6);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(12, 15, 21, 0.72);
     -webkit-backdrop-filter: blur(14px) saturate(140%);
     backdrop-filter: blur(14px) saturate(140%);
 }

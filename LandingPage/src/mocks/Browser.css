@@ -1,11 +1,9 @@
 .browser {
     overflow: hidden;
-    border: 1px solid #2a2b2f;
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
     background: #131315;
-    box-shadow:
-        0 40px 80px -20px rgba(0, 0, 0, 0.8),
-        0 0 120px -10px rgba(40, 90, 180, 0.25);
+    box-shadow: 0 32px 64px -24px rgba(0, 0, 0, 0.7);
     color: #e8eaed;
 }
 
@@ -134,7 +132,7 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6b8cff, #69d4cf);
+    background: #4b5563;
     color: #fff;
     font-size: 12px;
     font-weight: 700;
