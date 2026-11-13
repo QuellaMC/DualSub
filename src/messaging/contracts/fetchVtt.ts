@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MessageActions } from '../actions';
 import { defineContract } from '../registry';
-import { boundedNonBlankString, boundedText } from './primitives';
+import { boundedNonBlankString, boundedText, languageTag } from './primitives';
 
 // Passing this contract is necessary, not sufficient: the background subtitle
 // policy independently re-checks route identity against the classified sender
@@ -10,7 +10,6 @@ import { boundedNonBlankString, boundedText } from './primitives';
 // because it selects and transforms, not merely validates.
 
 const MAX_ROUTE_ID_BYTES = 256;
-const MAX_LANGUAGE_BYTES = 64;
 
 /** Sized for a handful of resolved Netflix tracks with 16 KiB URLs. */
 const FETCH_VTT_BUDGET = Object.freeze({
@@ -20,6 +19,8 @@ const FETCH_VTT_BUDGET = Object.freeze({
     maxTotalBytes: 256 * 1024,
 });
 const MAX_NETFLIX_TRACKS = 8;
+/** One per language the page bridge may be asked for. */
+const MAX_YOUTUBE_TRACKS = 4;
 
 export const fetchVtt = defineContract({
     action: MessageActions.FETCH_VTT,
@@ -32,18 +33,30 @@ export const fetchVtt = defineContract({
             source: z.literal('disneyplus'),
             videoId: boundedNonBlankString(MAX_ROUTE_ID_BYTES),
             url: z.string(),
-            targetLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
-            originalLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
+            targetLanguage: languageTag,
+            originalLanguage: languageTag,
+            useOfficialTranslations: z.boolean(),
         }),
         z.strictObject({
             action: z.literal(MessageActions.FETCH_VTT),
             source: z.literal('netflix'),
             videoId: boundedNonBlankString(MAX_ROUTE_ID_BYTES),
-            targetLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
-            originalLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
+            targetLanguage: languageTag,
+            originalLanguage: languageTag,
             useOfficialTranslations: z.boolean(),
             data: z.strictObject({
                 tracks: z.array(z.unknown()).min(1).max(MAX_NETFLIX_TRACKS),
+            }),
+        }),
+        z.strictObject({
+            action: z.literal(MessageActions.FETCH_VTT),
+            source: z.literal('youtube'),
+            videoId: boundedNonBlankString(MAX_ROUTE_ID_BYTES),
+            targetLanguage: languageTag,
+            originalLanguage: languageTag,
+            useOfficialTranslations: z.boolean(),
+            data: z.strictObject({
+                tracks: z.array(z.unknown()).min(1).max(MAX_YOUTUBE_TRACKS),
             }),
         }),
     ]),

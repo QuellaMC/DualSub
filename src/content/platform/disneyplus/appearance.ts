@@ -1,4 +1,4 @@
-import { TRANSLATION_COLOR, type SubtitleLook } from '../../renderer/looks';
+import type { SubtitleLook } from '../../renderer/looks';
 
 // Disney+'s player draws subtitles from the profile's appearance settings
 // through the fixed tables below, taken from the hive playback-session
@@ -119,7 +119,6 @@ export function parseDisneyLook(
         fontWeight: 'normal',
         fontVariant: font.variant,
         originalColor: cssColor(appearance.textColor) ?? '#ffffff',
-        translatedColor: TRANSLATION_COLOR,
         textShadow: edge.shadow,
         textStroke: edge.stroke,
         background: cssColor(appearance.backgroundColor) ?? 'transparent',

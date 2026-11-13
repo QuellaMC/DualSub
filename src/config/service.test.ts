@@ -51,36 +51,6 @@ describe('configService', () => {
         });
     });
 
-    describe('set', () => {
-        it('persists the normalized canonical value and returns it detached', async () => {
-            const returned = await configService.set('targetLanguage', 'zh-cn');
-            expect(returned).toBe('zh-CN');
-            expect(
-                (await fakeBrowser.storage.sync.get('targetLanguage'))
-                    .targetLanguage
-            ).toBe('zh-CN');
-        });
-
-        it('rejects invalid values without writing', async () => {
-            await expect(
-                configService.set('subtitleFontScale', 99)
-            ).rejects.toThrow('Invalid value');
-            expect(
-                await fakeBrowser.storage.sync.get('subtitleFontScale')
-            ).toEqual({});
-        });
-
-        it('routes sensitive keys to local storage', async () => {
-            await configService.set('deeplApiKey', 'secret');
-            expect(
-                (await fakeBrowser.storage.local.get('deeplApiKey')).deeplApiKey
-            ).toBe('secret');
-            expect(await fakeBrowser.storage.sync.get('deeplApiKey')).toEqual(
-                {}
-            );
-        });
-    });
-
     describe('read result bundles', () => {
         it('distinguishes stored, default-missing, and default-invalid sources', async () => {
             await fakeBrowser.storage.sync.set({
@@ -109,7 +79,7 @@ describe('configService', () => {
             );
             const result = await configService.readMultipleResult([
                 'subtitleFontScale',
-                'debugMode',
+                'vertexTokenExpiresAt',
             ]);
             expect(result.ok).toBe(false);
             expect(result.degraded).toBe(true);
@@ -155,20 +125,20 @@ describe('configService', () => {
 
     describe('readStoredBooleanStrict', () => {
         it('returns a genuinely stored boolean', async () => {
-            await fakeBrowser.storage.sync.set({ aiContextEnabled: true });
+            await fakeBrowser.storage.sync.set({ translationFallback: true });
             await expect(
-                configService.readStoredBooleanStrict('aiContextEnabled')
+                configService.readStoredBooleanStrict('translationFallback')
             ).resolves.toBe(true);
         });
 
         it('fails closed for missing, invalid, or non-boolean keys', async () => {
             await expect(
-                configService.readStoredBooleanStrict('aiContextEnabled')
+                configService.readStoredBooleanStrict('translationFallback')
             ).rejects.toThrow('unavailable');
 
-            await fakeBrowser.storage.sync.set({ aiContextEnabled: 'yes' });
+            await fakeBrowser.storage.sync.set({ translationFallback: 'yes' });
             await expect(
-                configService.readStoredBooleanStrict('aiContextEnabled')
+                configService.readStoredBooleanStrict('translationFallback')
             ).rejects.toThrow('unavailable');
 
             await expect(
@@ -181,7 +151,7 @@ describe('configService', () => {
                 new Error('broken')
             );
             await expect(
-                configService.readStoredBooleanStrict('aiContextEnabled')
+                configService.readStoredBooleanStrict('translationFallback')
             ).rejects.toBeInstanceOf(ConfigServiceReadError);
         });
     });
@@ -199,32 +169,115 @@ describe('configService', () => {
             ).toEqual({});
         });
 
-        it('splits writes by scope and returns prepared values', async () => {
-            const result = await configService.setMultiple({
-                subtitlesEnabled: false,
-                debugMode: true,
+        it('writes the canonical value and returns it', async () => {
+            await expect(
+                configService.setMultiple({ targetLanguage: 'zh-cn' })
+            ).resolves.toMatchObject({
+                written: { targetLanguage: 'zh-CN' },
+                change: { after: { targetLanguage: 'zh-CN' } },
             });
-            expect(result).toEqual({
+            expect(
+                (await fakeBrowser.storage.sync.get('targetLanguage'))
+                    .targetLanguage
+            ).toBe('zh-CN');
+        });
+
+        it('keeps credentials in local storage, never synced', async () => {
+            await configService.setMultiple({ deeplApiKey: 'secret' });
+            expect(
+                (await fakeBrowser.storage.local.get('deeplApiKey')).deeplApiKey
+            ).toBe('secret');
+            expect(await fakeBrowser.storage.sync.get('deeplApiKey')).toEqual(
+                {}
+            );
+        });
+
+        it('splits writes by scope and returns prepared values', async () => {
+            const { written, change } = await configService.setMultiple({
                 subtitlesEnabled: false,
-                debugMode: true,
+                vertexTokenExpiresAt: 5,
+            });
+            expect(written).toEqual({
+                subtitlesEnabled: false,
+                vertexTokenExpiresAt: 5,
+            });
+            expect(change).toEqual({
+                before: { subtitlesEnabled: true, vertexTokenExpiresAt: 0 },
+                after: { subtitlesEnabled: false, vertexTokenExpiresAt: 5 },
             });
             expect(
                 (await fakeBrowser.storage.sync.get('subtitlesEnabled'))
                     .subtitlesEnabled
             ).toBe(false);
             expect(
-                (await fakeBrowser.storage.local.get('debugMode')).debugMode
-            ).toBe(true);
+                (await fakeBrowser.storage.local.get('vertexTokenExpiresAt'))
+                    .vertexTokenExpiresAt
+            ).toBe(5);
         });
 
-        it('aggregates partial area failures', async () => {
+        it('takes its turn after a write another page is making, and reads what that one left', async () => {
+            await fakeBrowser.storage.sync.set({ subtitleFontScale: 1 });
+            const release = Promise.withResolvers<void>();
+            const elsewhere = navigator.locks.request(
+                'dualsub:settingParts',
+                async () => {
+                    await release.promise;
+                    await fakeBrowser.storage.sync.set({
+                        subtitleFontScale: 1.6,
+                    });
+                }
+            );
+            const write = configService.setMultiple({ subtitleFontScale: 1.3 });
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(
+                (await fakeBrowser.storage.sync.get('subtitleFontScale'))
+                    .subtitleFontScale
+            ).toBe(1);
+
+            release.resolve();
+            await elsewhere;
+            expect((await write).change).toEqual({
+                before: { subtitleFontScale: 1.6 },
+                after: { subtitleFontScale: 1.3 },
+            });
+        });
+
+        it('puts back what one area took when another fails, so nothing is written', async () => {
             vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
                 new Error('local broken')
             );
             await expect(
                 configService.setMultiple({
                     subtitlesEnabled: false,
-                    debugMode: true,
+                    vertexTokenExpiresAt: 5,
+                })
+            ).rejects.toMatchObject({
+                name: 'ConfigWriteError',
+                completeFailure: true,
+                failedAreas: ['local'],
+            });
+            expect(
+                (await fakeBrowser.storage.sync.get('subtitlesEnabled'))
+                    .subtitlesEnabled
+            ).toBe(true);
+        });
+
+        it('says a write landed in part when what one area took cannot be put back', async () => {
+            vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
+                new Error('local broken')
+            );
+            const realSet = fakeBrowser.storage.sync.set.bind(
+                fakeBrowser.storage.sync
+            );
+            vi.spyOn(browser.storage.sync, 'set')
+                .mockImplementationOnce(
+                    (items: Record<string, unknown>) => realSet(items) as never
+                )
+                .mockRejectedValueOnce(new Error('sync broken'));
+            await expect(
+                configService.setMultiple({
+                    subtitlesEnabled: false,
+                    vertexTokenExpiresAt: 5,
                 })
             ).rejects.toMatchObject({
                 name: 'ConfigWriteError',
@@ -296,8 +349,8 @@ describe('configService', () => {
                 includeSensitive: true,
             });
 
-            await configService.set('deeplApiKey', 'secret');
-            await configService.set('subtitleFontScale', 2);
+            await configService.setMultiple({ deeplApiKey: 'secret' });
+            await configService.setMultiple({ subtitleFontScale: 2 });
             await vi.waitFor(() => {
                 expect(privileged).toHaveBeenCalledWith({
                     deeplApiKey: 'secret',
@@ -330,7 +383,7 @@ describe('configService', () => {
             configService.onChanged(failing)();
             const unsubscribe = configService.onChanged(healthy);
 
-            await configService.set('subtitleGap', 0.5);
+            await configService.setMultiple({ subtitleGap: 0.5 });
             await vi.waitFor(() => {
                 expect(healthy).toHaveBeenCalledWith({ subtitleGap: 0.5 });
             });

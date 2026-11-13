@@ -13,6 +13,7 @@
     "host_permissions": [
         "https://*.disneyplus.com/*",
         "https://*.netflix.com/*",
+        "https://www.youtube.com/*",
         "https://*.media.dssott.com/*",
         "https://*.dssedge.com/*",
         "https://*.nflxvideo.net/*",
@@ -78,6 +79,17 @@
             "matches": ["https://*.netflix.com/*"],
             "run_at": "document_start",
             "js": ["content-scripts/netflix.js"]
+        },
+        {
+            "matches": ["https://www.youtube.com/*"],
+            "run_at": "document_start",
+            "js": ["content-scripts/youtube-main.js"],
+            "world": "MAIN"
+        },
+        {
+            "matches": ["https://www.youtube.com/*"],
+            "run_at": "document_start",
+            "js": ["content-scripts/youtube.js"]
         }
     ]
 }

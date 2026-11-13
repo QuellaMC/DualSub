@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { normalizeModelName } from '@/background/translation/providers/openaiCompatible';
+import { usableCredential } from '@/shared/keyOrigins';
 import type { ContextProvider } from '../provider';
 import { ContextProviderError } from '../providerError';
 import { ANALYSIS_SCHEMA_NAME } from '../schemas';
@@ -24,7 +25,7 @@ export const openaiContextProvider: ContextProvider = {
     },
 
     buildRequest(settings, prompt, responseSchema) {
-        const apiKey = settings.openaiApiKey.trim();
+        const apiKey = usableCredential('openaiApiKey', settings).trim();
         if (apiKey === '') {
             throw new ContextProviderError(
                 'NOT_CONFIGURED',

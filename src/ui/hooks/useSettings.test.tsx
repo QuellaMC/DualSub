@@ -3,6 +3,9 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { getDefaultValue } from '@/config/schema';
+import type { SettingsChange } from '@/config/service';
+import type { PlatformId } from '@/shared/platforms';
 import { useSettings } from './useSettings';
 
 const KEYS = [
@@ -32,7 +35,7 @@ describe('useSettings', () => {
         expect(result.current.settings).toEqual({
             subtitlesEnabled: true,
             subtitleFontScale: 2,
-            targetLanguage: 'zh-CN',
+            targetLanguage: getDefaultValue('targetLanguage'),
         });
     });
 
@@ -47,6 +50,43 @@ describe('useSettings', () => {
                 subtitleFontScale: 1.5,
             }
         );
+    });
+
+    it('sends a save to storage only once the one before it is written', async () => {
+        const { result } = renderHook(() => useSettings(KEYS));
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const firstWrite = Promise.withResolvers<void>();
+        const writes = vi
+            .spyOn(fakeBrowser.storage.sync, 'set')
+            .mockImplementationOnce(
+                (items: Record<string, unknown>) =>
+                    firstWrite.promise.then(() => realSet(items)) as never
+            );
+
+        let saves: Promise<SettingsChange>[] = [];
+        act(() => {
+            saves = [
+                result.current.save({ targetLanguage: 'ja' }),
+                result.current.save({ targetLanguage: 'ko' }),
+            ];
+        });
+        await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+        expect(writes).toHaveBeenCalledTimes(1);
+
+        firstWrite.resolve();
+        await act(() => Promise.all(saves));
+        expect(writes.mock.calls.map(([items]) => items)).toEqual([
+            { targetLanguage: 'ja' },
+            { targetLanguage: 'ko' },
+        ]);
+        expect(result.current.settings?.targetLanguage).toBe('ko');
+        expect(
+            (await fakeBrowser.storage.sync.get('targetLanguage'))
+                .targetLanguage
+        ).toBe('ko');
     });
 
     it('rejects an invalid write and leaves the projection untouched', async () => {
@@ -74,6 +114,18 @@ describe('useSettings', () => {
         );
     });
 
+    it('keeps a change that lands while the first read is in flight', async () => {
+        const read = Promise.withResolvers<Record<string, unknown>>();
+        vi.spyOn(browser.storage.sync, 'get').mockReturnValueOnce(
+            read.promise as never
+        );
+        const { result } = renderHook(() => useSettings(KEYS));
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
+        read.resolve({});
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(2);
+    });
+
     it('reports an unreadable store, then recovers on the next change', async () => {
         vi.spyOn(browser.storage.sync, 'get').mockRejectedValueOnce(
             new Error('storage broken')
@@ -85,5 +137,86 @@ describe('useSettings', () => {
         await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
         await waitFor(() => expect(result.current.status).toBe('ready'));
         expect(result.current.settings?.subtitleFontScale).toBe(2);
+    });
+
+    it('shows what the newest read found, however earlier retries finish', async () => {
+        const get = vi.spyOn(browser.storage.sync, 'get');
+        get.mockRejectedValueOnce(new Error('storage broken'));
+        const { result } = renderHook(() => useSettings(KEYS));
+        await waitFor(() => expect(result.current.status).toBe('unavailable'));
+
+        const slowRetry = Promise.withResolvers<Record<string, unknown>>();
+        get.mockReturnValueOnce(slowRetry.promise as never);
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 3 });
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(3);
+
+        slowRetry.reject(new Error('storage broken'));
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        expect(result.current.status).toBe('ready');
+    });
+
+    it('recovers with what storage holds now, not a change heard before the failure', async () => {
+        const firstRead = Promise.withResolvers<Record<string, unknown>>();
+        vi.spyOn(browser.storage.sync, 'get').mockReturnValueOnce(
+            firstRead.promise as never
+        );
+        const { result } = renderHook(() => useSettings(KEYS));
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
+        firstRead.reject(new Error('storage broken'));
+        await waitFor(() => expect(result.current.status).toBe('unavailable'));
+
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 3 });
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(3);
+    });
+
+    it("shows a site's view and gives it its own values", async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            siteProfiles: { disneyplus: { subtitleFontScale: 1.5 } },
+        });
+        const { result } = renderHook(() =>
+            useSettings(KEYS, { site: 'disneyplus', siteTarget: 'own' })
+        );
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(1.5);
+
+        await act(() =>
+            result.current.save({
+                subtitleFontScale: 1.7,
+                subtitlesEnabled: false,
+            })
+        );
+        expect(result.current.settings?.subtitleFontScale).toBe(1.7);
+        expect(await fakeBrowser.storage.sync.get(null)).toMatchObject({
+            subtitleFontScale: 1.2,
+            siteProfiles: {
+                disneyplus: {
+                    subtitleFontScale: 1.7,
+                    subtitlesEnabled: false,
+                },
+            },
+        });
+    });
+
+    it('shows nothing of the previous site while the next one loads', async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+        });
+        const { result, rerender } = renderHook(
+            ({ site }: { site: PlatformId }) => useSettings(KEYS, { site }),
+            { initialProps: { site: 'netflix' } }
+        );
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(1.6);
+
+        rerender({ site: 'disneyplus' });
+        expect(result.current.status).toBe('loading');
+        expect(result.current.settings).toBeNull();
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(1.2);
     });
 });

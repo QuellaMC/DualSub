@@ -1,5 +1,6 @@
 export const ContextProviderErrorCode = {
     NOT_CONFIGURED: 'NOT_CONFIGURED',
+    KEY_REFUSED: 'KEY_REFUSED',
     NETWORK_ERROR: 'NETWORK_ERROR',
     TIMEOUT: 'TIMEOUT',
     UPSTREAM_ERROR: 'UPSTREAM_ERROR',
@@ -19,6 +20,7 @@ function isRetryableCode(code: ContextProviderErrorCode, status?: number) {
         case 'UPSTREAM_ERROR':
             return status === 429 || (status !== undefined && status >= 500);
         case 'NOT_CONFIGURED':
+        case 'KEY_REFUSED':
         case 'SAFETY_BLOCKED':
             return false;
     }
@@ -27,8 +29,8 @@ function isRetryableCode(code: ContextProviderErrorCode, status?: number) {
 /**
  * One taxonomy for every context-provider failure. Whether a failure is
  * worth another attempt is decided here, once, from its code: transient
- * transport trouble and unusable model output are; a missing key or a
- * safety refusal are not.
+ * transport trouble and unusable model output are; a missing or refused
+ * key and a safety refusal are not.
  */
 export class ContextProviderError extends Error {
     override readonly name = 'ContextProviderError';

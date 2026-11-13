@@ -2,13 +2,13 @@
 // bridge over a private MessagePort. Imported by BOTH worlds: this module
 // must never reference chrome.* or any extension API.
 
-export type BridgePlatform = 'netflix' | 'disneyplus';
+import { isPlatformId, type PlatformId } from '@/shared/platforms';
 
 export type CapturedEvent =
     | {
           t: 'subtitle-data';
-          platform: 'netflix';
-          movieId: string;
+          platform: 'netflix' | 'youtube';
+          videoId: string;
           /** The languages this resolution answers, in request order. */
           languages: string[];
           /** Resolved tracks from the page bridge; the background policy
@@ -35,8 +35,16 @@ export type CapturedEvent =
      *  player holds them; the descriptor turns them into a look. */
     | {
           t: 'subtitle-appearance';
-          platform: BridgePlatform;
+          platform: PlatformId;
           appearance: Record<string, unknown>;
+      }
+    /** The language of the audio playing in this video, as the player
+     *  reports it; null when the player has not said for a while. */
+    | {
+          t: 'spoken-language';
+          platform: PlatformId;
+          videoId: string;
+          language: string | null;
       };
 
 export type MainToIsolated =
@@ -47,23 +55,27 @@ export type IsolatedToMain =
     | { t: 'request-playback-timeline' }
     | { t: 'playback-bridge-resume' }
     | { t: 'playback-bridge-pause' }
-    /** Netflix: resolve subtitle track URLs for these languages, in
-     *  priority order, from the page's player. Supersedes any pending request. */
+    /** Resolve subtitle track URLs for these languages, in priority
+     *  order, from the page's player. Supersedes any pending request. */
     | { t: 'request-subtitle-tracks'; videoId: string; languages: string[] }
     | { t: 'cancel-subtitle-tracks' }
     /** Report the viewer's subtitle appearance settings once readable. */
     | { t: 'request-subtitle-appearance' }
+    /** Report the language spoken in this video now and whenever it
+     *  changes. Supersedes any earlier watch. */
+    | { t: 'watch-spoken-language'; videoId: string }
+    | { t: 'unwatch-spoken-language' }
     | { t: 'close' };
 
 export interface HelloMessage {
     dualsub: 'hello';
-    platform: BridgePlatform;
+    platform: PlatformId;
     capability: string;
 }
 
 export const CAPABILITY_PATTERN = /^[0-9a-f]{64}$/;
 
-export function mainReadyEventName(platform: BridgePlatform): string {
+export function mainReadyEventName(platform: PlatformId): string {
     return `dualsub:${platform}:main-ready`;
 }
 
@@ -89,19 +101,18 @@ function isBoundedString(value: unknown, maxLength: number): value is string {
     );
 }
 
+/** A language tag as a player may report it across the port. */
+export function isBridgeLanguage(value: unknown): value is string {
+    return isBoundedString(value, MAX_LANGUAGE_LENGTH);
+}
+
 function isLanguageList(value: unknown): value is string[] {
     return (
         Array.isArray(value) &&
         value.length > 0 &&
         value.length <= MAX_REQUESTED_LANGUAGES &&
-        value.every((language) =>
-            isBoundedString(language, MAX_LANGUAGE_LENGTH)
-        )
+        value.every(isBridgeLanguage)
     );
-}
-
-function isPlatform(value: unknown): value is BridgePlatform {
-    return value === 'netflix' || value === 'disneyplus';
 }
 
 function isPlainNode(
@@ -157,8 +168,9 @@ export function isCapturedEvent(value: unknown): value is CapturedEvent {
     switch (value.t) {
         case 'subtitle-data':
             return (
-                value.platform === 'netflix' &&
-                isBoundedString(value.movieId, MAX_ROUTE_ID_LENGTH) &&
+                (value.platform === 'netflix' ||
+                    value.platform === 'youtube') &&
+                isBoundedString(value.videoId, MAX_ROUTE_ID_LENGTH) &&
                 isLanguageList(value.languages) &&
                 Array.isArray(value.tracks)
             );
@@ -187,8 +199,14 @@ export function isCapturedEvent(value: unknown): value is CapturedEvent {
             );
         case 'subtitle-appearance':
             return (
-                isPlatform(value.platform) &&
+                isPlatformId(value.platform) &&
                 isBoundedPlainRecord(value.appearance)
+            );
+        case 'spoken-language':
+            return (
+                isPlatformId(value.platform) &&
+                isBoundedString(value.videoId, MAX_ROUTE_ID_LENGTH) &&
+                (value.language === null || isBridgeLanguage(value.language))
             );
         default:
             return false;
@@ -220,6 +238,7 @@ export function isIsolatedToMain(value: unknown): value is IsolatedToMain {
         case 'playback-bridge-pause':
         case 'cancel-subtitle-tracks':
         case 'request-subtitle-appearance':
+        case 'unwatch-spoken-language':
         case 'close':
             return true;
         case 'request-subtitle-tracks':
@@ -227,6 +246,8 @@ export function isIsolatedToMain(value: unknown): value is IsolatedToMain {
                 isBoundedString(value.videoId, MAX_ROUTE_ID_LENGTH) &&
                 isLanguageList(value.languages)
             );
+        case 'watch-spoken-language':
+            return isBoundedString(value.videoId, MAX_ROUTE_ID_LENGTH);
         default:
             return false;
     }
@@ -234,7 +255,7 @@ export function isIsolatedToMain(value: unknown): value is IsolatedToMain {
 
 export function isHelloMessage(
     value: unknown,
-    platform: BridgePlatform
+    platform: PlatformId
 ): value is HelloMessage {
     return (
         isRecord(value) &&

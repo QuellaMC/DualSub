@@ -5,9 +5,10 @@ import type {
     NativeSubRecipe,
     PlatformAdapter,
     PlatformHandoff,
-    SubtitleLanguages,
     SubtitleSource,
 } from '../types';
+import { pauseMedia, playMedia } from '../shared/directMedia';
+import { PageTrackRequests } from '../shared/pageTracks';
 
 const NETFLIX_NATIVE_SUB_RECIPE: NativeSubRecipe = {
     styleId: 'dualsub-netflix-subtitle-hider',
@@ -31,74 +32,32 @@ const NETFLIX_NATIVE_SUB_RECIPE: NativeSubRecipe = {
     },
 };
 
-/** Languages the page bridge should resolve, original first. The target is
- *  only wanted when official translations may replace API translation. */
-export function requestedSubtitleLanguages(
-    languages: SubtitleLanguages
-): string[] {
-    return languages.useOfficialTranslations
-        ? [languages.originalLanguage, languages.targetLanguage]
-        : [languages.originalLanguage];
-}
-
-function sameLanguages(
-    left: readonly string[],
-    right: readonly string[]
-): boolean {
-    return (
-        left.length === right.length &&
-        left.every((language, index) => language === right[index])
-    );
-}
-
 export class NetflixAdapter implements PlatformAdapter {
     readonly nativeSubRecipe = NETFLIX_NATIVE_SUB_RECIPE;
+    private readonly tracks: PageTrackRequests;
 
     constructor(
         private readonly context: AdapterContext,
         _handoff: PlatformHandoff | null
-    ) {}
+    ) {
+        this.tracks = new PageTrackRequests(context, 'netflix');
+    }
 
     interpretSubtitleEvent(event: CapturedEvent): SubtitleSource | null {
-        if (event.t !== 'subtitle-data') {
-            return null;
-        }
-        // A resolution for other languages answered an earlier request;
-        // the one for the current languages is on its way.
-        const requested = requestedSubtitleLanguages(this.context.languages());
-        if (!sameLanguages(event.languages, requested)) {
-            return null;
-        }
-        if (event.tracks.length === 0) {
-            this.context.logger.warn(
-                'Netflix resolved no subtitle track for the requested languages',
-                { videoId: this.context.videoId }
-            );
-            return { kind: 'unavailable' };
-        }
-        return { kind: 'netflix-tracks', tracks: event.tracks };
+        return this.tracks.interpret(event);
     }
 
     onPlatformEvent(): void {}
 
     /** Track URLs and the viewer's subtitle appearance live in the page's
-     *  player; ask for them once the bridge is up. A later ask supersedes
-     *  an earlier one. */
+     *  player; ask for them once the bridge is up. */
     onBridgeConnected(): void {
-        this.requestTracks();
+        this.tracks.send();
         this.context.bridge.sendControl({ t: 'request-subtitle-appearance' });
     }
 
     onLanguagesChanged(): void {
-        this.requestTracks();
-    }
-
-    private requestTracks(): void {
-        this.context.bridge.sendControl({
-            t: 'request-subtitle-tracks',
-            videoId: this.context.videoId,
-            languages: requestedSubtitleLanguages(this.context.languages()),
-        });
+        this.tracks.send();
     }
 
     /** HTML5 media time is program time on Netflix. */
@@ -118,26 +77,15 @@ export class NetflixAdapter implements PlatformAdapter {
     }
 
     pause(video: HTMLVideoElement): Promise<boolean> {
-        if (!video.paused && !video.ended) {
-            video.pause();
-        }
-        return Promise.resolve(video.paused || video.ended);
+        return pauseMedia(video);
     }
 
-    async play(video: HTMLVideoElement): Promise<boolean> {
-        if (!video.paused) {
-            return true;
-        }
-        try {
-            await video.play();
-        } catch {
-            return false;
-        }
-        return !video.paused;
+    play(video: HTMLVideoElement): Promise<boolean> {
+        return playMedia(video);
     }
 
     beforeAbort(): void {
-        this.context.bridge.sendControl({ t: 'cancel-subtitle-tracks' });
+        this.tracks.cancel();
     }
 
     dispose(): unknown {

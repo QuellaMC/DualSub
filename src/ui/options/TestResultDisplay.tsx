@@ -5,7 +5,7 @@ export function TestResultDisplay({ result }: { result: TestResult }) {
         return null;
     }
     return (
-        <div className={`test-result ${result.tone}`} role="status">
+        <div className={`status-line ${result.tone}`} role="status">
             {result.message}
         </div>
     );

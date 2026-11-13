@@ -47,6 +47,9 @@ function fakePort() {
 
 const BINDING = { registrationId: 1, tabId: 12, windowId: 3 };
 
+/** Words: hola 0, mi 1, amigo 2. */
+const LINE = { text: 'hola mi amigo', language: 'es', translation: null };
+
 function selection(overrides: Partial<SelectionState> = {}): SelectionState {
     return {
         session: 'doc-1:1',
@@ -58,6 +61,7 @@ function selection(overrides: Partial<SelectionState> = {}): SelectionState {
             { wordIndex: 0, word: 'hola' },
             { wordIndex: 2, word: 'amigo' },
         ],
+        line: LINE,
         ...overrides,
     };
 }
@@ -243,13 +247,68 @@ describe('PanelConnection', () => {
         ]);
     });
 
+    it('requests adding a word and applies only once the successor has it', async () => {
+        const { connection, port } = await connected();
+        const one = selection({ entries: [{ wordIndex: 0, word: 'hola' }] });
+        port.emit({
+            action: 'sidePanelSelectionSync',
+            data: { binding: BINDING, selection: one },
+        });
+        const pending = connection.requestEdit(one, 1, 'add');
+        expect(port.posted.at(-1)).toMatchObject({
+            data: { wordIndex: 1, op: 'add' },
+        });
+        port.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: selection({
+                    selectionRevision: 4,
+                    reason: 'add',
+                    entries: [
+                        { wordIndex: 0, word: 'hola' },
+                        { wordIndex: 1, word: 'mi' },
+                    ],
+                }),
+            },
+        });
+        port.emit({
+            action: 'sidePanelUpdateState',
+            data: {
+                binding: BINDING,
+                requestId: 1,
+                selectionOwnerGeneration: 1,
+                status: 'applied',
+            },
+        });
+        expect(await pending).toBe('applied');
+    });
+
+    it('takes a new translation of the same line as the next revision', () => {
+        const translated = selection({
+            selectionRevision: 4,
+            reason: 'translation',
+            line: { ...LINE, translation: 'hello my friend' },
+        });
+        expect(advanceSelectionCursor(selection(), translated)).toEqual({
+            accepted: true,
+            cursor: translated,
+        });
+        expect(
+            advanceSelectionCursor(
+                selection(),
+                selection({ line: { ...LINE, translation: 'hi' } })
+            ).accepted
+        ).toBe(false);
+    });
+
     it('requests removal by occurrence and applies only after the authoritative successor', async () => {
         const { connection, port, selections } = await connected();
         port.emit({
             action: 'sidePanelSelectionSync',
             data: { binding: BINDING, selection: selection() },
         });
-        const pending = connection.requestRemoval(selection(), 2);
+        const pending = connection.requestEdit(selection(), 2, 'remove');
         expect(port.posted.at(-1)).toEqual({
             action: 'sidePanelUpdateState',
             data: {
@@ -259,6 +318,7 @@ describe('PanelConnection', () => {
                 selectionRevision: 3,
                 renderRevision: 1,
                 wordIndex: 2,
+                op: 'remove',
             },
         });
         port.emit({
@@ -295,8 +355,8 @@ describe('PanelConnection', () => {
             action: 'sidePanelSelectionSync',
             data: { binding: BINDING, selection: selection() },
         });
-        const first = connection.requestRemoval(selection(), 2);
-        expect(await connection.requestRemoval(selection(), 0)).toBe(
+        const first = connection.requestEdit(selection(), 2, 'remove');
+        expect(await connection.requestEdit(selection(), 0, 'remove')).toBe(
             'rejected'
         );
         port.emit({
@@ -310,7 +370,7 @@ describe('PanelConnection', () => {
         });
         expect(await first).toBe('rejected');
 
-        const second = connection.requestRemoval(selection(), 2);
+        const second = connection.requestEdit(selection(), 2, 'remove');
         port.emit({
             action: 'sidePanelSelectionSync',
             data: { binding: BINDING, selection: null },
@@ -324,9 +384,10 @@ describe('PanelConnection', () => {
                 selection: selection({ selectionRevision: 5 }),
             },
         });
-        const third = connection.requestRemoval(
+        const third = connection.requestEdit(
             selection({ selectionRevision: 5 }),
-            2
+            2,
+            'remove'
         );
         expect(connection.registerTab(13, 3)).toBe(true);
         expect(await third).toBe('rejected');

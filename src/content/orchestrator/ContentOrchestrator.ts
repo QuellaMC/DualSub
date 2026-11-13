@@ -1,13 +1,14 @@
 import { createLogger, setLoggingLevel } from '@/shared/logger';
-import { configService } from '@/config/service';
+import type { SettingsValues } from '@/config/schema';
+import { configService, type SiteConfig } from '@/config/service';
 import { MessageRouter } from '@/messaging/router';
 import {
-    configChanged,
     loggingLevelChanged,
+    playerStatus,
     sidePanelPauseVideo,
 } from '@/messaging/contracts/control';
 import {
-    selectionRemovalCommand,
+    selectionEditCommand,
     selectionRepublishRequest,
 } from '@/messaging/contracts/selection';
 import { IsolatedBridge } from '../bridge/IsolatedBridge';
@@ -17,18 +18,22 @@ import type { PlatformDescriptor, PlatformHandoff } from '../platform/types';
 import { UiRoot } from '../renderer/domLayer';
 import type { SubtitleLook } from '../renderer/looks';
 import { NavigationWatcher } from './NavigationWatcher';
-import { prepareContentPreview } from './preview';
 import {
     CONTENT_SETTINGS_KEYS,
     FETCH_SETTINGS_KEYS,
     INTERACTION_SETTINGS_KEYS,
     PlayerSession,
-    toSubtitleLanguages,
+    toLanguageSettings,
     type ContentSettings,
     type InteractionSettings,
     type SessionEndReason,
 } from './PlayerSession';
-import type { SubtitleLanguages } from '../platform/types';
+
+const SESSION_SETTINGS_KEYS = [
+    ...CONTENT_SETTINGS_KEYS,
+    ...FETCH_SETTINGS_KEYS,
+    ...INTERACTION_SETTINGS_KEYS,
+];
 
 /**
  * Document root of the content side. Owns document-lifetime services (page
@@ -39,11 +44,15 @@ import type { SubtitleLanguages } from '../platform/types';
 export class ContentOrchestrator {
     private readonly controller = new AbortController();
     private readonly logger;
+    private readonly config: SiteConfig;
     private readonly cache = new SubtitleEventCache();
     private readonly uiRoot: UiRoot;
     private readonly bridge: IsolatedBridge;
     private readonly router = new MessageRouter();
     private activeSession: PlayerSession | null = null;
+    /** For each session's settings read still out, the changes heard since
+     *  it began, which are newer than its answer. */
+    private readonly reads = new Set<Partial<SettingsValues>>();
     private handoff: PlatformHandoff | null = null;
     /** The viewer's platform subtitle appearance; profile-wide, so it
      *  outlives sessions. */
@@ -55,6 +64,7 @@ export class ContentOrchestrator {
 
     constructor(private readonly descriptor: PlatformDescriptor) {
         this.logger = createLogger(`Content:${descriptor.id}`);
+        this.config = configService.forSite(descriptor.id);
         this.uiRoot = new UiRoot(this.controller.signal);
         this.bridge = new IsolatedBridge(descriptor.id, {
             onEvent: (event) => this.onBridgeEvent(event),
@@ -70,19 +80,11 @@ export class ContentOrchestrator {
             setLoggingLevel(request.level);
             return { success: true as const };
         });
-        // Popup sliders paint before they persist; storage stays the truth.
-        this.router.handle(configChanged, (request) => {
-            let preview;
-            try {
-                preview = prepareContentPreview(request.changes);
-            } catch {
-                return {
-                    success: false as const,
-                    error: 'Invalid configuration change',
-                };
-            }
-            this.activeSession?.applySettings(preview);
-            return { success: true as const };
+        this.router.handle(playerStatus, () => {
+            const session = this.activeSession;
+            return session?.hasMedia === true
+                ? { onPlayer: true, originalLanguage: session.originalLanguage }
+                : { onPlayer: false, originalLanguage: null };
         });
         // Side panel traffic addresses the selection of whichever session is
         // on the route; with no session there is nothing to answer for.
@@ -97,9 +99,9 @@ export class ContentOrchestrator {
                 }
         );
         this.router.handle(
-            selectionRemovalCommand,
+            selectionEditCommand,
             (request) =>
-                this.activeSession?.selection.handleRemoval(request.data) ?? {
+                this.activeSession?.selection.handleEdit(request.data) ?? {
                     success: false,
                     requestId: request.data.requestId,
                 }
@@ -115,16 +117,14 @@ export class ContentOrchestrator {
         this.bridge.start();
         new NavigationWatcher(() => this.requestReconcile()).start(signal);
 
-        const unsubscribe = configService.onChanged((changes) => {
-            const session = this.activeSession;
-            if (
-                session &&
-                FETCH_SETTINGS_KEYS.some((key) => changes[key] !== undefined)
-            ) {
-                session.updateLanguages(
-                    toSubtitleLanguages({ ...session.languages, ...changes })
-                );
+        // The one subscription, made before any session reads its settings:
+        // a change heard while a read is out lands on top of its answer, and
+        // every later one reaches the session on the route.
+        const unsubscribe = this.config.onChanged((changes) => {
+            for (const heard of this.reads) {
+                Object.assign(heard, changes);
             }
+            this.activeSession?.applySettings(changes);
         });
         signal.addEventListener('abort', unsubscribe, { once: true });
 
@@ -140,6 +140,14 @@ export class ContentOrchestrator {
         if (classification.kind === 'subtitle') {
             this.cache.publish(classification.videoId, event);
             this.requestReconcile();
+            return;
+        }
+        if (classification.kind === 'spoken-language') {
+            if (this.activeSession?.videoId === classification.videoId) {
+                this.activeSession.updateSpokenLanguage(
+                    classification.language
+                );
+            }
             return;
         }
         if (classification.kind === 'appearance') {
@@ -207,8 +215,14 @@ export class ContentOrchestrator {
     }
 
     private async startSession(videoId: string): Promise<void> {
-        const { settings, languages, interaction } =
-            await this.readSessionSettings();
+        const heard: Partial<SettingsValues> = {};
+        this.reads.add(heard);
+        let stored: Partial<SettingsValues>;
+        try {
+            stored = await this.config.getMultiple(SESSION_SETTINGS_KEYS);
+        } finally {
+            this.reads.delete(heard);
+        }
         // The route may have moved on while settings were loading.
         if (
             this.tornDown ||
@@ -217,42 +231,27 @@ export class ContentOrchestrator {
         ) {
             return;
         }
+        const values = { ...stored, ...heard };
         this.sessionCounter += 1;
         const session = new PlayerSession({
             id: this.sessionCounter,
             videoId,
             descriptor: this.descriptor,
+            config: this.config,
             bridge: this.bridge,
             cache: this.cache,
             uiRoot: this.uiRoot,
             handoff: this.handoff,
             platformLook: this.platformLook,
-            settings,
-            languages,
-            interaction,
+            settings: values as ContentSettings,
+            languageSettings: toLanguageSettings(values),
+            interaction: values as InteractionSettings,
             onNavigationMismatch: () => this.requestReconcile(),
             onContextInvalidated: () => this.teardown('context-invalidated'),
         });
         this.activeSession = session;
         this.handoff = null;
         session.start();
-    }
-
-    private async readSessionSettings(): Promise<{
-        settings: ContentSettings;
-        languages: SubtitleLanguages;
-        interaction: InteractionSettings;
-    }> {
-        const values = await configService.getMultiple([
-            ...CONTENT_SETTINGS_KEYS,
-            ...FETCH_SETTINGS_KEYS,
-            ...INTERACTION_SETTINGS_KEYS,
-        ]);
-        return {
-            settings: values as ContentSettings,
-            languages: toSubtitleLanguages(values),
-            interaction: values as InteractionSettings,
-        };
     }
 
     teardown(reason: SessionEndReason): void {

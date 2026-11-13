@@ -8,7 +8,7 @@ import {
     checkVertexConnection,
     geminiVertexProvider,
 } from './geminiVertex';
-import { googleProvider } from './google';
+import { googleProvider, lookupDictionary } from './google';
 import { microsoftEdgeProvider } from './microsoftEdge';
 import {
     fetchAvailableModels,
@@ -167,6 +167,56 @@ describe('google provider', () => {
     });
 });
 
+describe('google dictionary', () => {
+    it('asks for translations by word type and keeps the listed word', async () => {
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({
+                sentences: [{ trans: 'jugs', orig: 'cántaros' }],
+                dict: [
+                    {
+                        pos: 'noun',
+                        terms: ['pitcher', 'jug', ''],
+                        base_form: 'cántaro',
+                        pos_enum: 1,
+                    },
+                    { pos: 'verb', terms: [] },
+                ],
+                src: 'es',
+            })
+        );
+        await expect(lookupDictionary('cántaros', 'es', 'en')).resolves.toEqual(
+            [{ pos: 'noun', baseForm: 'cántaro', terms: ['pitcher', 'jug'] }]
+        );
+        expect(requestAt(0).url).toBe(
+            'https://translate.googleapis.com/translate_a/single?client=gtx&sl=es&tl=en&hl=en&dt=bd&dj=1&q=c%C3%A1ntaros'
+        );
+    });
+
+    it('answers nothing when Google lists nothing', async () => {
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({ sentences: [{ trans: 'in buckets' }] })
+        );
+        await expect(
+            lookupDictionary('a cántaros', 'es', 'en')
+        ).resolves.toEqual([]);
+    });
+
+    it('fails like translation on a CAPTCHA page or a malformed answer', async () => {
+        fetchMock.mockResolvedValueOnce(
+            textResponse(
+                '<html><title>Google</title>Our systems have detected unusual traffic</html>'
+            )
+        );
+        expect((await failure(lookupDictionary('x', 'es', 'en'))).code).toBe(
+            'RATE_LIMIT_EXCEEDED'
+        );
+        fetchMock.mockResolvedValueOnce(jsonResponse({ dict: 'nope' }));
+        expect((await failure(lookupDictionary('x', 'es', 'en'))).code).toBe(
+            'REQUEST_FAILED'
+        );
+    });
+});
+
 describe('microsoft edge provider', () => {
     const translation = [
         {
@@ -299,6 +349,13 @@ describe('deepl provider', () => {
 });
 
 describe('openai-compatible provider', () => {
+    /** A key entered for the default address, Google's endpoint. */
+    const geminiKey = {
+        openaiCompatibleApiKey: 'key',
+        openaiCompatibleApiKeyOrigin:
+            'https://generativelanguage.googleapis.com',
+    };
+
     it('strips the models/ prefix only for the Gemini endpoint', () => {
         expect(
             normalizeModelName(
@@ -319,9 +376,22 @@ describe('openai-compatible provider', () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it('sends no key to an address it was not entered for', async () => {
+        await fakeBrowser.storage.local.set(geminiKey);
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        const error = await failure(
+            openaiCompatibleProvider.translate('Hi', 'auto', 'fr')
+        );
+        expect(error.code).toBe('AUTHENTICATION_ERROR');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('posts a chat completion with the shared instruction', async () => {
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: 'sk-test',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
         });
         await fakeBrowser.storage.sync.set({
             openaiCompatibleBaseUrl: 'https://api.openai.com/v1',
@@ -355,7 +425,7 @@ describe('openai-compatible provider', () => {
     });
 
     it('normalizes the model for the default Gemini endpoint', async () => {
-        await fakeBrowser.storage.local.set({ openaiCompatibleApiKey: 'key' });
+        await fakeBrowser.storage.local.set(geminiKey);
         await fakeBrowser.storage.sync.set({
             openaiCompatibleModel: 'models/gemini-2.5-flash',
         });
@@ -373,7 +443,7 @@ describe('openai-compatible provider', () => {
     });
 
     it('accepts the Responses API output shape', async () => {
-        await fakeBrowser.storage.local.set({ openaiCompatibleApiKey: 'key' });
+        await fakeBrowser.storage.local.set(geminiKey);
         fetchMock.mockResolvedValueOnce(
             jsonResponse({
                 output: [{ content: [{ type: 'output_text', text: 'Ciao' }] }],
@@ -385,7 +455,7 @@ describe('openai-compatible provider', () => {
     });
 
     it('rejects an empty completion', async () => {
-        await fakeBrowser.storage.local.set({ openaiCompatibleApiKey: 'key' });
+        await fakeBrowser.storage.local.set(geminiKey);
         fetchMock.mockResolvedValueOnce(
             jsonResponse({ choices: [{ message: { content: '   ' } }] })
         );
@@ -396,7 +466,7 @@ describe('openai-compatible provider', () => {
     });
 
     it('maps 429 to a retryable rate limit', async () => {
-        await fakeBrowser.storage.local.set({ openaiCompatibleApiKey: 'key' });
+        await fakeBrowser.storage.local.set(geminiKey);
         fetchMock.mockResolvedValueOnce(textResponse('', 429));
         const error = await failure(
             openaiCompatibleProvider.translate('Hello', 'auto', 'it')
@@ -426,6 +496,19 @@ describe('vertex gemini provider', () => {
 
     it('fails closed while any setting is blank', async () => {
         await fakeBrowser.storage.sync.set(vertexSettings.sync);
+        const error = await failure(
+            geminiVertexProvider.translate('Hello', 'auto', 'ja')
+        );
+        expect(error.code).toBe('AUTHENTICATION_ERROR');
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('sends no token past its recorded expiry', async () => {
+        await fakeBrowser.storage.sync.set(vertexSettings.sync);
+        await fakeBrowser.storage.local.set({
+            ...vertexSettings.local,
+            vertexTokenExpiresAt: Date.now() - 1000,
+        });
         const error = await failure(
             geminiVertexProvider.translate('Hello', 'auto', 'ja')
         );

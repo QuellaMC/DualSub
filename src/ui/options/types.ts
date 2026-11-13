@@ -1,15 +1,33 @@
 import type { SettingsValues } from '@/config/schema';
+import type { PlatformId } from '@/shared/platforms';
+import type { SaveFeedback } from '../hooks/useDraft';
 import type { Translate } from '../hooks/useI18n';
 
 export const OPTIONS_SETTINGS_KEYS = [
     'uiLanguage',
-    'hideOfficialSubtitles',
-    'loggingLevel',
+    'showAdvancedSettings',
+    'subtitlesEnabled',
+    'targetLanguage',
+    'originalLanguage',
+    'useOfficialTranslations',
+    'pairOfficialTranslations',
+    'subtitleStyle',
+    'subtitleCustomLook',
+    'subtitleTranslationColor',
+    'subtitleFontScale',
+    'subtitleGap',
+    'subtitleVerticalPosition',
+    'subtitleLayoutOrder',
+    'subtitleLayoutOrientation',
+    'subtitleTimeOffset',
+    'siteProfiles',
     'selectedProvider',
     'translationDelay',
+    'translationFallback',
     'deeplApiKey',
     'deeplApiPlan',
     'openaiCompatibleApiKey',
+    'openaiCompatibleApiKeyOrigin',
     'openaiCompatibleBaseUrl',
     'openaiCompatibleModel',
     'vertexAccessToken',
@@ -17,7 +35,7 @@ export const OPTIONS_SETTINGS_KEYS = [
     'vertexLocation',
     'vertexModel',
     'vertexTokenExpiresAt',
-    'aiContextEnabled',
+    'wordLookupEnabled',
     'aiContextProvider',
     'aiContextTypes',
     'aiContextTimeout',
@@ -25,6 +43,7 @@ export const OPTIONS_SETTINGS_KEYS = [
     'aiContextCacheEnabled',
     'aiContextRetryAttempts',
     'openaiApiKey',
+    'openaiApiKeyOrigin',
     'openaiBaseUrl',
     'openaiModel',
     'geminiApiKey',
@@ -32,6 +51,7 @@ export const OPTIONS_SETTINGS_KEYS = [
     'sidePanelAutoOpen',
     'sidePanelAutoPauseVideo',
     'sidePanelTheme',
+    'loggingLevel',
 ] as const;
 
 export type OptionsSettings = Pick<
@@ -39,9 +59,14 @@ export type OptionsSettings = Pick<
     (typeof OPTIONS_SETTINGS_KEYS)[number]
 >;
 
-/** Persist settings; resolves false (and the app shows its banner) on failure. */
+/** Which sites the page is editing: all of them, or one site's own. */
+export type Scope = 'all' | PlatformId;
+
+/** Persist settings; resolves false (and the page shows its banner) on
+ *  failure. Without feedback the save is quiet. */
 export type SaveSettings = (
-    changes: Partial<OptionsSettings>
+    changes: Partial<OptionsSettings>,
+    feedback?: SaveFeedback
 ) => Promise<boolean>;
 
 export interface SectionProps {

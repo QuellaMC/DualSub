@@ -1,7 +1,7 @@
 import { defineConfig } from 'wxt';
 
-// Permissions and hosts are pinned byte-identical to the shipped v2.5 manifest;
-// src/build/manifestSnapshot.test.ts enforces it against the golden file.
+// Permissions and hosts are pinned; src/build/manifestSnapshot.test.ts
+// enforces them against the golden file.
 export default defineConfig({
     srcDir: 'src',
     outDir: 'dist',
@@ -16,6 +16,7 @@ export default defineConfig({
         host_permissions: [
             'https://*.disneyplus.com/*',
             'https://*.netflix.com/*',
+            'https://www.youtube.com/*',
             'https://*.media.dssott.com/*',
             'https://*.dssedge.com/*',
             'https://*.nflxvideo.net/*',

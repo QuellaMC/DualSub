@@ -1,31 +1,24 @@
 ---
 name: Translation Issue
-about: Report a problem with subtitle translations
+about: A subtitle is translated badly
 title: '[TRANSLATION] '
 labels: translation
 assignees: ''
 ---
 
-**Describe the translation issue**
-A clear and concise description of the problem. Please provide the original subtitle and the incorrect translation.
+**Where**
 
-**To Reproduce**
-Steps to reproduce the behavior:
+- Site and title:
+- Time in the video:
 
-1.  Go to the following movie/show: '...'
-2.  Go to this timestamp: '...'
-3.  Original Subtitle: '...'
-4.  Incorrect Translation: '...'
+**The subtitle**
 
-**Expected behavior**
-What should the correct translation be?
+- Original line:
+- DualSub's translation:
+- A better translation:
 
-**Environment (please complete the following information):**
+**Environment**
 
-- Streaming Service: [e.g. Disney+, Netflix]
-- Original Language: [e.g. English]
-- Target Language: [e.g. Spanish]
-- Translation Provider: [e.g. Google Translate, DeepL]
-
-**Additional context**
-Add any other context about the problem here.
+- Original language:
+- Translation language:
+- Translation service:

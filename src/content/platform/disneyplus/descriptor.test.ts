@@ -64,9 +64,32 @@ describe('disneyPlusDescriptor', () => {
             disneyPlusDescriptor.classifyBridgeEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '1',
+                videoId: '1',
                 languages: ['en'],
                 tracks: [],
+            })
+        ).toBeNull();
+    });
+
+    it('routes spoken-language reports to their video', () => {
+        expect(
+            disneyPlusDescriptor.classifyBridgeEvent({
+                t: 'spoken-language',
+                platform: 'disneyplus',
+                videoId: 'abc-123',
+                language: 'en',
+            })
+        ).toEqual({
+            kind: 'spoken-language',
+            videoId: 'abc-123',
+            language: 'en',
+        });
+        expect(
+            disneyPlusDescriptor.classifyBridgeEvent({
+                t: 'spoken-language',
+                platform: 'disneyplus',
+                videoId: '%E0%A4%A',
+                language: null,
             })
         ).toBeNull();
     });

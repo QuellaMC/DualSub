@@ -1,5 +1,8 @@
 import { MessageActions } from '@/messaging/actions';
-import type { SelectionState } from '@/messaging/contracts/selection';
+import type {
+    SelectionEditOp,
+    SelectionState,
+} from '@/messaging/contracts/selection';
 import {
     backgroundToPanel,
     panelToBackground,
@@ -18,7 +21,7 @@ export interface TabBinding {
     readonly windowId: number;
 }
 
-export type RemovalStatus = 'applied' | 'rejected';
+export type EditStatus = 'applied' | 'rejected';
 
 export interface PanelConnectionDeps {
     readonly connect: () => PortLike;
@@ -53,17 +56,18 @@ interface PendingRegistration {
     timer: ReturnType<typeof setTimeout> | null;
 }
 
-interface PendingRemoval {
+interface PendingEdit {
     readonly requestId: number;
     readonly expected: {
         readonly selectionOwnerGeneration: number;
         readonly selectionRevision: number;
         readonly renderRevision: number;
         readonly wordIndex: number;
+        readonly op: SelectionEditOp;
     };
     successorObserved: boolean;
-    terminal: RemovalStatus | null;
-    readonly resolve: (status: RemovalStatus) => void;
+    terminal: EditStatus | null;
+    readonly resolve: (status: EditStatus) => void;
 }
 
 /** One connected port; everything here dies with it. */
@@ -76,7 +80,7 @@ interface Session {
     baselineSeen: boolean;
     validated: boolean;
     cursor: SelectionState | null;
-    pendingRemoval: PendingRemoval | null;
+    pendingEdit: PendingEdit | null;
 }
 
 function bindingEquals(left: SidePanelBinding, right: SidePanelBinding) {
@@ -101,7 +105,13 @@ function selectionStatesEqual(
             (entry, index) =>
                 entry.wordIndex === right.entries[index]!.wordIndex &&
                 entry.word === right.entries[index]!.word
-        )
+        ) &&
+        (left.line === right.line ||
+            (left.line !== null &&
+                right.line !== null &&
+                left.line.text === right.line.text &&
+                left.line.language === right.line.language &&
+                left.line.translation === right.line.translation))
     );
 }
 
@@ -140,7 +150,7 @@ export function advanceSelectionCursor(
  * The panel's end of the side panel port. It keeps one port connected
  * (reconnecting after drops), registers for the active tab, accepts only
  * selection state for the binding the background confirmed, and requests
- * removals whose outcome is decided by the authoritative successor
+ * edits whose outcome is decided by the authoritative successor
  * snapshot, never optimistically.
  */
 export class PanelConnection {
@@ -148,7 +158,7 @@ export class PanelConnection {
     private generation = 0;
     private bindingIntentEpoch = 0;
     private registrationCounter = 0;
-    private removalCounter = 0;
+    private editCounter = 0;
     private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     private stopped = true;
 
@@ -182,20 +192,22 @@ export class PanelConnection {
         return session ? this.registerOn(session, tabId, windowId) : false;
     }
 
-    /** Ask content (through the background) to drop one occurrence. */
-    requestRemoval(
+    /** Ask content (through the background) to add or drop one word of
+     *  the line. */
+    requestEdit(
         selection: SelectionState,
-        wordIndex: number
-    ): Promise<RemovalStatus> {
+        wordIndex: number,
+        op: SelectionEditOp
+    ): Promise<EditStatus> {
         const session = this.session;
         const confirmed = session?.confirmed;
-        if (!session || !confirmed || session.pendingRemoval) {
+        if (!session || !confirmed || session.pendingEdit) {
             return Promise.resolve('rejected');
         }
-        this.removalCounter += 1;
-        const requestId = this.removalCounter;
-        return new Promise<RemovalStatus>((resolve) => {
-            const pending: PendingRemoval = {
+        this.editCounter += 1;
+        const requestId = this.editCounter;
+        return new Promise<EditStatus>((resolve) => {
+            const pending: PendingEdit = {
                 requestId,
                 expected: {
                     selectionOwnerGeneration:
@@ -203,12 +215,13 @@ export class PanelConnection {
                     selectionRevision: selection.selectionRevision,
                     renderRevision: selection.renderRevision,
                     wordIndex,
+                    op,
                 },
                 successorObserved: false,
                 terminal: null,
                 resolve,
             };
-            session.pendingRemoval = pending;
+            session.pendingEdit = pending;
             try {
                 session.port.post({
                     action: MessageActions.SIDEPANEL_UPDATE_STATE,
@@ -219,7 +232,7 @@ export class PanelConnection {
                     },
                 });
             } catch {
-                this.settleRemoval(session, pending, 'rejected');
+                this.settleEdit(session, pending, 'rejected');
             }
         });
     }
@@ -249,7 +262,7 @@ export class PanelConnection {
             baselineSeen: false,
             validated: false,
             cursor: null,
-            pendingRemoval: null,
+            pendingEdit: null,
         };
         session.port = framePort(raw, {
             inbound: backgroundToPanel,
@@ -399,12 +412,12 @@ export class PanelConnection {
                     this.isCurrent(session) &&
                     session.confirmed === confirmed
                 ) {
-                    this.observeRemovalSuccessor(session, frame.data.selection);
+                    this.observeEditSuccessor(session, frame.data.selection);
                 }
                 return;
             }
             case MessageActions.SIDEPANEL_UPDATE_STATE: {
-                const pending = session.pendingRemoval;
+                const pending = session.pendingEdit;
                 const confirmed = session.confirmed;
                 if (
                     !pending ||
@@ -418,9 +431,9 @@ export class PanelConnection {
                 }
                 pending.terminal = frame.data.status;
                 if (frame.data.status === 'rejected') {
-                    this.settleRemoval(session, pending, 'rejected');
+                    this.settleEdit(session, pending, 'rejected');
                 } else if (pending.successorObserved) {
-                    this.settleRemoval(session, pending, 'applied');
+                    this.settleEdit(session, pending, 'applied');
                 }
                 return;
             }
@@ -431,14 +444,15 @@ export class PanelConnection {
         }
     }
 
-    /** A removal is applied only once the successor snapshot (same owner and
-     *  render, higher revision, reason "remove", occurrence gone) arrives;
-     *  any other movement of the selection invalidates the request. */
-    private observeRemovalSuccessor(
+    /** An edit is applied only once the successor snapshot (same owner and
+     *  render, higher revision, the edit's own reason, the word gone or
+     *  there) arrives; any other movement of the selection invalidates the
+     *  request. */
+    private observeEditSuccessor(
         session: Session,
         selection: SelectionState | null
     ): void {
-        const pending = session.pendingRemoval;
+        const pending = session.pendingEdit;
         if (!pending) {
             return;
         }
@@ -449,10 +463,11 @@ export class PanelConnection {
                 expected.selectionOwnerGeneration &&
             selection.renderRevision === expected.renderRevision &&
             selection.selectionRevision > expected.selectionRevision &&
-            selection.reason === 'remove' &&
-            !selection.entries.some(
+            selection.reason === expected.op &&
+            selection.entries.some(
                 ({ wordIndex }) => wordIndex === expected.wordIndex
-            );
+            ) ===
+                (expected.op === 'add');
         const invalidates =
             selection === null ||
             selection.selectionOwnerGeneration !==
@@ -462,22 +477,22 @@ export class PanelConnection {
         if (isSuccessor) {
             pending.successorObserved = true;
             if (pending.terminal === 'applied') {
-                this.settleRemoval(session, pending, 'applied');
+                this.settleEdit(session, pending, 'applied');
             }
         } else if (invalidates) {
-            this.settleRemoval(session, pending, 'rejected');
+            this.settleEdit(session, pending, 'rejected');
         }
     }
 
-    private settleRemoval(
+    private settleEdit(
         session: Session,
-        pending: PendingRemoval,
-        status: RemovalStatus
+        pending: PendingEdit,
+        status: EditStatus
     ): void {
-        if (session.pendingRemoval !== pending) {
+        if (session.pendingEdit !== pending) {
             return;
         }
-        session.pendingRemoval = null;
+        session.pendingEdit = null;
         pending.resolve(status);
     }
 
@@ -493,9 +508,9 @@ export class PanelConnection {
     }
 
     private clearConfirmed(session: Session): void {
-        const pending = session.pendingRemoval;
+        const pending = session.pendingEdit;
         if (pending) {
-            this.settleRemoval(session, pending, 'rejected');
+            this.settleEdit(session, pending, 'rejected');
         }
         session.confirmed = null;
         session.cursor = null;

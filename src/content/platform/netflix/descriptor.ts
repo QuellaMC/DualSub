@@ -13,16 +13,22 @@ export const netflixDescriptor: PlatformDescriptor = {
         videoReplacedAcrossEpisodes: true,
     },
     parseVideoIdFromUrl: extractNetflixVideoIdFromUrl,
-    // Keyed by the event's own movieId: a resolution that lands after the
+    // Keyed by the video the event names: a resolution that lands after the
     // route moved on stays cached for the movie it belongs to.
     classifyBridgeEvent(event) {
         if (event.t === 'subtitle-appearance') {
             return { kind: 'appearance', appearance: event.appearance };
         }
+        if (event.t === 'spoken-language') {
+            const videoId = normalizeNetflixVideoId(event.videoId);
+            return videoId
+                ? { kind: 'spoken-language', videoId, language: event.language }
+                : null;
+        }
         if (event.t !== 'subtitle-data') {
             return null;
         }
-        const videoId = normalizeNetflixVideoId(event.movieId);
+        const videoId = normalizeNetflixVideoId(event.videoId);
         return videoId ? { kind: 'subtitle', videoId } : null;
     },
     look: NETFLIX_LOOK,

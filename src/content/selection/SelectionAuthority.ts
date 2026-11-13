@@ -1,9 +1,15 @@
-import type {
-    ContentSelectionSnapshot,
-    SelectionEntry,
-    SelectionReason,
-    SelectionRepublishResult,
+import {
+    contentSelectionSnapshot,
+    lineTranslation,
+    type ContentSelectionSnapshot,
+    type SelectionEditOp,
+    type SelectionEntry,
+    type SelectionLine,
+    type SelectionReason,
+    type SelectionRepublishResult,
 } from '@/messaging/contracts/selection';
+import { lineWords } from '@/shared/words';
+import type { PaintedLine } from '../renderer/Renderer';
 import type { WordIntent } from '../renderer/wordLayer';
 
 let nextLifecycleGeneration = 0;
@@ -15,12 +21,13 @@ export function allocateLifecycleGeneration(): number {
     return nextLifecycleGeneration;
 }
 
-export interface RemovalCommand {
+export interface EditCommand {
     readonly requestId: number;
     readonly lifecycleGeneration: number;
     readonly selectionRevision: number;
     readonly renderRevision: number;
     readonly wordIndex: number;
+    readonly op: SelectionEditOp;
 }
 
 export interface SelectionAuthorityDeps {
@@ -34,16 +41,36 @@ export interface SelectionAuthorityDeps {
     readonly onSelectionChanged: (indices: ReadonlySet<number>) => void;
 }
 
-interface PendingRemoval {
-    readonly command: RemovalCommand;
+interface PendingEdit {
+    readonly command: EditCommand;
     readonly current: ContentSelectionSnapshot;
     readonly successor: ContentSelectionSnapshot;
+}
+
+/** The line as a selection carries it; a blank line carries nothing, and a
+ *  translation too long to send is left out. */
+function selectionLineOf(painted: PaintedLine): SelectionLine | null {
+    if (painted.text.trim() === '') {
+        return null;
+    }
+    const translation =
+        painted.translation !== null &&
+        lineTranslation.safeParse(painted.translation).success
+            ? painted.translation
+            : null;
+    return { text: painted.text, language: painted.language, translation };
+}
+
+function entriesOf(selected: ReadonlyMap<number, string>): SelectionEntry[] {
+    return [...selected.entries()]
+        .sort(([left], [right]) => left - right)
+        .map(([wordIndex, word]) => ({ wordIndex, word }));
 }
 
 /**
  * The single source of truth for which words are selected. Every change
  * becomes a numbered snapshot published to the background; the side panel
- * only ever mirrors these. A panel-requested removal is applied only after
+ * only ever mirrors these. A panel-requested edit is applied only after
  * its successor snapshot was accepted, so the panel cannot show a state
  * the background has not seen.
  */
@@ -51,9 +78,11 @@ export class SelectionAuthority {
     private readonly selected = new Map<number, string>();
     private selectionRevision = 0;
     private renderRevision: number | null = null;
+    /** The line now painted, with its latest translation. */
+    private line: SelectionLine | null = null;
     private snapshot: ContentSelectionSnapshot | null = null;
     private publicationTail: Promise<boolean> = Promise.resolve(false);
-    private pendingRemoval: PendingRemoval | null = null;
+    private pendingEdit: PendingEdit | null = null;
     private queuedOnce = false;
 
     constructor(private readonly deps: SelectionAuthorityDeps) {}
@@ -63,23 +92,33 @@ export class SelectionAuthority {
     }
 
     /**
-     * A new line was painted. The selection belongs to the old line and is
-     * dropped. The first line and any line that clears something are
-     * published so a panel never keeps a stale selection; empty-to-empty
-     * transitions stay local.
+     * A line was painted. A new revision is a new line: the selection
+     * belongs to the old one and is dropped. The first line and any line
+     * that clears something are published so a panel never keeps a stale
+     * selection; empty-to-empty transitions stay local. The same revision
+     * again carries a new translation of the same line.
      */
-    onSubtitleChange(renderRevision: number): void {
+    onLinePainted(renderRevision: number, painted: PaintedLine): void {
         if (
             this.renderRevision !== null &&
-            renderRevision <= this.renderRevision
+            renderRevision < this.renderRevision
         ) {
             return;
         }
+        const line = selectionLineOf(painted);
+        if (renderRevision === this.renderRevision) {
+            this.line = line;
+            this.publishTranslation();
+            return;
+        }
         const hadSomething =
-            this.selected.size > 0 || this.pendingRemoval !== null;
-        this.pendingRemoval = null;
+            this.selected.size > 0 ||
+            this.pendingEdit !== null ||
+            (this.snapshot?.line ?? null) !== null;
+        this.pendingEdit = null;
         this.selected.clear();
         this.renderRevision = renderRevision;
+        this.line = line;
         this.deps.onSelectionChanged(this.selectedIndices);
         const snapshot = this.commit('subtitle-change', renderRevision);
         if (hadSomething || !this.queuedOnce) {
@@ -87,10 +126,11 @@ export class SelectionAuthority {
         }
     }
 
-    /** A click on a word of the current line. Null when it cannot apply. */
+    /** A click on a word of the current line. Null when it cannot apply,
+     *  including when the selection would outgrow what a snapshot holds. */
     toggle(intent: WordIntent): 'added' | 'removed' | null {
         if (
-            this.pendingRemoval ||
+            this.pendingEdit ||
             this.renderRevision === null ||
             intent.renderRevision !== this.renderRevision ||
             intent.word === ''
@@ -100,22 +140,38 @@ export class SelectionAuthority {
         const result = this.selected.has(intent.wordIndex)
             ? 'removed'
             : 'added';
+        const selected = new Map(this.selected);
+        if (result === 'added') {
+            selected.set(intent.wordIndex, intent.word);
+        } else {
+            selected.delete(intent.wordIndex);
+        }
+        const snapshot = this.next(
+            'toggle',
+            intent.renderRevision,
+            entriesOf(selected),
+            this.line
+        );
+        if (!contentSelectionSnapshot.safeParse(snapshot).success) {
+            return null;
+        }
         if (result === 'added') {
             this.selected.set(intent.wordIndex, intent.word);
         } else {
             this.selected.delete(intent.wordIndex);
         }
+        this.adopt(snapshot);
         this.deps.onSelectionChanged(this.selectedIndices);
-        void this.queue(this.commit('toggle', intent.renderRevision));
+        void this.queue(snapshot);
         return result;
     }
 
-    /** Drop everything and say so (the feature was switched off). */
+    /** Drop everything and say so (word lookup was switched off). */
     clear(): void {
         if (this.renderRevision === null) {
             return;
         }
-        this.pendingRemoval = null;
+        this.pendingEdit = null;
         this.selected.clear();
         this.deps.onSelectionChanged(this.selectedIndices);
         void this.queue(this.commit('clear', this.renderRevision));
@@ -145,61 +201,81 @@ export class SelectionAuthority {
     }
 
     /**
-     * Phase two of a panel removal: publish the successor first, apply it
+     * Phase two of a panel edit: publish the successor first, apply it
      * locally only once accepted, and repair with a fresh snapshot when the
-     * world moved underneath the flight.
+     * world moved underneath the flight. An added word's text comes from
+     * the line as painted here, never from the panel.
      */
-    async handleRemoval(
-        command: RemovalCommand
+    async handleEdit(
+        command: EditCommand
     ): Promise<{ success: boolean; requestId: number }> {
         const current = this.snapshot;
         const reject = { success: false, requestId: command.requestId };
+        const removing = command.op === 'remove';
         if (
-            this.pendingRemoval ||
-            !current ||
+            this.pendingEdit ||
+            !current?.line ||
             command.lifecycleGeneration !== this.deps.lifecycleGeneration ||
             command.selectionRevision !== current.selectionRevision ||
             command.renderRevision !== current.renderRevision ||
             this.renderRevision !== current.renderRevision ||
-            !this.selected.has(command.wordIndex)
+            this.selected.has(command.wordIndex) !== removing
         ) {
             return reject;
         }
-        this.selectionRevision += 1;
-        const successor: ContentSelectionSnapshot = {
-            lifecycleGeneration: this.deps.lifecycleGeneration,
-            selectionRevision: this.selectionRevision,
-            renderRevision: current.renderRevision,
-            reason: 'remove',
-            entries: current.entries.filter(
-                (entry) => entry.wordIndex !== command.wordIndex
-            ),
-        };
-        const pending: PendingRemoval = { command, current, successor };
-        this.pendingRemoval = pending;
+        const added = removing
+            ? undefined
+            : lineWords(current.line)[command.wordIndex]?.word;
+        if (!removing && added === undefined) {
+            return reject;
+        }
+        const selected = new Map(this.selected);
+        if (added === undefined) {
+            selected.delete(command.wordIndex);
+        } else {
+            selected.set(command.wordIndex, added);
+        }
+        const successor = this.next(
+            command.op,
+            current.renderRevision,
+            entriesOf(selected),
+            current.line
+        );
+        if (!contentSelectionSnapshot.safeParse(successor).success) {
+            return reject;
+        }
+        this.selectionRevision = successor.selectionRevision;
+        const pending: PendingEdit = { command, current, successor };
+        this.pendingEdit = pending;
 
         const accepted = await this.queue(
             successor,
-            () => this.pendingRemoval === pending && this.snapshot === current
+            () => this.pendingEdit === pending && this.snapshot === current
         );
-        if (this.pendingRemoval !== pending) {
+        if (this.pendingEdit !== pending) {
             return reject;
         }
-        this.pendingRemoval = null;
+        this.pendingEdit = null;
         if (
             !accepted ||
             this.snapshot !== current ||
             this.renderRevision !== current.renderRevision ||
-            !this.selected.has(command.wordIndex)
+            this.selected.has(command.wordIndex) !== removing
         ) {
             if (this.snapshot === current) {
                 this.repair();
             }
+            this.publishTranslation();
             return reject;
         }
-        this.selected.delete(command.wordIndex);
+        if (added === undefined) {
+            this.selected.delete(command.wordIndex);
+        } else {
+            this.selected.set(command.wordIndex, added);
+        }
         this.snapshot = successor;
         this.deps.onSelectionChanged(this.selectedIndices);
+        this.publishTranslation();
         return { success: true, requestId: command.requestId };
     }
 
@@ -218,26 +294,59 @@ export class SelectionAuthority {
         );
     }
 
-    private entries(): SelectionEntry[] {
-        return [...this.selected.entries()]
-            .sort(([left], [right]) => left - right)
-            .map(([wordIndex, word]) => ({ wordIndex, word }));
+    /** Send a translation that reached the current line after its snapshot.
+     *  An edit in flight keeps its snapshot as it was; the translation goes
+     *  out once the edit settles. */
+    private publishTranslation(): void {
+        const current = this.snapshot;
+        if (
+            this.pendingEdit ||
+            !current?.line ||
+            !this.line ||
+            current.line.translation === this.line.translation
+        ) {
+            return;
+        }
+        void this.queue(this.commit('translation', current.renderRevision));
     }
 
-    /** Allocate the next revision and make its snapshot current. */
+    /** The snapshot one revision on, not yet current. */
+    private next(
+        reason: SelectionReason,
+        renderRevision: number,
+        entries: SelectionEntry[],
+        line: SelectionLine | null
+    ): ContentSelectionSnapshot {
+        return {
+            lifecycleGeneration: this.deps.lifecycleGeneration,
+            selectionRevision: this.selectionRevision + 1,
+            renderRevision,
+            reason,
+            entries,
+            line,
+        };
+    }
+
+    private adopt(snapshot: ContentSelectionSnapshot): void {
+        this.selectionRevision = snapshot.selectionRevision;
+        this.snapshot = snapshot;
+    }
+
+    /** Allocate the next revision and make its snapshot current. A new
+     *  line or a cleared selection carries no line. */
     private commit(
         reason: SelectionReason,
         renderRevision: number
     ): ContentSelectionSnapshot {
-        this.selectionRevision += 1;
-        const snapshot: ContentSelectionSnapshot = {
-            lifecycleGeneration: this.deps.lifecycleGeneration,
-            selectionRevision: this.selectionRevision,
-            renderRevision,
+        const snapshot = this.next(
             reason,
-            entries: this.entries(),
-        };
-        this.snapshot = snapshot;
+            renderRevision,
+            entriesOf(this.selected),
+            reason === 'clear' || reason === 'subtitle-change'
+                ? null
+                : this.line
+        );
+        this.adopt(snapshot);
         return snapshot;
     }
 

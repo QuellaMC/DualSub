@@ -64,14 +64,14 @@ describe('useI18n', () => {
     it('loads the requested catalog from the extension bundle', async () => {
         const calls = stubFetch({
             en: EN,
-            ja: { h1Title: { message: 'デュアルサブ' } },
+            ja: { appName: { message: 'デュアルサブ' } },
         });
         const { result } = renderHook(() => useI18n('ja'));
         expect(result.current.ready).toBe(false);
-        expect(result.current.t('h1Title')).toBe('h1Title');
+        expect(result.current.t('appName')).toBe('appName');
 
         await waitFor(() => expect(result.current.ready).toBe(true));
-        expect(result.current.t('h1Title')).toBe('デュアルサブ');
+        expect(result.current.t('appName')).toBe('デュアルサブ');
         expect(calls).toEqual([catalogUrl('ja')]);
     });
 
@@ -79,8 +79,24 @@ describe('useI18n', () => {
         const calls = stubFetch({ en: EN });
         const { result } = renderHook(() => useI18n('zh-TW'));
         await waitFor(() => expect(result.current.ready).toBe(true));
-        expect(result.current.t('h1Title')).toBe('DualSub');
+        expect(result.current.t('appName')).toBe('DualSub');
         expect(calls).toEqual([catalogUrl('zh_TW'), catalogUrl('en')]);
+    });
+
+    it('marks the page with the language it shows, English when falling back', async () => {
+        stubFetch({ en: EN, ko: { appName: { message: 'KO' } } });
+        const { result, rerender } = renderHook(
+            ({ locale }: { locale: string }) => useI18n(locale),
+            { initialProps: { locale: 'ko' } }
+        );
+        await waitFor(() => expect(result.current.ready).toBe(true));
+        expect(document.documentElement.lang).toBe('ko');
+
+        rerender({ locale: 'ja' });
+        await waitFor(() => expect(result.current.ready).toBe(true));
+        expect(result.current.t('appName')).toBe('DualSub');
+        expect(document.documentElement.lang).toBe('en');
+        expect(result.current.loadedLocale).toBe('en');
     });
 
     it('substitutes %s and %d placeholders in order', async () => {
@@ -117,26 +133,34 @@ describe('useI18n', () => {
         );
         rerender({ locale: 'ko' });
 
-        pending.get('ko')!({ h1Title: { message: 'KO' } });
+        pending.get('ko')!({ appName: { message: 'KO' } });
         await waitFor(() => expect(result.current.ready).toBe(true));
-        pending.get('ja')!({ h1Title: { message: 'JA' } });
+        pending.get('ja')!({ appName: { message: 'JA' } });
         await Promise.resolve();
-        expect(result.current.t('h1Title')).toBe('KO');
+        expect(result.current.t('appName')).toBe('KO');
     });
 
     it('does not remember a failed locale, so a later load retries it', async () => {
         const available: Catalogs = { en: EN };
         const calls = stubFetch(available);
-        expect((await loadCatalog('ja')).h1Title?.message).toBe('DualSub');
+        expect(await loadCatalog('ja')).toMatchObject({
+            locale: 'en',
+            catalog: { appName: { message: 'DualSub' } },
+        });
 
-        available.ja = { h1Title: { message: 'デュアルサブ' } };
-        expect((await loadCatalog('ja')).h1Title?.message).toBe('デュアルサブ');
+        available.ja = { appName: { message: 'デュアルサブ' } };
+        expect(await loadCatalog('ja')).toMatchObject({
+            locale: 'ja',
+            catalog: { appName: { message: 'デュアルサブ' } },
+        });
         expect(calls).toEqual([
             catalogUrl('ja'),
             catalogUrl('en'),
             catalogUrl('ja'),
         ]);
-        expect((await loadCatalog('en')).h1Title?.message).toBe('DualSub');
+        expect((await loadCatalog('en')).catalog.appName?.message).toBe(
+            'DualSub'
+        );
         expect(calls).toHaveLength(3);
     });
 });

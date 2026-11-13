@@ -44,12 +44,12 @@ describe('netflixDescriptor', () => {
         expect(netflixDescriptor.parsePlatformLook({})).toBeNull();
     });
 
-    it('keys subtitle events by their own movieId (preload-safe)', () => {
+    it('keys subtitle events by their own video id (preload-safe)', () => {
         expect(
             netflixDescriptor.classifyBridgeEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '99',
+                videoId: '99',
                 languages: ['en'],
                 tracks: [],
             })
@@ -58,7 +58,7 @@ describe('netflixDescriptor', () => {
             netflixDescriptor.classifyBridgeEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: 'not-numeric',
+                videoId: 'not-numeric',
                 languages: ['en'],
                 tracks: [],
             })
@@ -69,6 +69,29 @@ describe('netflixDescriptor', () => {
                 platform: 'disneyplus',
                 url: 'https://x',
                 videoId: 'a',
+            })
+        ).toBeNull();
+    });
+
+    it('routes spoken-language reports to their video', () => {
+        expect(
+            netflixDescriptor.classifyBridgeEvent({
+                t: 'spoken-language',
+                platform: 'netflix',
+                videoId: '81234567',
+                language: 'en',
+            })
+        ).toEqual({
+            kind: 'spoken-language',
+            videoId: '81234567',
+            language: 'en',
+        });
+        expect(
+            netflixDescriptor.classifyBridgeEvent({
+                t: 'spoken-language',
+                platform: 'netflix',
+                videoId: 'not-a-number',
+                language: null,
             })
         ).toBeNull();
     });

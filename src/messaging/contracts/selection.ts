@@ -1,14 +1,19 @@
 import { z } from 'zod';
+import { lineWords } from '@/shared/words';
 import { MessageActions } from '../actions';
 import { defineContract } from '../registry';
 import { utf8ByteLength } from '../snapshot';
-import { nonNegativeSafeInteger, positiveSafeInteger } from './primitives';
+import {
+    languageTag,
+    nonNegativeSafeInteger,
+    positiveSafeInteger,
+} from './primitives';
 
 export const SELECTION_SNAPSHOT_LIMITS = Object.freeze({
     maxDepth: 4,
     maxEntries: 256,
     maxStringBytes: 4096,
-    maxTotalBytes: 6144,
+    maxTotalBytes: 12_288,
 });
 
 const MAX_SELECTION_ENTRIES = 64;
@@ -23,6 +28,7 @@ export const selectionReason = z.enum([
     'clear',
     'restore',
     'subtitle-change',
+    'translation',
 ]);
 export type SelectionReason = z.infer<typeof selectionReason>;
 
@@ -82,17 +88,54 @@ export const selectionEntries = z
 
 export type SelectionEntry = z.infer<typeof selectionEntries>[number];
 
-function entriesMatchReason(data: {
+/** Painted text up to `maxCodeUnits` and `maxBytes`, kept as painted. */
+const paintedText = (maxCodeUnits: number, maxBytes: number) =>
+    z
+        .string()
+        .refine(
+            (value) =>
+                value.trim().length > 0 &&
+                value.length <= maxCodeUnits &&
+                value.isWellFormed() &&
+                utf8ByteLength(value) <= maxBytes
+        );
+
+/** The translation painted under a line; one longer than this is not sent.
+ *  It may run longer than its line, as translations do. */
+export const lineTranslation = paintedText(1000, 3072);
+
+/** The line the selection belongs to, as content painted and split it. */
+export const selectionLine = z.strictObject({
+    text: paintedText(500, 2048),
+    language: languageTag.nullable(),
+    translation: lineTranslation.nullable(),
+});
+
+export type SelectionLine = z.infer<typeof selectionLine>;
+
+/** A new line or a cleared selection carries nothing; every other snapshot
+ *  carries its line, and each entry is the word at its index in that line. */
+function coherent(data: {
     reason: SelectionReason;
-    entries: readonly unknown[];
+    entries: readonly SelectionEntry[];
+    line: SelectionLine | null;
 }): boolean {
     if (data.reason === 'clear' || data.reason === 'subtitle-change') {
-        return data.entries.length === 0;
+        return data.entries.length === 0 && data.line === null;
     }
-    if (data.reason === 'add' || data.reason === 'restore') {
-        return data.entries.length > 0;
+    if (data.line === null) {
+        return false;
     }
-    return true;
+    if (
+        (data.reason === 'add' || data.reason === 'restore') &&
+        data.entries.length === 0
+    ) {
+        return false;
+    }
+    const words = lineWords(data.line);
+    return data.entries.every(
+        (entry) => words[entry.wordIndex]?.word === entry.word
+    );
 }
 
 /** Content-authored snapshot: the single source of selection truth. */
@@ -103,8 +146,9 @@ export const contentSelectionSnapshot = z
         renderRevision: positiveSafeInteger,
         reason: selectionReason,
         entries: selectionEntries,
+        line: selectionLine.nullable(),
     })
-    .refine(entriesMatchReason);
+    .refine(coherent);
 
 export type ContentSelectionSnapshot = z.infer<typeof contentSelectionSnapshot>;
 
@@ -121,8 +165,9 @@ export const selectionState = z
         renderRevision: positiveSafeInteger,
         reason: selectionReason,
         entries: selectionEntries,
+        line: selectionLine.nullable(),
     })
-    .refine(entriesMatchReason);
+    .refine(coherent);
 
 export type SelectionState = z.infer<typeof selectionState>;
 
@@ -180,12 +225,17 @@ export const selectionRepublishRequest = defineContract({
     }),
 });
 
+/** What a panel asks of one word of the line. */
+export const selectionEditOp = z.enum(['add', 'remove']);
+
+export type SelectionEditOp = z.infer<typeof selectionEditOp>;
+
 /**
- * Phase two of panel-initiated removal: background commands content, content
+ * Phase two of a panel-initiated edit: background commands content, content
  * applies authoritatively and answers applied/rejected. The panel only
  * updates from the republished snapshot, never optimistically.
  */
-export const selectionRemovalCommand = defineContract({
+export const selectionEditCommand = defineContract({
     action: MessageActions.SIDEPANEL_UPDATE_STATE,
     transport: 'tab',
     senders: ['background'],
@@ -197,6 +247,7 @@ export const selectionRemovalCommand = defineContract({
             selectionRevision: positiveSafeInteger,
             renderRevision: positiveSafeInteger,
             wordIndex: nonNegativeSafeInteger,
+            op: selectionEditOp,
         }),
     }),
     response: z.strictObject({

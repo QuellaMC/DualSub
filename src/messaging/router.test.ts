@@ -158,55 +158,24 @@ describe('MessageRouter.dispatch', () => {
         expect(router.dispatch(oversized, contentSender)).toBe(undefined);
     });
 
-    it('selects the request variant by classified role', async () => {
+    it('serves only the senders a contract names', async () => {
         const router = new MessageRouter();
-        router.handle(analyzeContext, (request) => ({
-            success: true as const,
-            result: {
-                analysis: { summary: 'ok' },
-                contextType: 'cultural' as const,
-                contextTypes: request.contextTypes,
-                isStructured: true as const,
-            },
+        router.handle(analyzeContext, () => ({
+            success: false as const,
+            reason: 'setup' as const,
         }));
-
-        const sidepanelRequest = {
+        const request = {
             action: 'analyzeContext',
             text: 'word',
+            line: 'a word here',
+            language: null,
             contextTypes: ['cultural'],
-            contextType: 'cultural',
             targetLanguage: 'zh-CN',
-            requestId: 'req-1',
         };
         await expect(
-            router.dispatch(sidepanelRequest, sidepanelSender)
-        ).resolves.toMatchObject({ success: true });
-
-        // The content variant requires language+platform and rejects the
-        // side-panel shape.
-        expect(router.dispatch(sidepanelRequest, contentSender)).toBe(
-            undefined
-        );
-    });
-
-    it('enforces the side-panel contextType consistency rule', () => {
-        const router = new MessageRouter();
-        router.handle(analyzeContext, () => {
-            throw new Error('unreachable');
-        });
-        expect(
-            router.dispatch(
-                {
-                    action: 'analyzeContext',
-                    text: 'word',
-                    contextTypes: ['cultural', 'historical'],
-                    contextType: 'cultural',
-                    targetLanguage: 'zh-CN',
-                    requestId: 'req-1',
-                },
-                sidepanelSender
-            )
-        ).toBe(undefined);
+            router.dispatch(request, sidepanelSender)
+        ).resolves.toEqual({ success: false, reason: 'setup' });
+        expect(router.dispatch(request, contentSender)).toBe(undefined);
     });
 
     it('turns handler failures and malformed handler responses into no-response', async () => {

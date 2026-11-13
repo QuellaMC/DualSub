@@ -1,5 +1,8 @@
 import { createLogger } from '@/shared/logger';
-import { normalizeLanguageCode } from '@/shared/languageNormalization';
+import {
+    isSameLanguage,
+    normalizeLanguageCode,
+} from '@/shared/languageNormalization';
 import { FetchAbortedError } from '@/shared/fetchWithTimeout';
 import { fetchAuthorizedSubtitleText } from '../fetch';
 import type {
@@ -96,9 +99,11 @@ export async function processNetflixSubtitles(
     let targetVttText: string | null = null;
     let useNativeTarget = false;
 
-    const targetTrack = useOfficialTranslations
-        ? getBestTrackForLanguage(tracks, targetLanguage)
-        : null;
+    const targetTrack =
+        useOfficialTranslations &&
+        !isSameLanguage(sourceLanguage, targetLanguage)
+            ? getBestTrackForLanguage(tracks, targetLanguage)
+            : null;
     if (targetTrack) {
         try {
             targetVttText = await fetchTrackVtt(snapshot, targetTrack, signal);

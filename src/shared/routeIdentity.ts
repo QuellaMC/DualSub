@@ -157,3 +157,35 @@ export function extractNetflixVideoIdFromUrl(url: unknown): string | null {
         return null;
     }
 }
+
+const YOUTUBE_VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/u;
+const YOUTUBE_SHORTS_PATH_PATTERN = /^\/shorts\/([^/]+)\/?$/u;
+
+/** A YouTube video id: eleven URL-safe base64 characters. */
+export function normalizeYouTubeVideoId(value: unknown): string | null {
+    return typeof value === 'string' && YOUTUBE_VIDEO_ID_PATTERN.test(value)
+        ? value
+        : null;
+}
+
+/** The video a YouTube watch page (`/watch?v=<id>`) or Short
+ *  (`/shorts/<id>`) plays. A watch URL names exactly one video. */
+export function extractYouTubeVideoIdFromUrl(url: unknown): string | null {
+    if (typeof url !== 'string') {
+        return null;
+    }
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return null;
+    }
+    if (parsed.pathname === '/watch') {
+        const videoIds = parsed.searchParams.getAll('v');
+        return videoIds.length === 1
+            ? normalizeYouTubeVideoId(videoIds[0])
+            : null;
+    }
+    const shortsMatch = YOUTUBE_SHORTS_PATH_PATTERN.exec(parsed.pathname);
+    return shortsMatch ? normalizeYouTubeVideoId(shortsMatch[1]) : null;
+}

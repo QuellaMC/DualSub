@@ -1,7 +1,14 @@
 import { normalizeLanguageCode } from '@/shared/languageNormalization';
-import type { CapturedEvent } from '../protocol';
+import { isBridgeLanguage, type CapturedEvent } from '../protocol';
 import type { InterceptorRecipe } from './interceptor-core';
-import { ResolutionSlot, waitFor } from './waitFor';
+import {
+    callMethod,
+    isRecord,
+    readPath,
+    readProperty,
+    type PageRecord,
+} from './pageRecord';
+import { ResolutionSlot, ValueWatch, waitFor } from './waitFor';
 
 // Netflix resolves its manifest inside the player core, so subtitle track
 // URLs never pass through the page's JSON.parse. They are read instead from
@@ -9,7 +16,8 @@ import { ResolutionSlot, waitFor } from './waitFor';
 // the download URLs from that session's state. Netflix only fetches a URL
 // for the text track that is switched on, so a requested language that has
 // none yet is switched on briefly and switched back once its URL appears.
-// The viewer's subtitle appearance settings come from the same page state.
+// The viewer's subtitle appearance settings and the language of the audio
+// playing come from the same page state.
 
 const PLAYER_POLL_INTERVAL_MS = 500;
 const PLAYER_WAIT_TIMEOUT_MS = 60_000;
@@ -17,12 +25,12 @@ const TRACK_URL_POLL_INTERVAL_MS = 500;
 const TRACK_URL_TIMEOUT_MS = 10_000;
 const APPEARANCE_POLL_INTERVAL_MS = 500;
 const APPEARANCE_WAIT_TIMEOUT_MS = 30_000;
+const SPOKEN_LANGUAGE_POLL_INTERVAL_MS = 1000;
+const SPOKEN_LANGUAGE_UNKNOWN_AFTER_MS = 15_000;
 /** Timed-text objects sit about 12 levels below the session root. */
 const STATE_WALK_MAX_DEPTH = 20;
 const MAX_APPEARANCE_KEYS = 40;
 const MAX_APPEARANCE_STRING_LENGTH = 512;
-
-type PageRecord = Record<string, unknown>;
 
 interface CandidateTrack {
     /** The player's own track object; setTimedTextTrack wants it verbatim. */
@@ -37,48 +45,6 @@ interface CandidateTrack {
 interface PlayerSession {
     readonly player: PageRecord;
     readonly stateRoot: unknown;
-}
-
-function isRecord(value: unknown): value is PageRecord {
-    return value !== null && typeof value === 'object';
-}
-
-function readProperty(target: unknown, key: string): unknown {
-    if (!isRecord(target)) {
-        return undefined;
-    }
-    try {
-        return target[key];
-    } catch {
-        return undefined;
-    }
-}
-
-function readPath(target: unknown, ...keys: string[]): unknown {
-    let current = target;
-    for (const key of keys) {
-        current = readProperty(current, key);
-    }
-    return current;
-}
-
-function callMethod(
-    target: unknown,
-    name: string,
-    ...args: unknown[]
-): unknown {
-    const method = readProperty(target, name);
-    if (typeof method !== 'function') {
-        return undefined;
-    }
-    try {
-        return (method as (...callArgs: unknown[]) => unknown).apply(
-            target,
-            args
-        );
-    } catch {
-        return undefined;
-    }
 }
 
 function readNetflixGlobal(): unknown {
@@ -294,6 +260,35 @@ function readTimedTextUrls(stateRoot: unknown): Map<string, string> {
 
 const trackResolution = new ResolutionSlot();
 const appearanceResolution = new ResolutionSlot();
+const spokenLanguageWatch = new ValueWatch();
+
+/** The language of the audio track playing in `videoId`'s session. */
+function readSpokenLanguage(videoId: string): string | undefined {
+    const session = findReadyPlayerSession(videoId);
+    const language = readProperty(
+        callMethod(session?.player, 'getAudioTrack'),
+        'bcp47'
+    );
+    return isBridgeLanguage(language) ? language : undefined;
+}
+
+function watchSpokenLanguage(
+    videoId: string,
+    emit: (event: CapturedEvent) => void
+): void {
+    spokenLanguageWatch.start(
+        () => readSpokenLanguage(videoId),
+        (language) =>
+            emit({
+                t: 'spoken-language',
+                platform: 'netflix',
+                videoId,
+                language,
+            }),
+        SPOKEN_LANGUAGE_POLL_INTERVAL_MS,
+        SPOKEN_LANGUAGE_UNKNOWN_AFTER_MS
+    );
+}
 
 async function resolveSubtitleTracks(
     videoId: string,
@@ -313,7 +308,7 @@ async function resolveSubtitleTracks(
                 emit({
                     t: 'subtitle-data',
                     platform: 'netflix',
-                    movieId: videoId,
+                    videoId,
                     languages: [...languages],
                     tracks: [],
                 });
@@ -379,7 +374,7 @@ async function resolveSubtitleTracks(
         emit({
             t: 'subtitle-data',
             platform: 'netflix',
-            movieId: videoId,
+            videoId,
             languages: [...languages],
             tracks,
         });
@@ -483,6 +478,12 @@ export const netflixRecipe: InterceptorRecipe = {
             case 'request-subtitle-appearance':
                 void resolveSubtitleAppearance(emit);
                 break;
+            case 'watch-spoken-language':
+                watchSpokenLanguage(message.videoId, emit);
+                break;
+            case 'unwatch-spoken-language':
+                spokenLanguageWatch.stop();
+                break;
             default:
                 break;
         }
@@ -490,5 +491,6 @@ export const netflixRecipe: InterceptorRecipe = {
     onClose() {
         trackResolution.cancel();
         appearanceResolution.cancel();
+        spokenLanguageWatch.stop();
     },
 };

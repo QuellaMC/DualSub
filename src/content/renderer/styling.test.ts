@@ -1,15 +1,26 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { DUALSUB_LOOK, resolveLook, type SubtitleLook } from './looks';
+import { STANDARD_PLACEMENT } from '@/shared/cuePlacement';
+import { getDefaultValue } from '@/config/schema';
 import {
-    applyDisplaySettings,
-    createSubtitleElements,
+    customLook,
+    hexWithOpacity,
+    resolveLook,
+    type SubtitleLook,
+} from './looks';
+
+const DEFAULT_LOOK = customLook(getDefaultValue('subtitleCustomLook'));
+import {
+    applyBlockStyle,
+    createBlockElements,
     fontSizePx,
     type DisplaySettings,
 } from './styling';
 
 const display: DisplaySettings = {
-    style: 'dualsub',
+    style: 'custom',
+    customLook: DEFAULT_LOOK,
+    translationColor: '#00ffff',
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
@@ -19,19 +30,52 @@ const display: DisplaySettings = {
 };
 
 const BOLD_PRESET: SubtitleLook = {
-    ...DUALSUB_LOOK,
+    ...DEFAULT_LOOK,
     fontWeight: 'bold',
     background: 'transparent',
 };
 
 describe('resolveLook', () => {
-    it("uses the platform preset, or the viewer's reported look over it", () => {
-        const captured = { ...DUALSUB_LOOK, fontWeight: '600' };
-        expect(resolveLook('dualsub', BOLD_PRESET, captured)).toBe(
-            DUALSUB_LOOK
-        );
-        expect(resolveLook('platform', BOLD_PRESET, null)).toBe(BOLD_PRESET);
-        expect(resolveLook('platform', BOLD_PRESET, captured)).toBe(captured);
+    it("draws the platform preset, or the viewer's reported look over it", () => {
+        const captured = { ...DEFAULT_LOOK, fontWeight: '600' };
+        const platform = { ...display, style: 'platform' as const };
+        expect(resolveLook(platform, BOLD_PRESET, null)).toBe(BOLD_PRESET);
+        expect(resolveLook(platform, BOLD_PRESET, captured)).toBe(captured);
+    });
+
+    it('draws the custom style from the display', () => {
+        expect(resolveLook(display, BOLD_PRESET, null)).toBe(DEFAULT_LOOK);
+    });
+});
+
+describe('customLook', () => {
+    it("is DualSub's own look at the defaults", () => {
+        expect(DEFAULT_LOOK).toMatchObject({
+            fontFamily: 'inherit',
+            fontWeight: 'normal',
+            originalColor: '#ffffff',
+            background: 'rgba(0, 0, 0, 0.6)',
+        });
+    });
+
+    it('maps the typography choices to CSS', () => {
+        const look = customLook({
+            font: 'small-caps',
+            bold: true,
+            originalColor: '#ffff00',
+            edge: 'outline',
+            backgroundColor: '#102030',
+            backgroundOpacity: 1,
+        });
+        expect(look).toMatchObject({
+            fontVariant: 'small-caps',
+            fontWeight: 'bold',
+            originalColor: '#ffff00',
+            textShadow: 'none',
+            textStroke: '1.5px black',
+            background: '#102030',
+        });
+        expect(hexWithOpacity('#102030', 0.25)).toBe('rgba(16, 32, 48, 0.25)');
     });
 });
 
@@ -43,22 +87,40 @@ describe('fontSizePx', () => {
     });
 });
 
-describe('applyDisplaySettings', () => {
+describe('applyBlockStyle', () => {
     it('paints the look and size onto both slots', () => {
-        const elements = createSubtitleElements();
-        applyDisplaySettings(elements, display, DUALSUB_LOOK, 1000);
+        const elements = createBlockElements('standard');
+        applyBlockStyle(
+            elements,
+            display,
+            DEFAULT_LOOK,
+            1000,
+            STANDARD_PLACEMENT
+        );
         expect(elements.original.style.fontSize).toBe('20px');
         expect(elements.translated.style.fontSize).toBe('20px');
         expect(elements.original.style.fontWeight).toBe('normal');
         expect(elements.original.style.color).not.toBe(
             elements.translated.style.color
         );
+        // The translation line takes the display's color in every look.
+        applyBlockStyle(
+            elements,
+            { ...display, translationColor: '#ff00ff' },
+            BOLD_PRESET,
+            1000,
+            STANDARD_PLACEMENT
+        );
+        expect(elements.translated.style.color).toMatch(
+            /#ff00ff|rgb\(255, 0, 255\)/
+        );
 
-        applyDisplaySettings(
+        applyBlockStyle(
             elements,
             display,
             { ...BOLD_PRESET, fontVariant: 'small-caps' },
-            1000
+            1000,
+            STANDARD_PLACEMENT
         );
         expect(elements.original.style.fontWeight).toBe('bold');
         expect(elements.original.style.fontVariant).toBe('small-caps');
@@ -67,18 +129,63 @@ describe('applyDisplaySettings', () => {
     });
 
     it('orders and lays out the slots per the display', () => {
-        const elements = createSubtitleElements();
-        applyDisplaySettings(elements, display, DUALSUB_LOOK, 1000);
+        const elements = createBlockElements('standard');
+        applyBlockStyle(
+            elements,
+            display,
+            DEFAULT_LOOK,
+            1000,
+            STANDARD_PLACEMENT
+        );
         expect(elements.container.children[0]).toBe(elements.original);
         expect(elements.container.style.flexDirection).toBe('column');
 
-        applyDisplaySettings(
+        applyBlockStyle(
             elements,
             { ...display, order: 'translation_top', orientation: 'row' },
-            DUALSUB_LOOK,
-            1000
+            DEFAULT_LOOK,
+            1000,
+            STANDARD_PLACEMENT
         );
         expect(elements.container.children[0]).toBe(elements.translated);
         expect(elements.container.style.flexDirection).toBe('row');
+    });
+
+    it("places the standard block at the viewer's position and a positioned block on its line", () => {
+        const elements = createBlockElements('standard');
+        expect(elements.container.dataset.block).toBe('standard');
+        applyBlockStyle(
+            elements,
+            display,
+            DEFAULT_LOOK,
+            1000,
+            STANDARD_PLACEMENT
+        );
+        expect(parseFloat(elements.container.style.bottom)).toBeCloseTo(
+            17.4,
+            1
+        );
+        expect(elements.container.style.top).toBe('auto');
+        expect(elements.container.style.transform).toBe('translateX(-50%)');
+
+        applyBlockStyle(elements, display, DEFAULT_LOOK, 1000, {
+            kind: 'line',
+            line: 0.1481,
+            lineAlign: 'start',
+        });
+        expect(elements.container.style.top).toBe('14.81%');
+        expect(elements.container.style.bottom).toBe('auto');
+        expect(elements.container.style.transform).toBe(
+            'translateX(-50%) translateY(0)'
+        );
+
+        applyBlockStyle(elements, display, DEFAULT_LOOK, 1000, {
+            kind: 'line',
+            line: 0.7,
+            lineAlign: 'end',
+        });
+        expect(elements.container.style.transform).toBe(
+            'translateX(-50%) translateY(-100%)'
+        );
     });
 });

@@ -82,6 +82,9 @@ function contentSender(
     };
 }
 
+/** Words: hola 0, mi 1, amigo 2. */
+const LINE = { text: 'hola mi amigo', language: 'es', translation: null };
+
 function snapshot(
     overrides: Partial<ContentSelectionSnapshot> = {}
 ): ContentSelectionSnapshot {
@@ -91,6 +94,7 @@ function snapshot(
         renderRevision: 1,
         reason: 'toggle',
         entries: [{ wordIndex: 0, word: 'hola' }],
+        line: LINE,
         ...overrides,
     };
 }
@@ -227,6 +231,7 @@ describe('SidePanelService registration', () => {
                     renderRevision: 1,
                     reason: 'toggle',
                     entries: [{ wordIndex: 0, word: 'hola' }],
+                    line: LINE,
                 },
             },
         });
@@ -442,6 +447,7 @@ describe('SidePanelService registration', () => {
                 selectionRevision: 1,
                 renderRevision: 1,
                 wordIndex: 0,
+                op: 'remove',
             },
         });
         await settled();
@@ -502,7 +508,7 @@ describe('SidePanelService selection ownership', () => {
                 snapshot({
                     entries: [
                         { wordIndex: 0, word: 'hola' },
-                        { wordIndex: 2, word: 'hola' },
+                        { wordIndex: 2, word: 'amigo' },
                     ],
                 })
             )
@@ -511,8 +517,9 @@ describe('SidePanelService selection ownership', () => {
             selectionOwnerGeneration: 1,
             entries: [
                 { wordIndex: 0, word: 'hola' },
-                { wordIndex: 2, word: 'hola' },
+                { wordIndex: 2, word: 'amigo' },
             ],
+            line: LINE,
         });
     });
 
@@ -556,6 +563,16 @@ describe('SidePanelService selection ownership', () => {
                     selectionRevision: 3,
                     renderRevision: 2,
                     entries: [],
+                })
+            )
+        ).toBe(false);
+        expect(
+            service.acceptSelectionSnapshot(
+                contentSender(),
+                snapshot({
+                    selectionRevision: 3,
+                    renderRevision: 2,
+                    line: { ...LINE, translation: 'hello my friend' },
                 })
             )
         ).toBe(false);
@@ -677,7 +694,7 @@ describe('SidePanelService selection ownership', () => {
     });
 });
 
-describe('SidePanelService removal', () => {
+describe('SidePanelService edits', () => {
     const removal = {
         action: 'sidePanelUpdateState',
         data: {
@@ -687,6 +704,7 @@ describe('SidePanelService removal', () => {
             selectionRevision: 1,
             renderRevision: 1,
             wordIndex: 2,
+            op: 'remove',
         },
     };
     const twoWords = snapshot({
@@ -730,6 +748,7 @@ describe('SidePanelService removal', () => {
                     selectionRevision: 1,
                     renderRevision: 1,
                     wordIndex: 2,
+                    op: 'remove',
                 },
             },
             { documentId: 'doc-1', frameId: 0 }
@@ -747,6 +766,51 @@ describe('SidePanelService removal', () => {
                 status: 'applied',
             },
         });
+    });
+
+    it('routes an add and reports applied once the successor carries the word', async () => {
+        const { service, sendToTab } = harness();
+        const panel = await bound(service);
+        service.acceptSelectionSnapshot(contentSender(), snapshot());
+        sendToTab.mockImplementation((contract) => {
+            if (contract.action === 'sidePanelUpdateState') {
+                service.acceptSelectionSnapshot(
+                    contentSender(),
+                    snapshot({
+                        selectionRevision: 2,
+                        reason: 'add',
+                        entries: [
+                            { wordIndex: 0, word: 'hola' },
+                            { wordIndex: 2, word: 'amigo' },
+                        ],
+                    })
+                );
+                return Promise.resolve({
+                    success: true,
+                    requestId: 1,
+                } as never);
+            }
+            return Promise.resolve({ success: true } as never);
+        });
+        panel.emit({ ...removal, data: { ...removal.data, op: 'add' } });
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(6));
+        expect(sendToTab.mock.lastCall?.slice(1)).toMatchObject([
+            12,
+            { data: { wordIndex: 2, op: 'add' } },
+            { documentId: 'doc-1', frameId: 0 },
+        ]);
+        expect(panel.posted[5]!.data.status).toBe('applied');
+    });
+
+    it('rejects adding a word already selected without contacting content', async () => {
+        const { service, sendToTab } = harness();
+        const panel = await bound(service);
+        service.acceptSelectionSnapshot(contentSender(), twoWords);
+        sendToTab.mockClear();
+        panel.emit({ ...removal, data: { ...removal.data, op: 'add' } });
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(5));
+        expect(panel.posted[4]!.data.status).toBe('rejected');
+        expect(sendToTab).not.toHaveBeenCalled();
     });
 
     it('reports rejected when content applied without publishing the successor', async () => {

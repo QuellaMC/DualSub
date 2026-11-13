@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createLogger } from '@/shared/logger';
 import type { AdapterContext, SubtitleLanguages } from '../types';
-import { NetflixAdapter, requestedSubtitleLanguages } from './adapter';
+import { requestedSubtitleLanguages } from '../shared/pageTracks';
+import { NetflixAdapter } from './adapter';
 
 const LANGUAGES: SubtitleLanguages = {
     originalLanguage: 'en',
@@ -9,7 +10,7 @@ const LANGUAGES: SubtitleLanguages = {
     useOfficialTranslations: true,
 };
 
-function setup(initial: SubtitleLanguages = LANGUAGES) {
+function setup(initial: SubtitleLanguages | null = LANGUAGES) {
     let languages = initial;
     const sendControl = vi.fn(() => true);
     const logger = createLogger('test');
@@ -25,7 +26,7 @@ function setup(initial: SubtitleLanguages = LANGUAGES) {
         adapter: new NetflixAdapter(context, null),
         sendControl,
         logger,
-        setLanguages: (next: SubtitleLanguages): void => {
+        setLanguages: (next: SubtitleLanguages | null): void => {
             languages = next;
         },
     };
@@ -54,6 +55,40 @@ describe('NetflixAdapter', () => {
         ).toEqual(['en']);
     });
 
+    it('never asks for a target in the original language', () => {
+        expect(
+            requestedSubtitleLanguages({
+                ...LANGUAGES,
+                originalLanguage: 'zh-Hans',
+            })
+        ).toEqual(['zh-Hans']);
+    });
+
+    it('waits for concrete languages before asking, and ignores answers meanwhile', () => {
+        const { adapter, sendControl, setLanguages } = setup(null);
+        adapter.onBridgeConnected();
+        expect(sendControl).not.toHaveBeenCalledWith(
+            expect.objectContaining({ t: 'request-subtitle-tracks' })
+        );
+        expect(
+            adapter.interpretSubtitleEvent({
+                t: 'subtitle-data',
+                platform: 'netflix',
+                videoId: '70283145',
+                languages: ['en', 'zh-CN'],
+                tracks: [{ language: 'en', url: 'https://x' }],
+            })
+        ).toBeNull();
+
+        setLanguages(LANGUAGES);
+        adapter.onLanguagesChanged();
+        expect(sendControl).toHaveBeenLastCalledWith({
+            t: 'request-subtitle-tracks',
+            videoId: '70283145',
+            languages: ['en', 'zh-CN'],
+        });
+    });
+
     it('asks again with the current languages when they change', () => {
         const { adapter, sendControl, setLanguages } = setup();
         setLanguages({ ...LANGUAGES, useOfficialTranslations: false });
@@ -75,16 +110,16 @@ describe('NetflixAdapter', () => {
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en', 'zh-CN'],
                 tracks,
             })
-        ).toEqual({ kind: 'netflix-tracks', tracks });
+        ).toEqual({ kind: 'page-tracks', source: 'netflix', tracks });
         expect(
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en', 'zh-CN'],
                 tracks: [],
             })
@@ -98,7 +133,7 @@ describe('NetflixAdapter', () => {
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en', 'ja'],
                 tracks: [{ language: 'en', url: 'https://x' }],
             })
@@ -107,7 +142,7 @@ describe('NetflixAdapter', () => {
             adapter.interpretSubtitleEvent({
                 t: 'subtitle-data',
                 platform: 'netflix',
-                movieId: '70283145',
+                videoId: '70283145',
                 languages: ['en'],
                 tracks: [{ language: 'en', url: 'https://x' }],
             })

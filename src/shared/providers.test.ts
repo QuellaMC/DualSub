@@ -1,0 +1,102 @@
+import { describe, expect, it } from 'vitest';
+import {
+    aiKeyReady,
+    KEYLESS_PROVIDERS,
+    missingCredentials,
+    PROVIDER_CREDENTIALS,
+    PROVIDER_IDS,
+} from './providers';
+
+describe('provider credentials', () => {
+    it('names none for the keyless providers and some for every other', () => {
+        for (const id of PROVIDER_IDS) {
+            expect(PROVIDER_CREDENTIALS[id].length === 0, id).toBe(
+                (KEYLESS_PROVIDERS as readonly string[]).includes(id)
+            );
+        }
+    });
+
+    it('counts a Vertex token past its recorded expiry as missing', () => {
+        const vertex = {
+            vertexAccessToken: 'ya29.token',
+            vertexProjectId: 'p',
+            vertexLocation: 'us-central1',
+            vertexModel: 'gemini-2.5-flash',
+        };
+        expect(
+            missingCredentials(
+                'vertex_gemini',
+                { ...vertex, vertexTokenExpiresAt: 1000 },
+                2000
+            )
+        ).toEqual(['vertexAccessToken']);
+        expect(
+            missingCredentials(
+                'vertex_gemini',
+                { ...vertex, vertexTokenExpiresAt: 3000 },
+                2000
+            )
+        ).toEqual([]);
+        expect(
+            missingCredentials(
+                'vertex_gemini',
+                { ...vertex, vertexTokenExpiresAt: 0 },
+                2000
+            )
+        ).toEqual([]);
+    });
+
+    it('lists what a provider still lacks', () => {
+        expect(missingCredentials('deepl', { deeplApiKey: '  ' })).toEqual([
+            'deeplApiKey',
+        ]);
+        expect(
+            missingCredentials('vertex_gemini', {
+                vertexAccessToken: 'token',
+                vertexProjectId: 'project',
+                vertexLocation: 'us-central1',
+                vertexModel: 'gemini',
+            })
+        ).toEqual([]);
+        expect(missingCredentials('google', {})).toEqual([]);
+    });
+
+    it('counts a key entered for another origin as missing', () => {
+        const entered = {
+            openaiCompatibleApiKey: 'sk',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            openaiCompatibleBaseUrl: 'https://api.openai.com/v1',
+        };
+        expect(missingCredentials('openai_compatible', entered)).toEqual([]);
+        expect(
+            missingCredentials('openai_compatible', {
+                ...entered,
+                openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+            })
+        ).toEqual(['openaiCompatibleApiKey']);
+    });
+});
+
+describe('aiKeyReady', () => {
+    const openai = {
+        openaiApiKey: 'sk-test',
+        openaiApiKeyOrigin: 'https://api.openai.com',
+        openaiBaseUrl: 'https://api.openai.com/v1',
+    };
+
+    it('needs a key for the chosen service', () => {
+        expect(aiKeyReady('openai', openai)).toBe(true);
+        expect(aiKeyReady('gemini', openai)).toBe(false);
+        expect(aiKeyReady('gemini', { geminiApiKey: 'AIza-test' })).toBe(true);
+        expect(aiKeyReady('gemini', { geminiApiKey: '   ' })).toBe(false);
+    });
+
+    it('treats an OpenAI key moved to another address as missing', () => {
+        expect(
+            aiKeyReady('openai', {
+                ...openai,
+                openaiBaseUrl: 'https://llm.example.com/v1',
+            })
+        ).toBe(false);
+    });
+});

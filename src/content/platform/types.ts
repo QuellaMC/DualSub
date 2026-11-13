@@ -2,13 +2,13 @@ import type { CapturedEvent, IsolatedToMain } from '../bridge/protocol';
 import type { Logger } from '@/shared/logger';
 import type { SettingsValues } from '@/config/schema';
 import type { SubtitleLook } from '../renderer/looks';
-
-export type PlatformId = 'netflix' | 'disneyplus';
+import type { PlatformId } from '@/shared/platforms';
 
 /** Fixed per-platform behavior flags — data, not overridable escape hatches. */
 export interface PlatformCapabilities {
-    /** video.pause()/play() are safe (Netflix). false → the adapter must go
-     *  through the platform's own UI control (Disney toggle button). */
+    /** video.pause()/play() are safe (Netflix, YouTube). false → the
+     *  adapter must go through the platform's own UI control (Disney toggle
+     *  button). */
     readonly directMediaControl: boolean;
     /** The <video> element is replaced across episodes, so media detection
      *  after navigation must refuse the previous element. */
@@ -19,7 +19,8 @@ export type BridgeEventClassification =
     | { kind: 'subtitle'; videoId: string }
     | { kind: 'platform'; videoId: string | null }
     /** The viewer's subtitle appearance: document-wide, not per video. */
-    | { kind: 'appearance'; appearance: Record<string, unknown> };
+    | { kind: 'appearance'; appearance: Record<string, unknown> }
+    | { kind: 'spoken-language'; videoId: string; language: string | null };
 
 export interface BridgeControlSender {
     readonly connected: boolean;
@@ -30,8 +31,10 @@ export type ConfigReader = {
     get<K extends keyof SettingsValues>(key: K): Promise<SettingsValues[K]>;
 };
 
-/** The session's subtitle language choices. A change reloads subtitles in
- *  place: the current cues stay on screen until the new set arrives. */
+/** The session's subtitle languages, all concrete: an automatic original line is
+ *  already resolved to the language spoken in the video. A change reloads
+ *  subtitles in place: the current cues stay on screen until the new set
+ *  arrives. */
 export interface SubtitleLanguages {
     readonly originalLanguage: string;
     readonly targetLanguage: string;
@@ -41,8 +44,9 @@ export interface SubtitleLanguages {
 export interface AdapterContext {
     readonly signal: AbortSignal;
     readonly videoId: string;
-    /** The session's current languages; read at use, never cached. */
-    readonly languages: () => SubtitleLanguages;
+    /** The session's current languages, read at use and never cached; null
+     *  while the language spoken in the video is still unknown. */
+    readonly languages: () => SubtitleLanguages | null;
     readonly bridge: BridgeControlSender;
     readonly config: ConfigReader;
     readonly logger: Logger;
@@ -61,9 +65,16 @@ export interface PlatformHandoff {
     readonly platformScratch: unknown;
 }
 
+/** The platforms whose page bridge reads subtitle tracks from the player. */
+export type PageTrackSource = Extract<
+    CapturedEvent,
+    { t: 'subtitle-data' }
+>['platform'];
+
 export type SubtitleFetchSpec =
     | {
-          readonly kind: 'netflix-tracks';
+          readonly kind: 'page-tracks';
+          readonly source: PageTrackSource;
           readonly tracks: unknown[];
       }
     | { readonly kind: 'm3u8-master'; readonly url: string };
@@ -88,8 +99,8 @@ export interface PlatformDescriptor {
     /** videoId from an absolute URL, or null when not a player route. */
     parseVideoIdFromUrl(url: string): string | null;
     /** Route a validated bridge event before any session exists. Netflix
-     *  keys by the event's own movieId so next-episode preloads land under
-     *  the upcoming video. Null → drop. */
+     *  keys by the video the event names, so next-episode preloads land
+     *  under the upcoming video. Null → drop. */
     classifyBridgeEvent(event: CapturedEvent): BridgeEventClassification | null;
     /** How the platform draws its own subtitles by default. */
     readonly look: SubtitleLook;

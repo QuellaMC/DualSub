@@ -1,10 +1,10 @@
 {
     "name": "dualsub",
-    "version": "3.0.2",
+    "version": "3.5.0",
     "private": true,
     "packageManager": "npm@11.6.2",
     "engines": {
-        "node": ">=24",
+        "node": ">=24.5",
         "npm": ">=11"
     },
     "type": "module",
@@ -44,32 +44,32 @@
     },
     "homepage": "https://github.com/QuellaMC/DualSub#readme",
     "devDependencies": {
-        "@eslint/js": "^9.39.5",
+        "@eslint-react/eslint-plugin": "^5.28.8",
+        "@eslint/js": "^10.0.1",
         "@fontsource-variable/inter": "^5.3.0",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.3",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
         "@vitejs/plugin-react": "^6.0.3",
-        "@vitest/coverage-v8": "^4.1.11",
+        "@vitest/coverage-v8": "^5.1.0",
         "@wxt-dev/module-react": "^1.2.2",
-        "eslint": "^9.39.5",
+        "eslint": "^10.13.0",
         "eslint-config-prettier": "^10.1.8",
-        "eslint-plugin-react": "^7.37.5",
         "eslint-plugin-react-hooks": "^7.1.1",
-        "globals": "^17.12.0",
-        "happy-dom": "^20.14.5",
-        "prettier": "^3.9.8",
+        "globals": "^17.14.0",
+        "happy-dom": "^21.0.4",
+        "prettier": "^3.9.10",
         "typescript": "^6.0.3",
-        "typescript-eslint": "^8.70.1",
-        "vite": "^8.3.0",
-        "vitest": "^4.1.11",
-        "wxt": "^0.21.4"
+        "typescript-eslint": "^8.72.1",
+        "vite": "^8.3.5",
+        "vitest": "^5.1.0",
+        "wxt": "^0.21.5"
     },
     "dependencies": {
         "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
-        "react": "^19.3.0",
-        "react-dom": "^19.3.0",
-        "zod": "^4.6.5"
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
+        "zod": "^4.6.7"
     }
 }

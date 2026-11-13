@@ -1,41 +1,27 @@
 import { z } from 'zod';
 import { MessageActions } from '../actions';
 import { defineContract } from '../registry';
-import { boundedText } from './primitives';
+import { boundedText, languageTag } from './primitives';
 
-const MAX_CONFIG_CHANGED_KEYS = 32;
-
-export const CONFIG_CHANGED_LIMITS = Object.freeze({
-    maxDepth: 6,
-    maxEntries: 64,
-    maxStringBytes: 4096,
-    maxTotalBytes: 16384,
-});
-
-/** Shared ack for background/popup → content control messages. */
+/** Shared ack for background → content control messages. */
 const controlAck = z.discriminatedUnion('success', [
     z.strictObject({ success: z.literal(true) }),
     z.strictObject({ success: z.literal(false), error: boundedText(512) }),
 ]);
 
-// Values are re-validated by the content side against the settings schema
-// before use; the contract bounds shape and size only.
-export const configChanged = defineContract({
-    action: MessageActions.CONFIG_CHANGED,
+/** Whether DualSub is serving a video player on this tab, and the language
+ *  its original line shows there once that is known. */
+export const playerStatus = defineContract({
+    action: MessageActions.PLAYER_STATUS,
     transport: 'tab',
     senders: ['popup'],
-    budget: CONFIG_CHANGED_LIMITS,
     request: z.strictObject({
-        action: z.literal(MessageActions.CONFIG_CHANGED),
-        changes: z
-            .record(z.string(), z.unknown())
-            .refine(
-                (changes) =>
-                    Object.keys(changes).length >= 1 &&
-                    Object.keys(changes).length <= MAX_CONFIG_CHANGED_KEYS
-            ),
+        action: z.literal(MessageActions.PLAYER_STATUS),
     }),
-    response: controlAck,
+    response: z.strictObject({
+        onPlayer: z.boolean(),
+        originalLanguage: languageTag.nullable(),
+    }),
 });
 
 export const loggingLevelChanged = defineContract({

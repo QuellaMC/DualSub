@@ -1,0 +1,97 @@
+import { createContext, use, useEffect } from 'react';
+import type { SiteSettingKey } from '@/config/schema';
+import { PLATFORM_NAMES, type PlatformId } from '@/shared/platforms';
+import type { Translate } from '../../hooks/useI18n';
+import { useDraft, type Draft, type SaveFeedback } from '../../hooks/useDraft';
+import type { Scope } from '../types';
+import { useFeedback } from './feedback';
+
+interface ScopeContextValue {
+    readonly t: Translate;
+    readonly scope: Scope;
+    /** The keys the scoped site holds its own values for. */
+    readonly ownKeys: ReadonlySet<string>;
+    readonly followShared: (keys: readonly SiteSettingKey[]) => void;
+    /** Lets following the value for all sites cancel `key`'s draft first;
+     *  returns the way to stop. */
+    readonly registerDraft: (
+        key: SiteSettingKey,
+        cancel: () => void
+    ) => () => void;
+}
+
+const ScopeContext = createContext<ScopeContextValue | null>(null);
+
+export const ScopeProvider = ScopeContext.Provider;
+
+/** The site whose scope is open, when it keeps a value of its own for one
+ *  of `keys`; none while editing all sites. */
+export function useSiteOwner(
+    keys: readonly SiteSettingKey[]
+): PlatformId | null {
+    const context = use(ScopeContext);
+    return context &&
+        context.scope !== 'all' &&
+        keys.some((key) => context.ownKeys.has(key))
+        ? context.scope
+        : null;
+}
+
+/** Under a site's scope, marks a control showing that site's own value,
+ *  with the way back to the value for all sites. */
+export function SiteTag({ keys }: { keys: readonly SiteSettingKey[] }) {
+    const context = use(ScopeContext);
+    const owner = useSiteOwner(keys);
+    if (!context || !owner) {
+        return null;
+    }
+    const { t, followShared } = context;
+    return (
+        <div className="site-tag">
+            <span className="tag site">
+                {t('scopeSiteOnly', PLATFORM_NAMES[owner])}
+            </span>
+            <button
+                type="button"
+                className="link-button"
+                onClick={() => followShared(keys)}
+            >
+                {t('scopeUseShared')}
+            </button>
+        </div>
+    );
+}
+
+/** A site setting's draft. Following the value for all sites cancels it, so
+ *  an edit still waiting to be written cannot bring the site's own value
+ *  back. Each value it takes takes back the Undo offered, or still to come,
+ *  since the edit builds on the change that Undo would put back. */
+export function useSiteDraft<T>(
+    key: SiteSettingKey,
+    saved: T,
+    write: (value: T, notice: SaveFeedback) => Promise<boolean>
+): Draft<T> {
+    const draft = useDraft(saved, write, useFeedback().takeBackUndo);
+    const registerDraft = use(ScopeContext)?.registerDraft;
+    const { cancel } = draft;
+    useEffect(() => registerDraft?.(key, cancel), [registerDraft, key, cancel]);
+    return draft;
+}
+
+/** Which sites the page is editing; all of them outside a scope. */
+export function useScope(): Scope {
+    return use(ScopeContext)?.scope ?? 'all';
+}
+
+/** Under a site's scope, marks a setting that every site shares. */
+export function SharedTag() {
+    const context = use(ScopeContext);
+    if (!context || context.scope === 'all') {
+        return null;
+    }
+    return (
+        <div className="site-tag">
+            <span className="tag muted">{context.t('scopeSharedSetting')}</span>
+        </div>
+    );
+}

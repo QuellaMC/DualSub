@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+    CREDENTIAL_SETUP,
     SENSITIVE_KEYS,
     SETTINGS_KEYS,
     configSchema,
@@ -13,8 +14,8 @@ import {
 } from './schema';
 
 describe('registry shape', () => {
-    it('has exactly the 49 v3 keys', () => {
-        expect(SETTINGS_KEYS).toHaveLength(49);
+    it('has exactly the 55 v3 keys', () => {
+        expect(SETTINGS_KEYS).toHaveLength(55);
     });
 
     it('retired v2 keys are gone', () => {
@@ -35,6 +36,12 @@ describe('registry shape', () => {
         }
     });
 
+    it('names what every credential is sent with', () => {
+        expect(Object.keys(CREDENTIAL_SETUP).sort()).toEqual(
+            [...SENSITIVE_KEYS].sort()
+        );
+    });
+
     it('every default validates against its own schema', () => {
         for (const key of SETTINGS_KEYS) {
             expect(validateSetting(key, getDefaultValue(key)), key).toBe(true);
@@ -47,9 +54,10 @@ describe('registry shape', () => {
         expect(sync.length + local.length).toBe(SETTINGS_KEYS.length);
         expect(local.sort()).toEqual(
             [
-                'appearanceAccordionOpen',
-                'debugMode',
+                'showAdvancedSettings',
                 'vertexTokenExpiresAt',
+                'openaiCompatibleApiKeyOrigin',
+                'openaiApiKeyOrigin',
                 ...SENSITIVE_KEYS,
             ].sort()
         );
@@ -173,6 +181,48 @@ describe('AI context types', () => {
     });
 });
 
+describe('custom subtitle look', () => {
+    const look = getDefaultValue('subtitleCustomLook');
+
+    it('accepts the defaults and any hex color case', () => {
+        expect(validateSetting('subtitleCustomLook', look)).toBe(true);
+        expect(
+            validateSetting('subtitleCustomLook', {
+                ...look,
+                originalColor: '#FFCC00',
+                backgroundOpacity: 0,
+            })
+        ).toBe(true);
+    });
+
+    it('rejects unknown choices, shorthand colors, opacity out of range, and extra keys', () => {
+        expect(
+            validateSetting('subtitleCustomLook', {
+                ...look,
+                font: 'wingdings',
+            })
+        ).toBe(false);
+        expect(
+            validateSetting('subtitleCustomLook', { ...look, edge: 'glow' })
+        ).toBe(false);
+        expect(
+            validateSetting('subtitleCustomLook', {
+                ...look,
+                originalColor: '#fff',
+            })
+        ).toBe(false);
+        expect(
+            validateSetting('subtitleCustomLook', {
+                ...look,
+                backgroundOpacity: 1.5,
+            })
+        ).toBe(false);
+        expect(
+            validateSetting('subtitleCustomLook', { ...look, padding: '2px' })
+        ).toBe(false);
+    });
+});
+
 describe('numeric constraints', () => {
     it('enforces integers where required', () => {
         expect(validateSetting('loggingLevel', 2.5)).toBe(false);
@@ -182,7 +232,12 @@ describe('numeric constraints', () => {
     it('enforces bounds and finiteness', () => {
         expect(validateSetting('subtitleFontScale', 0.4)).toBe(false);
         expect(validateSetting('subtitleFontScale', 3.5)).toBe(false);
-        expect(validateSetting('subtitleStyle', 'custom')).toBe(false);
+        expect(validateSetting('subtitleStyle', 'custom')).toBe(true);
+        expect(validateSetting('subtitleStyle', 'fancy')).toBe(false);
+        expect(validateSetting('subtitleTranslationColor', '#FFCC00')).toBe(
+            true
+        );
+        expect(validateSetting('subtitleTranslationColor', 'cyan')).toBe(false);
         expect(validateSetting('subtitleTimeOffset', Number.NaN)).toBe(false);
         expect(validateSetting('subtitleTimeOffset', Infinity)).toBe(false);
         expect(validateSetting('subtitleTimeOffset', -2.75)).toBe(true);
@@ -225,7 +280,7 @@ describe('default resolution', () => {
 
     it.each([
         ['zh-TW', 'zh-TW'],
-        ['zh-HK', 'zh-CN'],
+        ['zh-HK', 'zh-TW'],
         ['zh-cn', 'zh-CN'],
         ['es-MX', 'es'],
         ['ja', 'ja'],
@@ -235,5 +290,24 @@ describe('default resolution', () => {
         vi.stubGlobal('navigator', { language: browserLang });
         expect(detectBrowserLanguage()).toBe(expected);
         expect(getDefaultValue('uiLanguage')).toBe(expected);
+    });
+
+    it.each([
+        [['fr-CA', 'en'], 'fr'],
+        [['zh-Hant-HK'], 'zh-TW'],
+        [['tlh', 'pt-BR'], 'pt'],
+        [['tlh'], 'en'],
+    ])(
+        'targetLanguage default for browser languages %j is %s',
+        (languages, expected) => {
+            vi.stubGlobal('navigator', { language: languages[0], languages });
+            expect(getDefaultValue('targetLanguage')).toBe(expected);
+        }
+    );
+
+    it('starts the original line on the language spoken in the video', () => {
+        expect(getDefaultValue('originalLanguage')).toBe('auto');
+        expect(prepareSettingValue('originalLanguage', 'auto')).toBe('auto');
+        expect(validateSetting('originalLanguage', 'AUTO')).toBe(false);
     });
 });

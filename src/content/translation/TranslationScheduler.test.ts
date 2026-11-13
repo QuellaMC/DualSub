@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import type { TranslateResponse } from '@/messaging/contracts/translate';
+import { AUTO_PLACEMENT } from '@/shared/cuePlacement';
 import type { Cue } from '../subtitles/cueModel';
 import {
     MAX_CUES_PER_PASS,
@@ -29,6 +30,8 @@ function cue(
         original: `text ${id}`,
         translated: null,
         useNativeTarget: false,
+        placement: AUTO_PLACEMENT,
+        pairedWith: [],
         ...overrides,
     };
 }

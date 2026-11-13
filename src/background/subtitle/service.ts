@@ -1,5 +1,8 @@
 import { createLogger } from '@/shared/logger';
-import { normalizeLanguageCode } from '@/shared/languageNormalization';
+import {
+    isSameLanguage,
+    normalizeLanguageCode,
+} from '@/shared/languageNormalization';
 import { configService } from '@/config/service';
 import { fetchAuthorizedSubtitleText } from './fetch';
 import type {
@@ -11,6 +14,7 @@ import {
     processM3U8PlaylistText,
 } from './parsers/m3u8';
 import { isCallerAbortError, processNetflixSubtitles } from './parsers/netflix';
+import { processYouTubeSubtitles } from './parsers/youtube';
 
 export interface SubtitleProcessingResult {
     vttText: string;
@@ -228,16 +232,6 @@ export async function processDisneyPlusSubtitles(
 
     const availableLanguages =
         await parseAvailableSubtitleLanguages(masterPlaylistText);
-    const useOfficialTranslations = await configService.get(
-        'useOfficialTranslations'
-    );
-
-    let targetLanguageInfo =
-        useOfficialTranslations && targetLanguage
-            ? findSubtitleUriForLanguage(availableLanguages, targetLanguage)
-            : null;
-    let useNativeTarget = targetLanguageInfo !== null;
-
     const originalLanguageInfo =
         findSubtitleUriForLanguage(availableLanguages, originalLanguage) ??
         findSubtitleUriForLanguage(availableLanguages, 'en') ??
@@ -249,6 +243,13 @@ export async function processDisneyPlusSubtitles(
             new Error('No suitable subtitle language found.')
         );
     }
+
+    let targetLanguageInfo =
+        snapshot.useOfficialTranslations &&
+        !isSameLanguage(originalLanguageInfo.normalizedCode, targetLanguage)
+            ? findSubtitleUriForLanguage(availableLanguages, targetLanguage)
+            : null;
+    let useNativeTarget = targetLanguageInfo !== null;
 
     const vttText = await fetchLanguageSpecificSubtitles(
         snapshot,
@@ -299,7 +300,12 @@ export async function processSubtitleRequest(
     snapshot: AuthorizedSubtitleRequest,
     options: { signal?: AbortSignal } = {}
 ): Promise<SubtitleProcessingResult> {
-    return snapshot.source === 'netflix'
-        ? processNetflixSubtitles(snapshot, options)
-        : processDisneyPlusSubtitles(snapshot, options);
+    switch (snapshot.source) {
+        case 'netflix':
+            return processNetflixSubtitles(snapshot, options);
+        case 'disneyplus':
+            return processDisneyPlusSubtitles(snapshot, options);
+        case 'youtube':
+            return processYouTubeSubtitles(snapshot, options);
+    }
 }

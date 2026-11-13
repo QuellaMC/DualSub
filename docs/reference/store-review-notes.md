@@ -1,66 +1,47 @@
 # Chrome Web Store review notes
 
-What the reviewer sees in 3.0.0 and why. Keep this in step with
-`wxt.config.ts` and `src/build/manifest.golden.json`.
+What the store reviewer sees in the current build, and why. Keep this file in step with `wxt.config.ts` and `src/build/manifest.golden.json`.
 
 ## Purpose
 
-DualSub shows two subtitle languages at once on Netflix and Disney+. It
-reads the subtitle track the platform already serves, translates it with
-the provider the user chose, and draws both lines over the video. An
-optional side panel explains selected words through the user's own AI
-provider account.
+DualSub shows two subtitle languages at once on Netflix, Disney+, and YouTube (watch pages and Shorts on `www.youtube.com`). It reads the subtitle track the platform already serves, translates it with the service the user chose, and draws both lines over the video. Clicking a subtitle word opens a side panel with its translation and dictionary meaning. With the user's own OpenAI or Gemini key, the panel can also explain the word as it is used in its line.
 
 ## Permissions
 
-- `storage`: user settings; provider credentials stay in `chrome.storage.local`
-  and never sync.
-- `activeTab`: the popup previews slider changes on the tab it was opened for.
-- `sidePanel`: the AI analysis panel. It opens only from the user's click on
-  a subtitle word.
-- Host permissions: the two platforms, their subtitle CDNs
-  (`media.dssott.com`, `dssedge.com`, `nflxvideo.net`), and the translation
-  and AI endpoints the extension can be configured with. Subtitle fetches
-  go through an allowlist with byte caps; the extension is not a proxy.
-- Optional host permissions: a user-supplied OpenAI-compatible endpoint is
-  requested from an explicit click on the options page and can be revoked
-  there.
+- `storage`: user settings. Provider credentials stay in `chrome.storage.local` and never sync. `chrome.storage.session` holds, until the browser session ends, a failing translation service's record (the service, the kind of problem, the covering service, and the time; no subtitle text or credentials), cleared once that service works again or its settings change, and the times of recent AI requests for the per-minute limit.
+- `activeTab`: the popup reads which site the current tab is on, to edit that site's settings and say whether DualSub is serving a video there.
+- `sidePanel`: the word panel, which shows the meaning of the subtitle words the user clicked and an AI explanation when asked. It opens only from the user's click on a subtitle word.
+- Host permissions: the three platforms, YouTube as `www.youtube.com` only, their subtitle hosts (`media.dssott.com`, `dssedge.com`, `nflxvideo.net`; YouTube serves captions from `www.youtube.com` itself), and the translation and AI endpoints the extension can be set up with. Subtitle fetches go through an allowlist with byte caps; the extension is not a proxy. Wiktionary's REST API (`en.wiktionary.org`) needs no host permission: it answers any origin (`Access-Control-Allow-Origin: *`), and the request carries no credentials.
+- Optional host permissions: a user-supplied OpenAI-compatible endpoint, requested from an explicit click in the settings page and revocable there.
 
 ## Content scripts
 
-- One isolated-world script per platform draws the overlay and manages
-  sessions.
-- One main-world script per platform, declared statically in the manifest,
-  reads the subtitle track list and the profile's subtitle appearance
-  settings from the platform's own player object and passes them to the
-  isolated world over a `MessageChannel`. It injects no remote code and
-  exposes nothing to the page.
+- One isolated-world script per platform draws the overlay and manages sessions.
+- One main-world script per platform, declared statically in the manifest, reads the subtitle track list, the language of the audio playing, and, on Netflix and Disney+, the profile's subtitle appearance settings from the platform's own player object. It passes them to the isolated world over a `MessageChannel`, injects no remote code, and exposes nothing to the page.
 - No `web_accessible_resources`.
 
 ## Data flows
 
-- Subtitle text goes to the translation provider the user selected. Google
-  and Microsoft need no account; DeepL, OpenAI-compatible, and Vertex AI use
-  the user's own credentials.
-- With AI Context enabled, the words the user clicked (and the target
-  language) go to the user's configured OpenAI or Gemini endpoint. The
-  feature is off by default and re-checks its stored enablement before
-  every request.
-- No analytics, no remote configuration, no data sent to the developer.
+- On YouTube, the caption track of the video in the tab is downloaded from `https://www.youtube.com/api/timedtext` with the address YouTube's own player holds, signed where YouTube marks the address as needing the player's token (`exp=xpe` or `exp=xpv`) and as listed otherwise, without cookies or redirects. The background accepts only that address, for the video the tab's address names.
+- Subtitle text goes to the translation service the user selected. Google and Microsoft need no account; DeepL, OpenAI-compatible services, and Vertex AI use the user's own credentials. When the selected service fails, Microsoft and then Google translate instead, unless the user turned that fallback off.
+- An API key for an address the user sets (OpenAI-compatible translation, OpenAI explanations) is stored with the origin it was entered for and sent only there. An address changed on another synced device, or by loading a settings backup, leaves the key unused until the user enters one for the new address.
+- While "Look up words when I click them" is on (the default), the words the user clicks go to the selected translation service, and to Google's dictionary (`translate.googleapis.com`, `dt=bd`) whichever service is selected. When Google has no entry or does not answer, the word goes to Wiktionary, and the English definitions it returns go to the translation service. Nothing is sent before a click.
+- With an OpenAI or Gemini key saved, "Explain with AI" in the panel sends the clicked words, the subtitle line they appear in, the chosen kinds of explanation, and the two languages to that endpoint. A saved key is what enables it: before every request, and again before an answer is shown, the background re-reads the stored key with a strict read, and sends or shows nothing when the read fails or the key is missing.
+- No analytics, no remote configuration, and no data sent to the developer.
 
 ## Changes since 2.5.0
 
-- The extension was rebuilt in TypeScript; permissions are unchanged except
-  for the removal of `api.cognitive.microsofttranslator.com`.
-- `web_accessible_resources` were removed entirely.
-- The in-page analysis modal was removed; the side panel is the only AI UI.
+- The extension was rebuilt in TypeScript. Permissions are unchanged except that `api.cognitive.microsofttranslator.com` was removed.
+- `web_accessible_resources` were removed.
+- The in-page analysis modal was removed; the side panel is the only AI interface.
+- Subtitle words are clickable by default and the side panel shows their dictionary meaning, which adds Google's dictionary and Wiktionary as data recipients (declared above). AI explanations have no switch of their own: a saved key enables them.
+- YouTube support adds the host permission `https://www.youtube.com/*` and two content scripts on that host, an isolated-world one and a main-world one.
+- On install, and only then, the extension opens its own welcome page (`welcome.html`, packaged with the extension) in a new tab. It shows the languages DualSub picked and lets the user change the translation language; it loads nothing remote.
 
 ## How to test
 
-1. Sign in to Netflix or Disney+ and open any title.
-2. Click the DualSub icon, enable dual subtitles, pick a target language.
-3. Play: two subtitle lines appear. Toggle "use official translations" to
-   switch between the platform's own translation track and the provider.
-4. Optional: in Options → AI Context, enable the feature with an API key,
-   then click a subtitle word; the side panel opens with the word selected
-   and "Analyze" returns a structured explanation.
+1. Install. The welcome page opens with the browser's language as the translation language, or English when DualSub offers none of the browser's languages. Nothing else needs setting up.
+2. Sign in to Netflix or Disney+ and open any title, or open a YouTube video with captions, such as a TED talk.
+3. Play it. Two subtitle lines appear, or one for a video already in the translation language. In the settings page's Languages section, toggle "Use the show's own translation" to switch between the platform's own translation track and the translation service.
+4. Click a subtitle word. The side panel opens with the word selected, its translation, and a dictionary entry.
+5. Optional: press "Explain with AI", paste an OpenAI or Gemini API key in the steps it shows, and press "Check and explain". An explanation of the word as used in its line appears.

@@ -1,8 +1,17 @@
 import { createLogger } from '@/shared/logger';
-import { configService } from '@/config/service';
-import type { SettingsValues } from '@/config/schema';
+import type { SiteConfig } from '@/config/service';
+import { getDefaultValue, type SettingsValues } from '@/config/schema';
+import {
+    isSameLanguage,
+    normalizeLanguageCode,
+} from '@/shared/languageNormalization';
+import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
 import { sendMessage, sendWithRetry } from '@/messaging/client';
-import { fetchVtt, type FetchVttRequest } from '@/messaging/contracts/fetchVtt';
+import {
+    fetchVtt,
+    type FetchVttRequest,
+    type FetchVttResponse,
+} from '@/messaging/contracts/fetchVtt';
 import {
     sidePanelSelectionSync,
     sidePanelWordSelected,
@@ -28,7 +37,7 @@ import { Renderer } from '../renderer/Renderer';
 import { RendererState } from '../renderer/RendererState';
 import type { UiRoot } from '../renderer/domLayer';
 import type { SubtitleLook } from '../renderer/looks';
-import type { DisplaySettings } from '../renderer/styling';
+import { toDisplaySettings } from '../renderer/styling';
 import type { WordIntent } from '../renderer/wordLayer';
 import {
     allocateLifecycleGeneration,
@@ -49,15 +58,23 @@ export type SessionEndReason =
  *  evidently has nothing coming. */
 const SUBTITLE_LOADING_TIMEOUT_MS = 20_000;
 
-export const CONTENT_SETTINGS_KEYS = [
-    'subtitlesEnabled',
+const DISPLAY_SETTINGS_KEYS = [
     'subtitleStyle',
+    'subtitleCustomLook',
+    'subtitleTranslationColor',
     'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
     'subtitleLayoutOrientation',
     'subtitleLayoutOrder',
     'subtitleTimeOffset',
+] as const;
+
+export const CONTENT_SETTINGS_KEYS = [
+    'subtitlesEnabled',
+    'hideOfficialSubtitles',
+    'pairOfficialTranslations',
+    ...DISPLAY_SETTINGS_KEYS,
 ] as const;
 
 export type ContentSettings = Pick<
@@ -71,9 +88,14 @@ export const FETCH_SETTINGS_KEYS = [
     'useOfficialTranslations',
 ] as const;
 
+export type LanguageSettings = Pick<
+    SettingsValues,
+    (typeof FETCH_SETTINGS_KEYS)[number]
+>;
+
 /** Clickable words and what a click asks the side panel to do. */
 export const INTERACTION_SETTINGS_KEYS = [
-    'aiContextEnabled',
+    'wordLookupEnabled',
     'sidePanelAutoOpen',
     'sidePanelAutoPauseVideo',
 ] as const;
@@ -83,28 +105,60 @@ export type InteractionSettings = Pick<
     (typeof INTERACTION_SETTINGS_KEYS)[number]
 >;
 
-export function toSubtitleLanguages(
-    settings: Partial<
-        Pick<SettingsValues, (typeof FETCH_SETTINGS_KEYS)[number]>
-    >
-): SubtitleLanguages {
+export function toLanguageSettings(
+    values: Partial<LanguageSettings>
+): LanguageSettings {
     return {
-        originalLanguage: settings.originalLanguage ?? 'en',
-        targetLanguage: settings.targetLanguage ?? 'en',
-        useOfficialTranslations: settings.useOfficialTranslations ?? true,
+        originalLanguage:
+            values.originalLanguage ?? getDefaultValue('originalLanguage'),
+        targetLanguage:
+            values.targetLanguage ?? getDefaultValue('targetLanguage'),
+        useOfficialTranslations:
+            values.useOfficialTranslations ??
+            getDefaultValue('useOfficialTranslations'),
     };
 }
 
-export function toDisplaySettings(settings: ContentSettings): DisplaySettings {
+/**
+ * The concrete languages for the session. An automatic original line takes the
+ * language the player says is spoken, or English when the player could not
+ * tell (`null`); it is null itself while the player has not reported yet
+ * (`undefined`).
+ */
+export function resolveSubtitleLanguages(
+    settings: LanguageSettings,
+    spokenLanguage: string | null | undefined
+): SubtitleLanguages | null {
+    const { originalLanguage, targetLanguage, useOfficialTranslations } =
+        settings;
+    if (originalLanguage !== AUTO_LANGUAGE) {
+        return { originalLanguage, targetLanguage, useOfficialTranslations };
+    }
+    if (spokenLanguage === undefined) {
+        return null;
+    }
     return {
-        style: settings.subtitleStyle,
-        fontScale: settings.subtitleFontScale,
-        gap: settings.subtitleGap,
-        verticalPosition: settings.subtitleVerticalPosition,
-        orientation: settings.subtitleLayoutOrientation,
-        order: settings.subtitleLayoutOrder,
-        timeOffset: settings.subtitleTimeOffset,
+        originalLanguage:
+            spokenLanguage === null
+                ? 'en'
+                : normalizeLanguageCode(spokenLanguage),
+        targetLanguage,
+        useOfficialTranslations,
     };
+}
+
+function sameSubtitleLanguages(
+    left: SubtitleLanguages | null,
+    right: SubtitleLanguages | null
+): boolean {
+    return (
+        left === right ||
+        (left !== null &&
+            right !== null &&
+            left.originalLanguage === right.originalLanguage &&
+            left.targetLanguage === right.targetLanguage &&
+            left.useOfficialTranslations === right.useOfficialTranslations)
+    );
 }
 
 function isContextInvalidated(error: unknown): boolean {
@@ -115,6 +169,8 @@ export interface PlayerSessionDeps {
     readonly id: number;
     readonly videoId: string;
     readonly descriptor: PlatformDescriptor;
+    /** The settings as this platform's site sees them. */
+    readonly config: SiteConfig;
     readonly bridge: BridgeControlSender;
     readonly cache: SubtitleEventCache;
     readonly uiRoot: UiRoot;
@@ -122,7 +178,7 @@ export interface PlayerSessionDeps {
     /** The viewer's platform subtitle appearance, when already reported. */
     readonly platformLook: SubtitleLook | null;
     readonly settings: ContentSettings;
-    readonly languages: SubtitleLanguages;
+    readonly languageSettings: LanguageSettings;
     readonly interaction: InteractionSettings;
     readonly onNavigationMismatch: () => void;
     readonly onContextInvalidated: () => void;
@@ -131,8 +187,9 @@ export interface PlayerSessionDeps {
 /**
  * Everything that lives exactly as long as one video is on the player
  * route. One AbortSignal is the lifetime: listeners, timers, the frame
- * loop, in-flight requests, and config subscriptions all die with it, so a
- * stale continuation cannot touch a successor session.
+ * loop, and in-flight requests all die with it, so a stale continuation
+ * cannot touch a successor session. Settings changes come in through
+ * `applySettings` from whoever read its settings.
  */
 export class PlayerSession {
     readonly id: number;
@@ -148,15 +205,27 @@ export class PlayerSession {
     /** Which words of the current line are selected; the panel mirrors it. */
     readonly selection: SelectionAuthority;
     private mediaScope: AbortController | null = null;
+    /** Shows or hides the site's own subtitles in the bound media. */
+    private hideNativeSubs: ((hidden: boolean) => void) | null = null;
     private settings: ContentSettings;
-    private languagesValue: SubtitleLanguages;
+    private languageSettings: LanguageSettings;
+    /** What the player reported as spoken: undefined until it reports,
+     *  null when it could not tell. */
+    private spokenLanguage: string | null | undefined;
+    private languagesValue: SubtitleLanguages | null;
     private interaction: InteractionSettings;
     private latestSubtitleEvent: CapturedEvent | null = null;
     private loadingToken = 0;
-    private inFlightKey: string | null = null;
     private completedKey: string | null = null;
-    /** Latest-wins: a slower earlier request must not overwrite newer cues. */
-    private requestSequence = 0;
+    /** The subtitles on screen, as they arrived and as they were built. */
+    private shown: {
+        readonly response: Extract<FetchVttResponse, { success: true }>;
+        readonly cueSet: CueSet;
+    } | null = null;
+    /** The request whose answer the session waits for. A newer request or a
+     *  languages change replaces it, so a slower earlier answer never
+     *  overwrites newer cues. */
+    private pendingRequest: { readonly key: string } | null = null;
     /** Translate-mode loop for the current cue set; one scope per cue set. */
     private translation: {
         readonly scheduler: TranslationScheduler;
@@ -168,7 +237,11 @@ export class PlayerSession {
         this.videoId = deps.videoId;
         this.signal = this.controller.signal;
         this.settings = deps.settings;
-        this.languagesValue = deps.languages;
+        this.languageSettings = deps.languageSettings;
+        this.languagesValue = resolveSubtitleLanguages(
+            deps.languageSettings,
+            undefined
+        );
         this.interaction = deps.interaction;
         this.logger = createLogger(
             `PlayerSession:${deps.descriptor.id}:${deps.id}`
@@ -187,7 +260,7 @@ export class PlayerSession {
                 videoId: deps.videoId,
                 languages: () => this.languagesValue,
                 bridge: deps.bridge,
-                config: configService,
+                config: deps.config,
                 logger: this.logger,
             },
             deps.handoff
@@ -206,10 +279,9 @@ export class PlayerSession {
             logger: this.logger,
             onNavigationMismatch: deps.onNavigationMismatch,
             onSeek: () => this.translation?.scheduler.kick(),
-            onOriginalPainted: (revision) =>
-                this.selection.onSubtitleChange(revision),
+            onLinePainted: (revision, line) =>
+                this.selection.onLinePainted(revision, line),
             onWordIntent: (intent) => this.onWordIntent(intent),
-            wordLanguage: () => this.languagesValue.originalLanguage,
         });
         this.mediaBinding = new MediaBinding({
             adapter: this.adapter,
@@ -221,16 +293,18 @@ export class PlayerSession {
                 this.mediaScope = childScope(this.signal);
                 this.adapter.onClockInvalidated();
                 this.renderer.attachMedia(media);
-                installNativeSubHider(this.adapter.nativeSubRecipe, media, {
-                    signal: this.mediaScope.signal,
-                    config: configService,
-                    logger: this.logger,
-                });
+                this.hideNativeSubs = installNativeSubHider(
+                    this.adapter.nativeSubRecipe,
+                    media,
+                    { signal: this.mediaScope.signal, logger: this.logger },
+                    this.nativeSubsHidden()
+                );
                 this.translation?.scheduler.kick();
             },
             onLost: () => {
                 this.mediaScope?.abort();
                 this.mediaScope = null;
+                this.hideNativeSubs = null;
                 this.renderer.detachMedia();
             },
             signal: this.signal,
@@ -238,17 +312,21 @@ export class PlayerSession {
         });
     }
 
-    get languages(): SubtitleLanguages {
-        return this.languagesValue;
+    /** Its video is bound, so its subtitles can show there. */
+    get hasMedia(): boolean {
+        return this.mediaBinding.current !== null;
+    }
+
+    /** The language of the original line on screen, which is the platform's
+     *  fallback track when it lacks the one asked for; null until the
+     *  subtitles for the current languages arrive. */
+    get originalLanguage(): string | null {
+        return this.rendererState.loading ? null : this.rendererState.language;
     }
 
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
-        this.renderer.setInteractive(this.interaction.aiContextEnabled);
-        const unsubscribe = configService.onChanged((changes) =>
-            this.applySettings(changes)
-        );
-        this.signal.addEventListener('abort', unsubscribe, { once: true });
+        this.renderer.setInteractive(this.interaction.wordLookupEnabled);
         this.setLoading(true);
 
         // Replays retained events synchronously — anything the page bridge
@@ -260,7 +338,7 @@ export class PlayerSession {
         );
         this.mediaBinding.start();
         if (this.deps.bridge.connected) {
-            this.adapter.onBridgeConnected?.();
+            this.connectPageWorld();
         }
         this.state = 'active';
         this.logger.info('Session started', { videoId: this.videoId });
@@ -268,8 +346,18 @@ export class PlayerSession {
 
     onBridgeConnected(): void {
         if (this.state === 'active') {
-            this.adapter.onBridgeConnected?.();
+            this.connectPageWorld();
         }
+    }
+
+    /** Every platform reports the spoken language the same way; the rest
+     *  of the page-world setup is the adapter's. */
+    private connectPageWorld(): void {
+        this.deps.bridge.sendControl({
+            t: 'watch-spoken-language',
+            videoId: this.videoId,
+        });
+        this.adapter.onBridgeConnected?.();
     }
 
     onSubtitleEvent(event: CapturedEvent): void {
@@ -277,7 +365,7 @@ export class PlayerSession {
             return;
         }
         this.latestSubtitleEvent = event;
-        if (!this.settings.subtitlesEnabled) {
+        if (!this.settings.subtitlesEnabled || !this.languagesValue) {
             return;
         }
         const source = this.adapter.interpretSubtitleEvent(event);
@@ -291,19 +379,32 @@ export class PlayerSession {
         runScoped(this.requestSubtitles(source));
     }
 
-    /** Reload subtitles for new languages; the current cues stay on screen
-     *  behind a placeholder until the new set arrives. */
-    updateLanguages(next: SubtitleLanguages): void {
-        const current = this.languagesValue;
-        if (
-            next.originalLanguage === current.originalLanguage &&
-            next.targetLanguage === current.targetLanguage &&
-            next.useOfficialTranslations === current.useOfficialTranslations
-        ) {
+    updateLanguageSettings(next: LanguageSettings): void {
+        this.languageSettings = next;
+        this.applyLanguages();
+    }
+
+    /** The player reported the language of the audio playing. */
+    updateSpokenLanguage(language: string | null): void {
+        if (language !== this.spokenLanguage) {
+            this.spokenLanguage = language;
+            this.applyLanguages();
+        }
+    }
+
+    /** Reload subtitles when the concrete languages change; the current cues
+     *  stay on screen behind a placeholder until the new set arrives. */
+    private applyLanguages(): void {
+        const next = resolveSubtitleLanguages(
+            this.languageSettings,
+            this.spokenLanguage
+        );
+        if (sameSubtitleLanguages(next, this.languagesValue)) {
             return;
         }
         this.languagesValue = next;
         this.completedKey = null;
+        this.pendingRequest = null;
         this.setLoading(true);
         this.adapter.onLanguagesChanged?.();
         if (this.latestSubtitleEvent) {
@@ -341,19 +442,45 @@ export class PlayerSession {
         }
     }
 
-    /** Display settings from storage or from a popup live preview. */
+    /** The site's own subtitles hide only while DualSub shows its lines. */
+    private nativeSubsHidden(): boolean {
+        return (
+            this.settings.hideOfficialSubtitles &&
+            this.settings.subtitlesEnabled
+        );
+    }
+
+    /** Follow a change to the settings as the site sees them. */
     applySettings(changes: Partial<SettingsValues>): void {
-        let displayChanged = false;
+        if (FETCH_SETTINGS_KEYS.some((key) => changes[key] !== undefined)) {
+            this.updateLanguageSettings(
+                toLanguageSettings({
+                    ...this.languageSettings,
+                    ...changes,
+                })
+            );
+        }
         for (const key of CONTENT_SETTINGS_KEYS) {
             if (changes[key] !== undefined) {
                 (this.settings as Record<string, unknown>)[key] = changes[key];
-                if (key !== 'subtitlesEnabled') {
-                    displayChanged = true;
-                }
             }
         }
-        if (displayChanged) {
+        if (DISPLAY_SETTINGS_KEYS.some((key) => changes[key] !== undefined)) {
             this.renderer.setDisplay(toDisplaySettings(this.settings));
+        }
+        // The official lines pair again from the answer already here, so
+        // the two ways can be compared on the same scene.
+        if (
+            changes.pairOfficialTranslations !== undefined &&
+            this.shown?.cueSet.useNativeTarget
+        ) {
+            this.loadSubtitles(this.shown.response);
+        }
+        if (
+            changes.subtitlesEnabled !== undefined ||
+            changes.hideOfficialSubtitles !== undefined
+        ) {
+            this.hideNativeSubs?.(this.nativeSubsHidden());
         }
         if (changes.subtitlesEnabled !== undefined) {
             this.renderer.setVisible(changes.subtitlesEnabled);
@@ -372,13 +499,13 @@ export class PlayerSession {
                     changes[key];
             }
         }
-        if (changes.aiContextEnabled !== undefined) {
+        if (changes.wordLookupEnabled !== undefined) {
             // The panel learns the selection is gone before the words stop
             // being clickable.
-            if (!changes.aiContextEnabled) {
+            if (!changes.wordLookupEnabled) {
                 this.selection.clear();
             }
-            this.renderer.setInteractive(changes.aiContextEnabled);
+            this.renderer.setInteractive(changes.wordLookupEnabled);
         }
     }
 
@@ -462,35 +589,34 @@ export class PlayerSession {
     }
 
     private async requestSubtitles(spec: SubtitleFetchSpec): Promise<void> {
-        const { originalLanguage, targetLanguage, useOfficialTranslations } =
-            this.languagesValue;
-        const key = JSON.stringify([spec, this.languagesValue]);
-        if (key === this.completedKey || key === this.inFlightKey) {
+        const languages = this.languagesValue;
+        if (!languages) {
             return;
         }
-        this.inFlightKey = key;
-        this.requestSequence += 1;
-        const sequence = this.requestSequence;
+        const { originalLanguage, targetLanguage, useOfficialTranslations } =
+            languages;
+        const key = JSON.stringify([spec, languages]);
+        if (key === this.completedKey || key === this.pendingRequest?.key) {
+            return;
+        }
+        const pending = { key };
+        this.pendingRequest = pending;
         try {
+            const common = {
+                action: 'fetchVTT',
+                videoId: this.videoId,
+                targetLanguage,
+                originalLanguage,
+                useOfficialTranslations,
+            } as const;
             const request: FetchVttRequest =
-                spec.kind === 'netflix-tracks'
+                spec.kind === 'page-tracks'
                     ? {
-                          action: 'fetchVTT',
-                          source: 'netflix',
-                          videoId: this.videoId,
-                          targetLanguage,
-                          originalLanguage,
-                          useOfficialTranslations,
+                          ...common,
+                          source: spec.source,
                           data: { tracks: spec.tracks },
                       }
-                    : {
-                          action: 'fetchVTT',
-                          source: 'disneyplus',
-                          videoId: this.videoId,
-                          url: spec.url,
-                          targetLanguage,
-                          originalLanguage,
-                      };
+                    : { ...common, source: 'disneyplus', url: spec.url };
 
             const response = await sendWithRetry(fetchVtt, request, {
                 retries: 3,
@@ -498,14 +624,13 @@ export class PlayerSession {
                 canDispatch: () => !this.signal.aborted,
             });
             ensureLive(this.signal);
-            if (sequence !== this.requestSequence) {
+            if (pending !== this.pendingRequest) {
                 return;
             }
 
             if (response.success) {
                 this.completedKey = key;
-                const cueSet = buildCueSet(response);
-                this.rendererState.loadCues(cueSet);
+                const cueSet = this.loadSubtitles(response);
                 this.setLoading(false);
                 this.startTranslation(cueSet);
                 this.logger.info('Subtitles loaded', {
@@ -527,21 +652,38 @@ export class PlayerSession {
                 this.deps.onContextInvalidated();
                 return;
             }
-            if (sequence === this.requestSequence) {
+            if (pending === this.pendingRequest) {
                 this.setLoading(false);
             }
             this.logger.error('Subtitle request errored', error);
         } finally {
-            if (this.inFlightKey === key) {
-                this.inFlightKey = null;
+            if (this.pendingRequest === pending) {
+                this.pendingRequest = null;
             }
         }
+    }
+
+    /** Build `response`'s cues as the settings say and put them on screen. */
+    private loadSubtitles(
+        response: Extract<FetchVttResponse, { success: true }>
+    ): CueSet {
+        const cueSet = buildCueSet(
+            response,
+            this.settings.pairOfficialTranslations
+        );
+        this.shown = { response, cueSet };
+        this.renderer.loadCues(cueSet);
+        return cueSet;
     }
 
     private startTranslation(cueSet: CueSet): void {
         this.translation?.scope.abort();
         this.translation = null;
-        if (cueSet.useNativeTarget) {
+        // A video already in the target language keeps its one line.
+        if (
+            cueSet.useNativeTarget ||
+            isSameLanguage(cueSet.sourceLanguage, cueSet.targetLanguage)
+        ) {
             return;
         }
         const scope = childScope(this.signal);
@@ -589,6 +731,7 @@ export class PlayerSession {
         this.state = 'ending';
         this.logger.info('Session ending', { reason });
         // Page-world goodbyes ride the still-live bridge before abort.
+        this.deps.bridge.sendControl({ t: 'unwatch-spoken-language' });
         this.adapter.beforeAbort();
         this.controller.abort();
         this.renderer.destroy();

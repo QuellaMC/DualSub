@@ -75,3 +75,51 @@ export function waitFor<T>(
         attempt();
     });
 }
+
+/**
+ * Polls `read` until stopped and reports every new answer: a value, or null
+ * when the source says it cannot tell. `read` returns undefined while
+ * nothing is readable; once that has lasted `unknownAfterMs`, from the start
+ * or since the last answer, the watch reports null, so the listener stops
+ * waiting on or trusting a stale value, and a shorter gap reports nothing.
+ * Starting again replaces the previous watch.
+ */
+export class ValueWatch {
+    private timer: number | null = null;
+
+    start(
+        read: () => string | null | undefined,
+        report: (value: string | null) => void,
+        intervalMs: number,
+        unknownAfterMs: number
+    ): void {
+        this.stop();
+        let silentSince = Date.now();
+        let reported: string | null | undefined;
+        const poll = (): void => {
+            const value = read();
+            if (value !== undefined) {
+                silentSince = Date.now();
+                if (value !== reported) {
+                    reported = value;
+                    report(value);
+                }
+            } else if (
+                reported !== null &&
+                Date.now() - silentSince >= unknownAfterMs
+            ) {
+                reported = null;
+                report(null);
+            }
+            this.timer = nativeSetTimeout(poll, intervalMs);
+        };
+        poll();
+    }
+
+    stop(): void {
+        if (this.timer !== null) {
+            nativeClearTimeout(this.timer);
+            this.timer = null;
+        }
+    }
+}

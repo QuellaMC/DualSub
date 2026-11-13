@@ -1,49 +1,44 @@
-import { createContextPrompt, SYSTEM_PROMPT } from './prompt';
+import type { AiAnswer } from '@/messaging/contracts/analyzeContext';
+import {
+    createAnswerPrompt,
+    SYSTEM_PROMPT,
+    type AnswerPromptInput,
+} from './prompt';
 import type { ContextProvider, ProviderSettings } from './provider';
 import { ContextProviderError } from './providerError';
-import {
-    analysisJsonSchema,
-    parseAnalysis,
-    type Analysis,
-    type AnalysisType,
-} from './schemas';
+import { answerJsonSchema, parseAnswer } from './schemas';
 
-export interface AnalysisInput {
-    readonly text: string;
-    readonly type: AnalysisType;
-    readonly targetLanguage: string;
-}
-
-const MAX_ERROR_DETAIL_BYTES = 2048;
+const MAX_ERROR_BODY_BYTES = 2048;
 const MAX_ERROR_DETAIL_CHARS = 160;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object';
 }
 
-/** The upstream error's own words, when its body offers any: OpenAI-style
- *  `{error:{message}}`, plain `{detail}`/`{message}`/`{title}`, or text. */
-async function readErrorDetail(response: Response): Promise<string> {
-    let body: string;
+/** The upstream error's body: decoded when it is JSON, otherwise its text. */
+async function readErrorBody(response: Response): Promise<unknown> {
+    let text: string;
     try {
-        body = (await response.text()).slice(0, MAX_ERROR_DETAIL_BYTES);
+        text = (await response.text()).slice(0, MAX_ERROR_BODY_BYTES);
     } catch {
         return '';
     }
-    let detail: unknown = body;
     try {
-        const parsed: unknown = JSON.parse(body);
-        if (isRecord(parsed)) {
-            const error = parsed['error'];
-            detail = isRecord(error)
-                ? error['message']
-                : (error ??
-                  parsed['detail'] ??
-                  parsed['message'] ??
-                  parsed['title']);
-        }
+        return JSON.parse(text) as unknown;
     } catch {
-        // Not JSON; the text itself is the detail.
+        return text;
+    }
+}
+
+/** The upstream error's own words, when its body offers any: OpenAI-style
+ *  `{error:{message}}`, plain `{detail}`/`{message}`/`{title}`, or text. */
+function errorDetail(body: unknown): string {
+    let detail = body;
+    if (isRecord(body)) {
+        const error = body['error'];
+        detail = isRecord(error)
+            ? error['message']
+            : (error ?? body['detail'] ?? body['message'] ?? body['title']);
     }
     if (typeof detail !== 'string') {
         return '';
@@ -71,20 +66,13 @@ function isTimeout(error: unknown): boolean {
 export async function runProviderAnalysis(
     provider: ContextProvider,
     settings: ProviderSettings,
-    input: AnalysisInput,
+    input: AnswerPromptInput,
     options: { timeoutMs: number; fetch: typeof fetch }
-): Promise<Analysis> {
+): Promise<AiAnswer> {
     const request = provider.buildRequest(
         settings,
-        {
-            system: SYSTEM_PROMPT,
-            user: createContextPrompt(
-                input.text,
-                input.type,
-                input.targetLanguage
-            ),
-        },
-        analysisJsonSchema(input.type)
+        { system: SYSTEM_PROMPT, user: createAnswerPrompt(input) },
+        answerJsonSchema(input.kinds)
     );
 
     // Called unbound on purpose: the global fetch throws "Illegal invocation"
@@ -109,9 +97,14 @@ export async function runProviderAnalysis(
         );
     }
     if (!response.ok) {
-        const detail = await readErrorDetail(response);
+        const body = await readErrorBody(response);
+        const detail = errorDetail(body);
+        const refused =
+            response.status === 401 ||
+            response.status === 403 ||
+            provider.refusesKey?.(body) === true;
         throw new ContextProviderError(
-            'UPSTREAM_ERROR',
+            refused ? 'KEY_REFUSED' : 'UPSTREAM_ERROR',
             `API request failed: ${response.status}${detail ? ` (${detail})` : ''}`,
             { status: response.status }
         );
@@ -141,12 +134,12 @@ export async function runProviderAnalysis(
             { cause: error }
         );
     }
-    const analysis = parseAnalysis(input.type, parsed);
-    if (!analysis) {
+    const answer = parseAnswer(input.kinds, parsed);
+    if (!answer) {
         throw new ContextProviderError(
             'MALFORMED_RESPONSE',
             'Schema validation failed'
         );
     }
-    return analysis;
+    return answer;
 }

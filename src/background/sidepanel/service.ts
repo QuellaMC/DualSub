@@ -9,10 +9,11 @@ import {
 import { framePort, type FramedPort, type PortLike } from '@/messaging/port';
 import { sidePanelPauseVideo } from '@/messaging/contracts/control';
 import {
-    selectionRemovalCommand,
+    selectionEditCommand,
     selectionRepublishRequest,
     type ContentSelectionSnapshot,
     type SelectionEntry,
+    type SelectionLine,
     type SelectionRepublishResult,
     type SelectionState,
 } from '@/messaging/contracts/selection';
@@ -25,12 +26,12 @@ import {
 } from '@/messaging/contracts/sidepanelPort';
 import type { ClassifiedContentSender } from '@/messaging/sender';
 
-type RemovalRequest = Extract<
+type EditRequest = Extract<
     PanelToBackgroundFrame,
     { action: typeof MessageActions.SIDEPANEL_UPDATE_STATE }
 >['data'];
 
-type RemovalStatus = 'applied' | 'rejected';
+type EditStatus = 'applied' | 'rejected';
 
 /** One panel port for its whole lifetime; revoked ports never come back. */
 interface Connection {
@@ -92,11 +93,12 @@ interface SelectionOwner {
     readonly renderRevision: number;
     readonly reason: SelectionState['reason'];
     readonly entries: readonly SelectionEntry[];
+    readonly line: SelectionLine | null;
     readonly acceptedReceiptEpoch: number;
 }
 
-interface RemovalFlight {
-    readonly removal: RemovalRequest;
+interface EditFlight {
+    readonly edit: EditRequest;
 }
 
 export type RegistrationResult = 'invalid' | 'registered' | 'superseded';
@@ -148,6 +150,20 @@ function entriesEqual(
     );
 }
 
+function linesEqual(
+    left: SelectionLine | null,
+    right: SelectionLine | null
+): boolean {
+    return (
+        left === right ||
+        (left !== null &&
+            right !== null &&
+            left.text === right.text &&
+            left.language === right.language &&
+            left.translation === right.translation)
+    );
+}
+
 function projectOwner(owner: SelectionOwner): SelectionState {
     return {
         session: `${owner.documentId}:${owner.lifecycleGeneration}`,
@@ -156,15 +172,16 @@ function projectOwner(owner: SelectionOwner): SelectionState {
         renderRevision: owner.renderRevision,
         reason: owner.reason,
         entries: [...owner.entries],
+        line: owner.line && { ...owner.line },
     };
 }
 
 /**
  * Background authority for side panels. A panel binds to exactly one tab
  * (verified active in its window), receives that tab's content selection
- * as the content script publishes it, and may ask for one occurrence to be
- * removed — which content applies and republishes before the panel hears
- * "applied". Every async step re-verifies the binding it started with, so
+ * as the content script publishes it, and may ask for one word of the line
+ * to be added or removed — which content applies and republishes before the
+ * panel hears "applied". Every async step re-verifies the binding it started with, so
  * a superseded registration, a closed tab, or a navigated document can
  * never leak another tab's state into a panel.
  */
@@ -182,7 +199,7 @@ export class SidePanelService {
     private readonly activationByWindow = new Map<number, WindowActivation>();
     private readonly tabLifecycleEpochByTab = new Map<number, number>();
     private readonly selectionOwnersByTab = new Map<number, SelectionOwner>();
-    private readonly removalFlights = new Map<Connection, RemovalFlight>();
+    private readonly editFlights = new Map<Connection, EditFlight>();
     private authorizationEpoch = 0;
     private selectionOwnerGeneration = 0;
     private selectionReceiptEpoch = 0;
@@ -267,37 +284,32 @@ export class SidePanelService {
             return;
         }
 
-        const removal = frame.data;
-        const existing = this.removalFlights.get(connection);
+        const edit = frame.data;
+        const existing = this.editFlights.get(connection);
         if (existing) {
-            if (removalRequestsEqual(existing.removal, removal)) {
+            if (editRequestsEqual(existing.edit, edit)) {
                 return;
             }
-            const binding = this.captureRemovalBinding(connection, removal);
+            const binding = this.captureEditBinding(connection, edit);
             if (
                 !binding ||
-                !this.postRemovalResult(
-                    connection,
-                    binding,
-                    removal,
-                    'rejected'
-                )
+                !this.postEditResult(connection, binding, edit, 'rejected')
             ) {
                 this.revoke(connection);
             }
             return;
         }
-        const flight: RemovalFlight = { removal };
-        this.removalFlights.set(connection, flight);
+        const flight: EditFlight = { edit };
+        this.editFlights.set(connection, flight);
         this.enqueue(connection, async () => {
             if (connection.revoked) {
                 return;
             }
             try {
-                await this.handleRemoval(connection, flight);
+                await this.handleEdit(connection, flight);
             } finally {
-                if (this.removalFlights.get(connection) === flight) {
-                    this.removalFlights.delete(connection);
+                if (this.editFlights.get(connection) === flight) {
+                    this.editFlights.delete(connection);
                 }
             }
         });
@@ -786,7 +798,7 @@ export class SidePanelService {
     }
 
     private unbind(connection: Connection): void {
-        this.removalFlights.delete(connection);
+        this.editFlights.delete(connection);
         const binding = this.bindingByConnection.get(connection);
         if (binding) {
             if (this.connectionByTab.get(binding.tabId) === connection) {
@@ -857,7 +869,7 @@ export class SidePanelService {
             }
             this.forgetWindowConnection(binding.windowId, connection);
             this.bindingByConnection.delete(connection);
-            this.removalFlights.delete(connection);
+            this.editFlights.delete(connection);
         }
         const tabClaim = this.claimsByTab.get(registration.tabId);
         if (tabClaim && sameRegistration(tabClaim, registration)) {
@@ -936,7 +948,8 @@ export class SidePanelService {
                 if (
                     current.renderRevision !== snapshot.renderRevision ||
                     current.reason !== snapshot.reason ||
-                    !entriesEqual(current.entries, snapshot.entries)
+                    !entriesEqual(current.entries, snapshot.entries) ||
+                    !linesEqual(current.line, snapshot.line)
                 ) {
                     return false;
                 }
@@ -972,6 +985,7 @@ export class SidePanelService {
             renderRevision: snapshot.renderRevision,
             reason: snapshot.reason,
             entries: snapshot.entries.map((entry) => ({ ...entry })),
+            line: snapshot.line && { ...snapshot.line },
             acceptedReceiptEpoch: receipt,
         };
         this.selectionOwnersByTab.set(sender.tabId, owner);
@@ -1056,16 +1070,16 @@ export class SidePanelService {
         return Boolean(after && sameRegistration(after, exact));
     }
 
-    // ------------------------------------------------------------- removal
+    // ---------------------------------------------------------------- edits
 
-    private captureRemovalBinding(
+    private captureEditBinding(
         connection: Connection,
-        removal: RemovalRequest
+        edit: EditRequest
     ): Binding | null {
         const binding = this.bindingByConnection.get(connection);
         if (
             !binding ||
-            !bindingMatchesRemoval(binding, removal) ||
+            !bindingMatchesEdit(binding, edit) ||
             binding.selectionSynchronizationPending ||
             !this.isCurrentBinding(
                 connection,
@@ -1080,16 +1094,16 @@ export class SidePanelService {
         return { ...binding };
     }
 
-    private ownsRemovalBinding(
+    private ownsEditBinding(
         connection: Connection,
         binding: Binding,
-        removal: RemovalRequest
+        edit: EditRequest
     ): boolean {
         const current = this.bindingByConnection.get(connection);
         return Boolean(
             current &&
             sameRegistration(current, binding) &&
-            bindingMatchesRemoval(current, removal) &&
+            bindingMatchesEdit(current, edit) &&
             !current.selectionSynchronizationPending &&
             this.isCurrentBinding(
                 connection,
@@ -1101,42 +1115,40 @@ export class SidePanelService {
         );
     }
 
-    private captureRemovalOwner(
-        removal: RemovalRequest
-    ): SelectionOwner | null {
-        const owner = this.selectionOwnersByTab.get(removal.binding.tabId);
+    private captureEditOwner(edit: EditRequest): SelectionOwner | null {
+        const owner = this.selectionOwnersByTab.get(edit.binding.tabId);
         if (
             !owner ||
-            owner.windowId !== removal.binding.windowId ||
-            owner.selectionOwnerGeneration !==
-                removal.selectionOwnerGeneration ||
-            owner.selectionRevision !== removal.selectionRevision ||
-            owner.renderRevision !== removal.renderRevision ||
-            !owner.entries.some(
-                (entry) => entry.wordIndex === removal.wordIndex
-            )
+            owner.windowId !== edit.binding.windowId ||
+            owner.selectionOwnerGeneration !== edit.selectionOwnerGeneration ||
+            owner.selectionRevision !== edit.selectionRevision ||
+            owner.renderRevision !== edit.renderRevision ||
+            owner.entries.some(
+                (entry) => entry.wordIndex === edit.wordIndex
+            ) !==
+                (edit.op === 'remove')
         ) {
             return null;
         }
         return owner;
     }
 
-    private postRemovalResult(
+    private postEditResult(
         connection: Connection,
         binding: Binding,
-        removal: RemovalRequest,
-        status: RemovalStatus
+        edit: EditRequest,
+        status: EditStatus
     ): boolean {
-        if (!this.ownsRemovalBinding(connection, binding, removal)) {
+        if (!this.ownsEditBinding(connection, binding, edit)) {
             return false;
         }
         if (
             !this.post(connection, {
                 action: MessageActions.SIDEPANEL_UPDATE_STATE,
                 data: {
-                    binding: removal.binding,
-                    requestId: removal.requestId,
-                    selectionOwnerGeneration: removal.selectionOwnerGeneration,
+                    binding: edit.binding,
+                    requestId: edit.requestId,
+                    selectionOwnerGeneration: edit.selectionOwnerGeneration,
                     status,
                 },
             })
@@ -1144,28 +1156,28 @@ export class SidePanelService {
             this.revokeExactBinding(connection, binding);
             return false;
         }
-        return this.ownsRemovalBinding(connection, binding, removal);
+        return this.ownsEditBinding(connection, binding, edit);
     }
 
     /**
-     * Phase two of a panel-requested removal. Content applies the command
+     * Phase two of a panel-requested edit. Content applies the command
      * and republishes; "applied" is reported only once that authoritative
      * successor snapshot has been accepted here.
      */
-    private async handleRemoval(
+    private async handleEdit(
         connection: Connection,
-        flight: RemovalFlight
+        flight: EditFlight
     ): Promise<boolean> {
-        const { removal } = flight;
+        const { edit } = flight;
         const isCurrentFlight = () =>
-            this.removalFlights.get(connection) === flight;
-        const binding = this.captureRemovalBinding(connection, removal);
+            this.editFlights.get(connection) === flight;
+        const binding = this.captureEditBinding(connection, edit);
         if (!binding || !isCurrentFlight()) {
             return false;
         }
-        const owner = this.captureRemovalOwner(removal);
+        const owner = this.captureEditOwner(edit);
         if (!owner) {
-            this.postRemovalResult(connection, binding, removal, 'rejected');
+            this.postEditResult(connection, binding, edit, 'rejected');
             return false;
         }
 
@@ -1174,54 +1186,49 @@ export class SidePanelService {
             if (
                 connection.revoked ||
                 !isCurrentFlight() ||
-                !this.ownsRemovalBinding(connection, binding, removal) ||
-                this.captureRemovalOwner(removal) !== owner
+                !this.ownsEditBinding(connection, binding, edit) ||
+                this.captureEditOwner(edit) !== owner
             ) {
                 return false;
             }
             const response = await this.deps.sendToTab(
-                selectionRemovalCommand,
-                removal.binding.tabId,
+                selectionEditCommand,
+                edit.binding.tabId,
                 {
                     action: MessageActions.SIDEPANEL_UPDATE_STATE,
                     data: {
-                        requestId: removal.requestId,
+                        requestId: edit.requestId,
                         lifecycleGeneration: owner.lifecycleGeneration,
-                        selectionRevision: removal.selectionRevision,
-                        renderRevision: removal.renderRevision,
-                        wordIndex: removal.wordIndex,
+                        selectionRevision: edit.selectionRevision,
+                        renderRevision: edit.renderRevision,
+                        wordIndex: edit.wordIndex,
+                        op: edit.op,
                     },
                 },
                 { documentId: owner.documentId, frameId: 0 }
             );
-            applied =
-                response.success && response.requestId === removal.requestId;
+            applied = response.success && response.requestId === edit.requestId;
         } catch {
             if (!connection.revoked && isCurrentFlight()) {
-                this.postRemovalResult(
-                    connection,
-                    binding,
-                    removal,
-                    'rejected'
-                );
+                this.postEditResult(connection, binding, edit, 'rejected');
             }
             return false;
         }
         if (
             connection.revoked ||
             !isCurrentFlight() ||
-            !this.ownsRemovalBinding(connection, binding, removal)
+            !this.ownsEditBinding(connection, binding, edit)
         ) {
             return false;
         }
-        const successor = this.selectionOwnersByTab.get(removal.binding.tabId);
-        const status: RemovalStatus =
+        const successor = this.selectionOwnersByTab.get(edit.binding.tabId);
+        const status: EditStatus =
             applied &&
             successor &&
-            isAuthoritativeRemovalSuccess(successor, owner, removal)
+            isAuthoritativeEditSuccess(successor, owner, edit)
                 ? 'applied'
                 : 'rejected';
-        this.postRemovalResult(connection, binding, removal, status);
+        this.postEditResult(connection, binding, edit, status);
         return status === 'applied';
     }
 
@@ -1421,13 +1428,13 @@ export class SidePanelService {
         this.logger.debug('Tab removed', { tabId });
     }
 
-    /** A navigation invalidates the tab's selection owner and any removal in
+    /** A navigation invalidates the tab's selection owner and any edit in
      *  flight; a bound panel sees null until the new document publishes. */
     handleTabNavigation(tabId: number): void {
         this.selectionOwnersByTab.delete(tabId);
         const connection = this.connectionByTab.get(tabId);
         if (connection) {
-            this.removalFlights.delete(connection);
+            this.editFlights.delete(connection);
             this.projectSelectionNull(tabId);
         }
     }
@@ -1447,7 +1454,7 @@ export class SidePanelService {
         this.claimByConnection.clear();
         this.activationByWindow.clear();
         this.selectionOwnersByTab.clear();
-        this.removalFlights.clear();
+        this.editFlights.clear();
     }
 }
 
@@ -1483,14 +1490,12 @@ function ownerStateEquals(
         left.selectionRevision === right.selectionRevision &&
         left.renderRevision === right.renderRevision &&
         left.reason === right.reason &&
-        entriesEqual(left.entries, right.entries)
+        entriesEqual(left.entries, right.entries) &&
+        linesEqual(left.line, right.line)
     );
 }
 
-function removalRequestsEqual(
-    left: RemovalRequest,
-    right: RemovalRequest
-): boolean {
+function editRequestsEqual(left: EditRequest, right: EditRequest): boolean {
     return (
         left.binding.registrationId === right.binding.registrationId &&
         left.binding.tabId === right.binding.tabId &&
@@ -1499,42 +1504,39 @@ function removalRequestsEqual(
         left.selectionOwnerGeneration === right.selectionOwnerGeneration &&
         left.selectionRevision === right.selectionRevision &&
         left.renderRevision === right.renderRevision &&
-        left.wordIndex === right.wordIndex
+        left.wordIndex === right.wordIndex &&
+        left.op === right.op
     );
 }
 
-function bindingMatchesRemoval(
-    binding: Binding,
-    removal: RemovalRequest
-): boolean {
+function bindingMatchesEdit(binding: Binding, edit: EditRequest): boolean {
     return (
-        binding.registrationId === removal.binding.registrationId &&
-        binding.tabId === removal.binding.tabId &&
-        binding.windowId === removal.binding.windowId
+        binding.registrationId === edit.binding.registrationId &&
+        binding.tabId === edit.binding.tabId &&
+        binding.windowId === edit.binding.windowId
     );
 }
 
 /** The successor must be the same owner, a fresher receipt, a higher
- *  selection revision at the same render, reason "remove", and exactly the
- *  previous entries minus the removed occurrence. */
-function isAuthoritativeRemovalSuccess(
+ *  selection revision at the same render, the edit's own reason, and
+ *  exactly the previous entries with that one word removed or added. */
+function isAuthoritativeEditSuccess(
     current: SelectionOwner,
     previous: SelectionOwner,
-    removal: RemovalRequest
+    edit: EditRequest
 ): boolean {
     if (
         !ownerIdentityEquals(current, previous) ||
         current.acceptedReceiptEpoch <= previous.acceptedReceiptEpoch ||
-        current.selectionRevision <= removal.selectionRevision ||
-        current.renderRevision !== removal.renderRevision ||
-        current.reason !== 'remove'
+        current.selectionRevision <= edit.selectionRevision ||
+        current.renderRevision !== edit.renderRevision ||
+        current.reason !== edit.op ||
+        current.entries.some((entry) => entry.wordIndex === edit.wordIndex) !==
+            (edit.op === 'add')
     ) {
         return false;
     }
-    return entriesEqual(
-        current.entries,
-        previous.entries.filter(
-            (entry) => entry.wordIndex !== removal.wordIndex
-        )
-    );
+    const unedited = (entries: readonly SelectionEntry[]) =>
+        entries.filter((entry) => entry.wordIndex !== edit.wordIndex);
+    return entriesEqual(unedited(current.entries), unedited(previous.entries));
 }

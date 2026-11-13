@@ -1,4 +1,4 @@
-import { segmentWords } from '../selection/words';
+import { segmentWords } from '@/shared/words';
 
 export interface WordIntent {
     readonly renderRevision: number;
