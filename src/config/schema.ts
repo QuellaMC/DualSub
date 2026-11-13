@@ -336,6 +336,17 @@ const siteProfilesSchema = z.custom<StoredSiteProfiles>((value) => {
     }
 });
 
+const subtitleStyleSchema = z.enum(SUBTITLE_STYLES);
+
+/** The 3.1 pre-release kept DualSub's own look as a style of its own,
+ *  'dualsub', which is the custom look at its defaults; a device still on
+ *  it can sync it back. */
+function normalizeSubtitleStyle(
+    value: unknown
+): z.infer<typeof subtitleStyleSchema> {
+    return subtitleStyleSchema.parse(value === 'dualsub' ? 'custom' : value);
+}
+
 const subtitleBlacklistSchema = z.custom<Record<string, string[]>>(
     isValidSubtitleBlacklist
 );
@@ -518,12 +529,13 @@ export const configSchema = {
         scope: 'sync',
     }),
     subtitleStyle: setting({
-        schema: z.enum(SUBTITLE_STYLES),
-        default: 'custom',
+        schema: subtitleStyleSchema,
+        default: 'platform',
         scope: 'sync',
+        normalize: normalizeSubtitleStyle,
     }),
-    /** The viewer's own look for both lines. Its defaults are DualSub's own
-     *  look, so Custom starts from what the viewer already sees. */
+    /** The viewer's own look for both lines; its defaults are DualSub's own
+     *  look. */
     subtitleCustomLook: setting({
         schema: customLookSchema,
         default: {

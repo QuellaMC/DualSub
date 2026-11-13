@@ -16,12 +16,12 @@ Each check is an action followed by what should happen.
 3. Go to the next episode, by autoplay and by hand. No cue is duplicated, none is left from the previous episode, and timing is right from the first line.
 4. Leave the player, come back, and reload the page. Subtitles return without a stale line from the earlier session.
 5. Seek rapidly and press the popup's text size, timing, and position buttons while playing. The overlay follows each press at once and never goes blank between cues.
-    - In the settings page's Style section, switch the Look row between Like the site and a ready-made look, and resize the window. The text restyles live and scales with the video.
-    - With the platform's own subtitles off, Like the site still follows the profile's subtitle appearance settings.
+    - In the settings page's Style section, switch the Look row between Site and Custom, and resize the window. The text restyles live and scales with the video.
+    - With the platform's own subtitles off, the Site look still follows the profile's subtitle appearance settings.
 6. Open the popup on a playing Netflix video. It says DualSub is working on it.
     - Turn DualSub off there. Netflix shows its own subtitles, while a Disney+ tab keeps dual subtitles.
     - On any other page, the popup says DualSub doesn't work there, fits without scrolling in every UI language, and See the sites opens the Sites section of the settings page.
-7. In the Style section, pick each ready-made look in the Look row, then change the font, edge, bold, original color, and box, and the translation color. The stage follows each edit at once, the overlay follows after a pause, every look draws the translation in the chosen color, and the values are still there after the settings page is reloaded.
+7. On a clean profile, the Look row in the Style section says Like the site. Choose Custom, pick each ready-made look, then change the font, edge, bold, original color, and box, and the translation color. The stage follows each edit at once, the overlay follows after a pause, every look draws the translation in the chosen color, and the values are still there after the settings page is reloaded.
     - Click each line on the stage. The original line opens Look; the translation opens Translation color.
     - In Lines, put the translation on top. The row reads "Translation on top", and the original line keeps its name and color.
     - Drag the subtitles up. The Position row opens, a guide marks the usual height, the overlay follows once they drop, and Undo puts them back.

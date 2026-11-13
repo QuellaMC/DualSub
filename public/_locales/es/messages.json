@@ -644,6 +644,12 @@
     "lookStylePlatformHelp": {
         "message": "Se ve como los subtítulos de cada sitio."
     },
+    "lookModeSite": {
+        "message": "Sitio"
+    },
+    "lookModeOwn": {
+        "message": "Propio"
+    },
     "lookStyleTitle": {
         "message": "Diseño y estilos listos para usar"
     },

@@ -644,6 +644,12 @@
     "lookStylePlatformHelp": {
         "message": "Looks like each site's own subtitles."
     },
+    "lookModeSite": {
+        "message": "Site"
+    },
+    "lookModeOwn": {
+        "message": "Custom"
+    },
     "lookStyleTitle": {
         "message": "Look and ready-made styles"
     },

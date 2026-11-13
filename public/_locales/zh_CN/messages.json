@@ -644,6 +644,12 @@
     "lookStylePlatformHelp": {
         "message": "和每个网站自己的字幕看起来一样。"
     },
+    "lookModeSite": {
+        "message": "网站"
+    },
+    "lookModeOwn": {
+        "message": "自定义"
+    },
     "lookStyleTitle": {
         "message": "外观和现成样式"
     },

@@ -233,7 +233,7 @@ describe('numeric constraints', () => {
         expect(validateSetting('subtitleFontScale', 0.4)).toBe(false);
         expect(validateSetting('subtitleFontScale', 3.5)).toBe(false);
         expect(validateSetting('subtitleStyle', 'custom')).toBe(true);
-        expect(validateSetting('subtitleStyle', 'dualsub')).toBe(false);
+        expect(validateSetting('subtitleStyle', 'fancy')).toBe(false);
         expect(validateSetting('subtitleTranslationColor', '#FFCC00')).toBe(
             true
         );

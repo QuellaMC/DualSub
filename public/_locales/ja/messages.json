@@ -644,6 +644,12 @@
     "lookStylePlatformHelp": {
         "message": "それぞれのサイトの字幕と同じ見た目になります。"
     },
+    "lookModeSite": {
+        "message": "サイト"
+    },
+    "lookModeOwn": {
+        "message": "カスタム"
+    },
     "lookStyleTitle": {
         "message": "見た目と用意されたスタイル"
     },

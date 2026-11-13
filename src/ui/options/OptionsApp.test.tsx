@@ -1596,7 +1596,7 @@ describe('OptionsApp', () => {
         await waitFor(() => expect(looks).toHaveFocus());
         expect(looks).toHaveAttribute('aria-expanded', 'true');
 
-        fireEvent.click(screen.getByRole('button', { name: 'Boxed' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Custom' }));
         await waitFor(async () =>
             expect(await sync('subtitleStyle')).toBe('custom')
         );
