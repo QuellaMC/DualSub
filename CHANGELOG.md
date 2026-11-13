@@ -8,6 +8,10 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 - Subtitles look like the site's own by default: on Netflix and Disney+ as your profile's subtitle settings say, and on YouTube in its default caption style. This applies to new installs and after Start over in Advanced; settings you already have keep their look. In Style, the Look row now opens with a plain switch, Site or Custom, and the ready-made looks sit under Custom.
 
+### Fixed
+
+- On YouTube, DualSub asks for the captions as soon as the player lists them, and waits for the player to sign them only where YouTube marks its caption addresses as needing that. Before, it always waited, so where an ad blocker stopped the check that signs them, the subtitles never came.
+
 ## [3.4.0] - 2026-11-12
 
 ### Added

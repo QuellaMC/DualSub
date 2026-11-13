@@ -23,10 +23,21 @@ const EN_ASR: FakeTrack = { languageCode: 'en', asr: true };
 const ZH: FakeTrack = { languageCode: 'zh-Hans' };
 const FR: FakeTrack = { languageCode: 'fr' };
 
+/** The experiment YouTube names on caption URLs it serves only signed. */
+type Experiment = 'xpe' | 'xpv' | null;
+
 /** The track's URL as the player holds it; `pot` arrives once signed. */
-function playerUrl(videoId: string, track: FakeTrack, signed: boolean): string {
+function playerUrl(
+    videoId: string,
+    track: FakeTrack,
+    signed: boolean,
+    experiment: Experiment
+): string {
     const url = new URL('https://www.youtube.com/api/timedtext');
     url.searchParams.set('v', videoId);
+    if (experiment) {
+        url.searchParams.set('exp', experiment);
+    }
     url.searchParams.set('lang', track.languageCode);
     if (track.asr) {
         url.searchParams.set('kind', 'asr');
@@ -38,9 +49,14 @@ function playerUrl(videoId: string, track: FakeTrack, signed: boolean): string {
     return url.href;
 }
 
-/** The URL the recipe should send for a signed track. */
-function sentUrl(videoId: string, track: FakeTrack): string {
-    const url = new URL(playerUrl(videoId, track, true));
+/** The URL the recipe should send for a track, signed unless said not. */
+function sentUrl(
+    videoId: string,
+    track: FakeTrack,
+    signed = true,
+    experiment: Experiment = 'xpe'
+): string {
+    const url = new URL(playerUrl(videoId, track, signed, experiment));
     url.searchParams.set('c', 'WEB');
     url.searchParams.set('fmt', 'vtt');
     return url.href;
@@ -50,6 +66,7 @@ interface PlayerState {
     videoId: string;
     tracks: FakeTrack[];
     signed: boolean;
+    experiment: Experiment;
     visible: boolean;
     audioId: string;
     /** The tracks' own URLs name this video, which lags on a transition. */
@@ -64,6 +81,7 @@ function installPlayer(
         videoId: VIDEO,
         tracks: [EN],
         signed: true,
+        experiment: 'xpe',
         visible: true,
         audioId: 'und',
         ...initial,
@@ -106,7 +124,8 @@ function installPlayer(
                 url: playerUrl(
                     state.trackVideoId ?? state.videoId,
                     track,
-                    state.signed && !track.unsigned
+                    state.signed && !track.unsigned,
+                    state.experiment
                 ),
             })),
         }),
@@ -184,55 +203,140 @@ describe('youtubeRecipe track resolution', () => {
         ]);
     });
 
-    it('waits for the player to sign its URLs, without turning captions on', async () => {
-        const page = installPlayer('movie_player', { signed: false });
-        request(['en']);
-        await settle(2000);
-        expect(emitted).toEqual([]);
+    it.each(['xpe', 'xpv'] as const)(
+        'waits for the signature on tracks YouTube marks %s, without turning captions on',
+        async (experiment) => {
+            const page = installPlayer('movie_player', {
+                signed: false,
+                experiment,
+            });
+            request(['en']);
+            await settle(10_000);
+            expect(emitted).toEqual([]);
+
+            page.set({ signed: true });
+            await settle(250);
+            expect(emitted).toHaveLength(1);
+            expect(sentTracks()).toEqual([
+                {
+                    language: 'en',
+                    displayName: 'en',
+                    asr: false,
+                    url: sentUrl(VIDEO, EN, true, experiment),
+                },
+            ]);
+        }
+    );
+
+    it('sends unmarked tracks at once, unsigned, and again once the player signs them', async () => {
+        const page = installPlayer('movie_player', {
+            signed: false,
+            experiment: null,
+            tracks: [EN, ZH],
+        });
+        request(['en', 'zh-CN']);
+        await settle();
+        expect(sentTracks()).toEqual([
+            expect.objectContaining({ url: sentUrl(VIDEO, EN, false, null) }),
+            expect.objectContaining({ url: sentUrl(VIDEO, ZH, false, null) }),
+        ]);
 
         page.set({ signed: true });
         await settle(250);
+        expect(emitted).toHaveLength(2);
         expect(sentTracks()).toEqual([
-            {
-                language: 'en',
-                displayName: 'en',
-                asr: false,
-                url: sentUrl(VIDEO, EN),
-            },
+            expect.objectContaining({ url: sentUrl(VIDEO, EN, true, null) }),
+            expect.objectContaining({ url: sentUrl(VIDEO, ZH, true, null) }),
         ]);
     });
 
-    it('sends a signed original once its translation stays unsigned past a grace period', async () => {
-        installPlayer('movie_player', {
-            tracks: [EN, { languageCode: 'zh-Hans', unsigned: true }],
+    it('sends again each time the player signs more, the original before its translation', async () => {
+        const zh: FakeTrack = { languageCode: 'zh-Hans', unsigned: true };
+        const page = installPlayer('movie_player', {
+            signed: false,
+            experiment: null,
+            tracks: [EN, zh],
         });
         request(['en', 'zh-CN']);
-        await settle(4500);
-        expect(emitted).toEqual([]);
-
-        await settle(1000);
+        await settle();
         expect(sentTracks()).toEqual([
-            expect.objectContaining({
-                language: 'en',
-                url: sentUrl(VIDEO, EN),
-            }),
+            expect.objectContaining({ url: sentUrl(VIDEO, EN, false, null) }),
+            expect.objectContaining({ url: sentUrl(VIDEO, zh, false, null) }),
         ]);
+
+        page.set({ signed: true });
+        await settle(250);
+        expect(emitted).toHaveLength(2);
+        expect(sentTracks()).toEqual([
+            expect.objectContaining({ url: sentUrl(VIDEO, EN, true, null) }),
+            expect.objectContaining({ url: sentUrl(VIDEO, zh, false, null) }),
+        ]);
+
+        page.set({ tracks: [EN, ZH] });
+        await settle(250);
+        expect(emitted).toHaveLength(3);
+        expect(sentTracks()).toEqual([
+            expect.objectContaining({ url: sentUrl(VIDEO, EN, true, null) }),
+            expect.objectContaining({ url: sentUrl(VIDEO, ZH, true, null) }),
+        ]);
+
+        await settle(61_000);
+        expect(emitted).toHaveLength(3);
     });
 
-    it('waits for a translation the player signs within the grace period', async () => {
+    it('sends a signed original at once with an unmarked translation not yet signed', async () => {
+        const zh: FakeTrack = { languageCode: 'zh-Hans', unsigned: true };
+        installPlayer('movie_player', { experiment: null, tracks: [EN, zh] });
+        request(['en', 'zh-CN']);
+        await settle();
+        expect(sentTracks()).toEqual([
+            expect.objectContaining({ url: sentUrl(VIDEO, EN, true, null) }),
+            expect.objectContaining({ url: sentUrl(VIDEO, zh, false, null) }),
+        ]);
+
+        await settle(61_000);
+        expect(emitted).toHaveLength(1);
+    });
+
+    it('sends a signed original at once, and its marked translation once signed', async () => {
         const page = installPlayer('movie_player', {
             tracks: [EN, { languageCode: 'zh-Hans', unsigned: true }],
         });
         request(['en', 'zh-CN']);
-        await settle(2000);
-        expect(emitted).toEqual([]);
+        await settle();
+        expect(sentTracks()).toEqual([
+            expect.objectContaining({ url: sentUrl(VIDEO, EN) }),
+        ]);
 
         page.set({ tracks: [EN, ZH] });
         await settle(250);
+        expect(emitted).toHaveLength(2);
+        expect(sentTracks()).toEqual([
+            expect.objectContaining({ url: sentUrl(VIDEO, EN) }),
+            expect.objectContaining({ url: sentUrl(VIDEO, ZH) }),
+        ]);
+    });
+
+    it('keeps the signed original when its marked translation is never signed', async () => {
+        installPlayer('movie_player', {
+            tracks: [EN, { languageCode: 'zh-Hans', unsigned: true }],
+        });
+        request(['en', 'zh-CN']);
+        await settle(61_000);
+        expect(emitted).toHaveLength(1);
         expect(sentTracks()).toEqual([
             expect.objectContaining({ language: 'en' }),
-            expect.objectContaining({ language: 'zh-Hans' }),
         ]);
+    });
+
+    it('answers none at the deadline when YouTube never signs tracks it marks', async () => {
+        installPlayer('movie_player', { signed: false });
+        request(['en']);
+        await settle(59_000);
+        expect(emitted).toEqual([]);
+
+        await settle(1500);
+        expect(sentTracks()).toEqual([]);
     });
 
     it('waits while the route names a video the player has not loaded yet', async () => {
