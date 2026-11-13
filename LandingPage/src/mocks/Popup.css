@@ -1,0 +1,159 @@
+/* Sizes follow src/ui/popup/popup.css. */
+
+.popup {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 380px;
+    border-radius: 12px;
+    background: var(--ext-ground);
+    box-shadow:
+        0 24px 48px -16px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(0, 0, 0, 0.25);
+    font-size: 16px;
+}
+
+.popup .extension-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.popup-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--ext-line);
+    border-radius: 12px 12px 0 0;
+    background: var(--ext-surface);
+}
+
+.popup-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.popup-logo {
+    width: 28px;
+    height: 28px;
+}
+
+.popup-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+}
+
+.popup-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--ext-line);
+    border-radius: 12px;
+    background: var(--ext-surface);
+}
+
+.popup-status {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.popup-status .ext-status-icon {
+    width: 36px;
+    height: 36px;
+}
+
+.popup-label {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.popup-help {
+    color: var(--ext-ink-soft);
+    font-size: 14px;
+    line-height: 1.45;
+}
+
+.popup-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.popup-strong {
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.popup-select {
+    width: 190px;
+    min-height: 40px;
+}
+
+.popup-stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.popup-stepper-value {
+    min-width: 92px;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.popup-foot {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 14px 12px;
+}
+
+.popup-foot .icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* What an illustration outlines. */
+.popup-ring {
+    position: absolute;
+    inset: -7px;
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+}
+
+/* Tour markers line up in one column 28px outside the popup's left edge,
+   or its right edge for the settings gear. Each offset counts the padding
+   between the popup's edge and the control the marker sits in. */
+.popup-marker {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.popup-card > .popup-marker {
+    left: -40px;
+}
+
+.popup-status > .popup-marker,
+.popup-row > .popup-marker {
+    left: -55px;
+}
+
+.popup-settings {
+    position: relative;
+}
+
+.popup-settings > .popup-marker {
+    left: calc(100% + 42px);
+}
