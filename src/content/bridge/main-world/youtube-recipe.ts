@@ -13,18 +13,19 @@ import { ResolutionSlot, ValueWatch, waitFor } from './waitFor';
 
 // YouTube's player elements carry their own API: getPlayerResponse() names
 // the video a player holds, and its audio track lists the caption tracks
-// with signed download URLs. A URL is ready once the player adds its proof
-// token (`pot`), which it does with the viewer's own captions off. The
-// route can name the next video before the player loads it, and a preload
-// player can hold another, so only a player that holds the routed video and
-// shows its picture answers. Only the tracks for the requested languages
-// cross the bridge.
+// with their download URLs. The player lists each URL unsigned and adds a
+// proof token (`pot`) about a second later, once YouTube's anti-bot check
+// has run, with the viewer's own captions off. The route can name the next
+// video before the player loads it, and a preload player can hold another,
+// so only a player that holds the routed video and shows its picture
+// answers. Only the tracks for the requested languages cross the bridge.
 
 const PLAYER_POLL_INTERVAL_MS = 250;
 const PLAYER_WAIT_TIMEOUT_MS = 60_000;
-/** The player signs its tracks together; a translation still unsigned this
- *  long after the original is left to the translation service. */
-const TRANSLATION_SIGNING_GRACE_MS = 5000;
+/** YouTube names, in a caption URL's own signed `exp` parameter, the
+ *  experiments under which it serves the captions only with a proof token,
+ *  and serves the others unsigned too; yt-dlp detects it the same way. */
+const TOKEN_REQUIRED_EXPERIMENTS = new Set(['xpe', 'xpv']);
 const SPOKEN_LANGUAGE_POLL_INTERVAL_MS = 1000;
 const SPOKEN_LANGUAGE_UNKNOWN_AFTER_MS = 15_000;
 /** The audio track id when the player does not know the language. */
@@ -107,25 +108,31 @@ function listsCaptions(player: Element): boolean {
     return Array.isArray(listed) && listed.length > 0;
 }
 
-/** One track per requested language: the original first, then each
- *  translation that has one. */
+interface SelectedTracks {
+    readonly original: CaptionTrack;
+    /** One per requested translation that has a track of its own. */
+    readonly translations: readonly CaptionTrack[];
+}
+
+/** The tracks for the requested languages, original first; null when the
+ *  player lists none. */
 function selectTracks(
     candidates: readonly CaptionTrack[],
     languages: readonly string[]
-): CaptionTrack[] {
+): SelectedTracks | null {
     const [originalLanguage = '', ...otherLanguages] = languages;
-    const selected: CaptionTrack[] = [];
-    for (const track of [
-        selectYouTubeOriginal(candidates, originalLanguage),
-        ...otherLanguages.map((language) =>
-            selectYouTubeTranslation(candidates, language)
-        ),
-    ]) {
-        if (track && !selected.includes(track)) {
-            selected.push(track);
+    const original = selectYouTubeOriginal(candidates, originalLanguage);
+    if (!original) {
+        return null;
+    }
+    const translations: CaptionTrack[] = [];
+    for (const language of otherLanguages) {
+        const track = selectYouTubeTranslation(candidates, language);
+        if (track && track !== original && !translations.includes(track)) {
+            translations.push(track);
         }
     }
-    return selected;
+    return { original, translations };
 }
 
 function readClientName(): string | null {
@@ -137,56 +144,78 @@ function readClientName(): string | null {
     return typeof name === 'string' && name !== '' ? name : null;
 }
 
-/** The track's WebVTT download once the player has signed its URL. */
-function downloadUrl(track: CaptionTrack, clientName: string): string | null {
-    if (!track.url.searchParams.has('pot')) {
-        return null;
-    }
+function isSigned(url: URL): boolean {
+    return url.searchParams.has('pot');
+}
+
+function needsToken(url: URL): boolean {
+    return url.searchParams
+        .getAll('exp')
+        .flatMap((value) => value.split(','))
+        .some((experiment) => TOKEN_REQUIRED_EXPERIMENTS.has(experiment));
+}
+
+/** YouTube serves the track as the player holds it now. */
+function isServable(track: CaptionTrack): boolean {
+    return isSigned(track.url) || !needsToken(track.url);
+}
+
+/** The track's WebVTT download. */
+function downloadUrl(track: CaptionTrack, clientName: string): string {
     const url = new URL(track.url);
     url.searchParams.set('c', clientName);
     url.searchParams.set('fmt', 'vtt');
     return url.href;
 }
 
-interface SignedTracks {
-    /** The original's track first, then each translation's that is signed. */
+interface ListedTracks {
+    /** The original's track first, then each translation's that YouTube
+     *  serves as it is now. */
     readonly tracks: unknown[];
-    /** Every selected track is signed. */
-    readonly complete: boolean;
+    /** How many of those the player has signed. */
+    readonly signedCount: number;
+    /** YouTube serves the original's track as it is now. */
+    readonly ready: boolean;
+    /** The player has signed every selected track, so none is left out. */
+    readonly signed: boolean;
 }
 
-/** The requested languages' signed tracks once the routed video's player
- *  has signed the original's, none when the video has no captions, and
- *  null while either is still loading. */
-function readSignedTracks(
+/** The requested languages' tracks once the routed video's player lists
+ *  them, none when the video has no captions, and null while either is
+ *  still loading. */
+function readListedTracks(
     videoId: string,
     languages: readonly string[]
-): SignedTracks | null {
+): ListedTracks | null {
     const player = findActivePlayer(videoId);
     if (!player) {
         return null;
     }
-    const candidates = readCaptionTracks(player, videoId);
-    if (candidates.length === 0) {
-        return listsCaptions(player) ? null : { tracks: [], complete: true };
+    const selected = selectTracks(
+        readCaptionTracks(player, videoId),
+        languages
+    );
+    if (!selected) {
+        return listsCaptions(player)
+            ? null
+            : { tracks: [], signedCount: 0, ready: true, signed: true };
     }
     const clientName = readClientName();
     if (!clientName) {
         return null;
     }
-    const [original, ...translations] = selectTracks(candidates, languages);
-    const originalUrl = original ? downloadUrl(original, clientName) : null;
-    if (!original || originalUrl === null) {
-        return null;
-    }
-    const tracks = [sentTrack(original, originalUrl)];
-    for (const translation of translations) {
-        const url = downloadUrl(translation, clientName);
-        if (url !== null) {
-            tracks.push(sentTrack(translation, url));
-        }
-    }
-    return { tracks, complete: tracks.length === translations.length + 1 };
+    const { original, translations } = selected;
+    const sendable = [original, ...translations.filter(isServable)];
+    return {
+        tracks: sendable.map((track) =>
+            sentTrack(track, downloadUrl(track, clientName))
+        ),
+        signedCount: sendable.filter((track) => isSigned(track.url)).length,
+        ready: isServable(original),
+        signed: [original, ...translations].every((track) =>
+            isSigned(track.url)
+        ),
+    };
 }
 
 /** A selected track as it crosses the bridge. */
@@ -208,38 +237,49 @@ async function resolveSubtitleTracks(
     emit: (event: CapturedEvent) => void
 ): Promise<void> {
     const token = trackResolution.begin();
-    try {
-        let partSignedSince: number | null = null;
-        const tracks = await waitFor(
+    const deadline = Date.now() + PLAYER_WAIT_TIMEOUT_MS;
+    const answer = (tracks: unknown[]): void =>
+        emit({
+            t: 'subtitle-data',
+            platform: 'youtube',
+            videoId,
+            languages: [...languages],
+            tracks,
+        });
+    /** More tracks to send, or more of them signed. */
+    const progress = (listed: ListedTracks): number =>
+        listed.tracks.length + listed.signedCount;
+    const until = (
+        wanted: (listed: ListedTracks) => boolean
+    ): Promise<ListedTracks | null> =>
+        waitFor(
             () => {
-                const signed = readSignedTracks(videoId, languages);
-                if (!signed) {
-                    return null;
-                }
-                if (signed.complete) {
-                    return signed.tracks;
-                }
-                partSignedSince ??= Date.now();
-                return Date.now() - partSignedSince >=
-                    TRANSLATION_SIGNING_GRACE_MS
-                    ? signed.tracks
-                    : null;
+                const listed = readListedTracks(videoId, languages);
+                return listed && wanted(listed) ? listed : null;
             },
             PLAYER_POLL_INTERVAL_MS,
-            PLAYER_WAIT_TIMEOUT_MS,
+            deadline - Date.now(),
             token
         );
-        if (!token.cancelled) {
-            emit({
-                t: 'subtitle-data',
-                platform: 'youtube',
-                videoId,
-                languages: [...languages],
-                tracks:
-                    tracks ??
-                    readSignedTracks(videoId, languages)?.tracks ??
-                    [],
-            });
+    try {
+        let last = await until((listed) => listed.ready);
+        if (token.cancelled) {
+            return;
+        }
+        answer(last?.tracks ?? []);
+        // A translation left out or a track sent unsigned goes again each
+        // time the player signs more of them: YouTube may hold a viewer to
+        // the token without marking the URL (Premium does).
+        while (last && !last.signed) {
+            const reached = progress(last);
+            const better = await until(
+                (listed) => listed.ready && progress(listed) > reached
+            );
+            if (!better || token.cancelled) {
+                return;
+            }
+            answer(better.tracks);
+            last = better;
         }
     } catch {
         // A page API failure leaves the request unanswered; the next
