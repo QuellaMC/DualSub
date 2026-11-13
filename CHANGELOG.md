@@ -4,6 +4,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-11-13
+
 ### Changed
 
 - Subtitles look like the site's own by default: on Netflix and Disney+ as your profile's subtitle settings say, and on YouTube in its default caption style. This applies to new installs and after Start over in Advanced; settings you already have keep their look. In Style, the Look row now opens with a plain switch, Site or Custom, and the ready-made looks sit under Custom.
@@ -224,7 +226,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 Versions not listed here, including those before 1.4.0, are on [GitHub Releases](https://github.com/QuellaMC/DualSub/releases).
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.4.0...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.5.0...HEAD
+[3.5.0]: https://github.com/QuellaMC/DualSub/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/QuellaMC/DualSub/compare/v3.3.1...v3.4.0
 [3.3.1]: https://github.com/QuellaMC/DualSub/compare/v3.3.0...v3.3.1
 [3.3.0]: https://github.com/QuellaMC/DualSub/compare/v3.2.1...v3.3.0
