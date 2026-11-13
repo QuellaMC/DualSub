@@ -27,7 +27,7 @@ The settings page holds every setting, the popup's included. Each change saves a
 - **Sites**: DualSub on or off for each site, and hiding each site's own subtitles.
 - **Help**: one-click fixes for common problems, such as subtitles that show twice or a show's own translation that goes with the wrong line.
 
-In the Style section's **Look** row, **Like the site** draws the subtitles the way the site draws its own: as your Netflix or Disney+ profile's subtitle appearance settings say, and on YouTube in its default caption style. The ready-made looks (Boxed, Classic, High contrast, and Cinema) start a look of your own, whose font, edge, colors, and box you can change. **Translation color** applies to every look. Text size scales the look's base size, which follows the video's height.
+The Style section's **Look** row chooses between two looks. **Site**, the default, draws the subtitles the way the site draws its own: as your Netflix or Disney+ profile's subtitle appearance settings say, and on YouTube in its default caption style. **Custom** starts from a ready-made look (Boxed, Classic, High contrast, or Cinema), whose font, edge, colors, and box you can change. **Translation color** applies to every look. Text size scales the look's base size, which follows the video's height.
 
 ### Advanced options
 

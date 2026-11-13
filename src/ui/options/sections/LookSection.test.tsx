@@ -38,11 +38,17 @@ const feedback: Feedback = {
     notify: () => undefined,
 };
 
+/** Renders the section in the viewer's own look, which most of these
+ *  tests edit; pass `subtitleStyle` to start elsewhere. */
 function renderSection(
     overrides: Partial<OptionsSettings> = {},
     save: SaveSettings = vi.fn(() => Promise.resolve(true))
 ) {
-    const settings = { ...defaults(), ...overrides };
+    const settings: OptionsSettings = {
+        ...defaults(),
+        subtitleStyle: 'custom',
+        ...overrides,
+    };
     const section = (shown: OptionsSettings) => (
         <FeedbackProvider value={feedback}>
             <LookSection t={t} settings={shown} save={save} />
@@ -83,15 +89,47 @@ afterEach(() => {
 });
 
 describe('LookSection', () => {
-    it('applies a ready-made look with a named toast, in the custom style', () => {
-        const { save } = renderSection({ subtitleStyle: 'platform' });
+    it('looks like the site by default, and says so', () => {
+        renderSection({ subtitleStyle: getDefaultValue('subtitleStyle') });
+        expect(row('lookRowLook')).toHaveTextContent('lookStylePlatform');
+        openRow('lookRowLook');
+        expect(
+            screen.getByRole('button', { name: 'lookModeSite' })
+        ).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByText('lookStylePlatformHelp')).toBeInTheDocument();
+        expect(
+            screen.queryByRole('group', { name: 'lookPresetsLabel' })
+        ).toBeNull();
+    });
+
+    it('switches to your own look, naming the look it keeps', () => {
+        const { save, update } = renderSection({ subtitleStyle: 'platform' });
+        openRow('lookRowLook');
+        fireEvent.click(screen.getByRole('button', { name: 'lookModeOwn' }));
+        expect(save).toHaveBeenCalledWith(
+            { subtitleStyle: 'custom' },
+            // DualSub's own look at its defaults is the Boxed preset.
+            { message: 'toastPreset:lookPresetBoxed' }
+        );
+
+        update({ subtitleStyle: 'custom' });
+        expect(
+            screen.getByRole('button', { name: 'lookModeOwn' })
+        ).toHaveAttribute('aria-pressed', 'true');
+        expect(
+            screen.getByRole('group', { name: 'lookPresetsLabel' })
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText('lookFontLabel')).toBeInTheDocument();
+    });
+
+    it('applies a ready-made look to your own look with a named toast', () => {
+        const { save } = renderSection();
         openRow('lookRowLook');
         fireEvent.click(
             screen.getByRole('button', { name: 'lookPresetContrast' })
         );
         expect(save).toHaveBeenCalledWith(
             {
-                subtitleStyle: 'custom',
                 subtitleCustomLook: expect.objectContaining({
                     bold: true,
                     edge: 'outline',
@@ -99,25 +137,6 @@ describe('LookSection', () => {
             },
             { message: 'toastPreset:lookPresetContrast' }
         );
-    });
-
-    it('looks like the site on request, which its own settings then decide', () => {
-        const { save, update } = renderSection();
-        openRow('lookRowLook');
-        fireEvent.click(
-            screen.getByRole('button', { name: 'lookStylePlatform' })
-        );
-        expect(save).toHaveBeenCalledWith(
-            { subtitleStyle: 'platform' },
-            { message: 'toastStylePlatform' }
-        );
-
-        update({ subtitleStyle: 'platform' });
-        expect(screen.getByText('lookStylePlatformHelp')).toBeInTheDocument();
-        expect(screen.queryByLabelText('lookFontLabel')).toBeNull();
-        expect(
-            screen.getByRole('group', { name: 'lookPreviewSite' })
-        ).toBeInTheDocument();
     });
 
     it('shows each edit on the stage at once and saves after a pause, several edits as one write', async () => {

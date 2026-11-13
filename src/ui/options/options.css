@@ -987,9 +987,21 @@
     height: 18px;
 }
 
+/* The Look row's two choices split its width, so they read as a pair. */
+.segmented.look-mode {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.segmented.look-mode button {
+    justify-content: center;
+    padding: 6px 10px;
+    text-align: center;
+}
+
 .look-tiles {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;
 }
 

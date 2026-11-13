@@ -644,6 +644,12 @@
     "lookStylePlatformHelp": {
         "message": "각 사이트의 자막과 같은 모양이에요."
     },
+    "lookModeSite": {
+        "message": "사이트"
+    },
+    "lookModeOwn": {
+        "message": "직접 설정"
+    },
     "lookStyleTitle": {
         "message": "모양과 미리 만든 스타일"
     },

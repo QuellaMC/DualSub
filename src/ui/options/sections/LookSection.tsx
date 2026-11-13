@@ -334,9 +334,10 @@ export function LookSection({ t, settings, save }: SectionProps) {
     });
     const sample = sampleSubtitles(settings, spoken);
     const size = namedSize(scale.value);
-    const preset = custom
-        ? PRESETS.find((option) => sameSettingValue(look.value, option.look))
-        : undefined;
+    const ownPreset = PRESETS.find((option) =>
+        sameSettingValue(look.value, option.look)
+    );
+    const preset = custom ? ownPreset : undefined;
     const platformName =
         scope === 'all'
             ? t('lookStylePlatform')
@@ -361,19 +362,10 @@ export function LookSection({ t, settings, save }: SectionProps) {
         );
     const editLook = (changes: Partial<CustomLook>): void =>
         look.edit({ ...look.value, ...changes });
-    const pickPreset = (option: (typeof PRESETS)[number]): void => {
-        const notice = { message: t('toastPreset', t(option.labelKey)) };
-        if (custom) {
-            look.set(option.look, notice);
-            return;
-        }
-        // The custom style's controls show once this lands, so no edit can
-        // build on the pick before it does.
-        void save(
-            { subtitleStyle: 'custom', subtitleCustomLook: option.look },
-            notice
-        );
-    };
+    const pickPreset = (option: (typeof PRESETS)[number]): void =>
+        look.set(option.look, {
+            message: t('toastPreset', t(option.labelKey)),
+        });
 
     const stage = (tools?: ReactNode): ReactNode => (
         <Stage
@@ -606,15 +598,13 @@ export function LookSection({ t, settings, save }: SectionProps) {
                             onToggle={() => toggle('look')}
                         >
                             <div
-                                className="look-tiles"
+                                className="segmented look-mode"
                                 role="group"
-                                aria-label={t('lookPresetsLabel')}
+                                aria-label={t('lookRowLook')}
                             >
                                 <button
                                     type="button"
                                     aria-pressed={!custom}
-                                    aria-label={platformName}
-                                    title={platformName}
                                     onClick={() =>
                                         void save(
                                             { subtitleStyle: 'platform' },
@@ -625,35 +615,56 @@ export function LookSection({ t, settings, save }: SectionProps) {
                                         )
                                     }
                                 >
-                                    <span
-                                        style={lookStyle(
-                                            PLATFORM_PRESETS[site]
-                                        )}
-                                    >
-                                        Aa
-                                    </span>
+                                    {t('lookModeSite')}
                                 </button>
-                                {PRESETS.map((option) => (
-                                    <button
-                                        key={option.labelKey}
-                                        type="button"
-                                        aria-pressed={preset === option}
-                                        aria-label={t(option.labelKey)}
-                                        title={t(option.labelKey)}
-                                        onClick={() => pickPreset(option)}
-                                    >
-                                        <span
-                                            style={lookStyle(
-                                                customLook(option.look)
-                                            )}
-                                        >
-                                            Aa
-                                        </span>
-                                    </button>
-                                ))}
+                                <button
+                                    type="button"
+                                    aria-pressed={custom}
+                                    onClick={() =>
+                                        void save(
+                                            { subtitleStyle: 'custom' },
+                                            {
+                                                message: t(
+                                                    'toastPreset',
+                                                    ownPreset
+                                                        ? t(ownPreset.labelKey)
+                                                        : t('lookCustom')
+                                                ),
+                                            }
+                                        )
+                                    }
+                                >
+                                    {t('lookModeOwn')}
+                                </button>
                             </div>
                             {custom ? (
                                 <>
+                                    <div
+                                        className="look-tiles"
+                                        role="group"
+                                        aria-label={t('lookPresetsLabel')}
+                                    >
+                                        {PRESETS.map((option) => (
+                                            <button
+                                                key={option.labelKey}
+                                                type="button"
+                                                aria-pressed={preset === option}
+                                                aria-label={t(option.labelKey)}
+                                                title={t(option.labelKey)}
+                                                onClick={() =>
+                                                    pickPreset(option)
+                                                }
+                                            >
+                                                <span
+                                                    style={lookStyle(
+                                                        customLook(option.look)
+                                                    )}
+                                                >
+                                                    Aa
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
                                     <div className="format-control">
                                         <label htmlFor="look-font">
                                             {t('lookFontLabel')}

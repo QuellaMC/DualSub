@@ -196,7 +196,7 @@ describe('upgrade paths', () => {
             useOfficialTranslations: true,
             uiLanguage: 'ja',
             subtitleFontScale: 1.27,
-            subtitleStyle: 'custom',
+            subtitleStyle: 'platform',
             sidePanelTheme: 'dark',
             geminiModel: 'gemini-2.5-flash',
         });
@@ -240,10 +240,20 @@ describe('upgrade paths', () => {
         });
     });
 
-    it("a pre-release 3.1 profile's DualSub style boots as Custom, its new default", async () => {
+    it("a pre-release 3.1 profile's DualSub style boots as Custom, which is that look", async () => {
         await browser.storage.sync.set({ subtitleStyle: 'dualsub' });
         await boot();
         expect((await snapshot()).sync.subtitleStyle).toBe('custom');
+    });
+
+    it("a site's own pre-release DualSub style becomes Custom too", async () => {
+        await browser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleStyle: 'dualsub' } },
+        });
+        await boot();
+        expect((await snapshot()).sync.siteProfiles).toEqual({
+            netflix: { subtitleStyle: 'custom' },
+        });
     });
 
     it('a v2 device re-polluting sync after the upgrade cannot undo it', async () => {
