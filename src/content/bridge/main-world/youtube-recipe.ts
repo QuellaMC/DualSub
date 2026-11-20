@@ -29,6 +29,8 @@ const TOKEN_REQUIRED_EXPERIMENTS = new Set(['xpe', 'xpv']);
 const SPOKEN_LANGUAGE_POLL_INTERVAL_MS = 1000;
 const SPOKEN_LANGUAGE_UNKNOWN_AFTER_MS = 15_000;
 const AUDIO_LANGUAGE_PATTERN = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/u;
+/** The language tag that names no language. */
+const UNDETERMINED_LANGUAGE = 'und';
 const PROTOBUF_LENGTH_DELIMITED = 2;
 
 interface CaptionTrack {
@@ -350,6 +352,7 @@ function audioTrackLanguage(id: unknown): string | null {
         if (
             key === 'lang' &&
             value !== undefined &&
+            value !== UNDETERMINED_LANGUAGE &&
             AUDIO_LANGUAGE_PATTERN.test(value)
         ) {
             return value;
