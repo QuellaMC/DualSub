@@ -23,6 +23,16 @@ const EN_ASR: FakeTrack = { languageCode: 'en', asr: true };
 const ZH: FakeTrack = { languageCode: 'zh-Hans' };
 const FR: FakeTrack = { languageCode: 'fr' };
 
+// Audio track ids as a dubbed video's player names them: the format number,
+// then base64 of the track's tags. The first carries acont=original, drc=1
+// and lang=en-US; the second acont=dubbed and lang=zh-Hans; the third only
+// drc=1.
+const ORIGINAL_EN_US_AUDIO =
+    '251;ChEKBWFjb250EghvcmlnaW5hbAoICgNkcmMSATEKDQoEbGFuZxIFZW4tVVM';
+const DUBBED_ZH_HANS_AUDIO =
+    '251;Cg8KBWFjb250EgZkdWJiZWQKDwoEbGFuZxIHemgtSGFucw';
+const UNNAMED_AUDIO = '251;CggKA2RyYxIBMQ';
+
 /** The experiment YouTube names on caption URLs it serves only signed. */
 type Experiment = 'xpe' | 'xpv' | null;
 
@@ -447,8 +457,11 @@ describe('youtubeRecipe spoken language', () => {
             .map((event) => (event as { language: unknown }).language);
     }
 
-    it('takes the audio track’s language when the player knows it', async () => {
-        installPlayer('movie_player', { audioId: 'es-419', tracks: [EN_ASR] });
+    it('takes the language the audio track’s tags name', async () => {
+        installPlayer('movie_player', {
+            audioId: ORIGINAL_EN_US_AUDIO,
+            tracks: [{ languageCode: 'ja', asr: true }],
+        });
         watch();
         await settle();
         expect(emitted).toEqual([
@@ -456,9 +469,41 @@ describe('youtubeRecipe spoken language', () => {
                 t: 'spoken-language',
                 platform: 'youtube',
                 videoId: VIDEO,
-                language: 'es-419',
+                language: 'en-US',
             },
         ]);
+    });
+
+    it('follows the viewer to a dubbed audio track', async () => {
+        const page = installPlayer('movie_player', {
+            audioId: ORIGINAL_EN_US_AUDIO,
+            tracks: [EN_ASR, ZH],
+        });
+        watch();
+        await settle();
+        page.set({ audioId: DUBBED_ZH_HANS_AUDIO });
+        await settle(1000);
+        expect(spoken()).toEqual(['en-US', 'zh-Hans']);
+    });
+
+    it('reads the captions when the audio track’s tags name no language', async () => {
+        installPlayer('movie_player', {
+            audioId: UNNAMED_AUDIO,
+            tracks: [EN, { languageCode: 'ja', asr: true }],
+        });
+        watch();
+        await settle();
+        expect(spoken()).toEqual(['ja']);
+    });
+
+    it('reads the captions when the audio track’s tags are malformed', async () => {
+        installPlayer('movie_player', {
+            audioId: '251;ChEKBWFjb250',
+            tracks: [EN, { languageCode: 'ja', asr: true }],
+        });
+        watch();
+        await settle();
+        expect(spoken()).toEqual(['ja']);
     });
 
     it('takes the one speech-recognition track’s language when the audio is undetermined', async () => {
@@ -512,7 +557,7 @@ describe('youtubeRecipe spoken language', () => {
     });
 
     it('reports nothing for a video no player on screen holds', async () => {
-        installPlayer('movie_player', { audioId: 'en' });
+        installPlayer('movie_player', { audioId: ORIGINAL_EN_US_AUDIO });
         watch(NEXT_VIDEO);
         await settle(5000);
         expect(spoken()).toEqual([]);

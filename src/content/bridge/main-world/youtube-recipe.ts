@@ -28,9 +28,8 @@ const PLAYER_WAIT_TIMEOUT_MS = 60_000;
 const TOKEN_REQUIRED_EXPERIMENTS = new Set(['xpe', 'xpv']);
 const SPOKEN_LANGUAGE_POLL_INTERVAL_MS = 1000;
 const SPOKEN_LANGUAGE_UNKNOWN_AFTER_MS = 15_000;
-/** The audio track id when the player does not know the language. */
-const UNDETERMINED_AUDIO_ID = 'und';
 const AUDIO_LANGUAGE_PATTERN = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/u;
+const PROTOBUF_LENGTH_DELIMITED = 2;
 
 interface CaptionTrack {
     readonly language: string;
@@ -289,23 +288,91 @@ async function resolveSubtitleTracks(
     }
 }
 
-/** The language spoken in `videoId`: the audio track's own when the player
- *  knows it, else that of the one speech-recognition track, else that of
- *  the caption track the video names its default. Once the player has
- *  loaded the video's captions, or found it has none, null says nothing
- *  names it; undefined is a player still loading. */
+interface ProtobufField {
+    readonly number: number;
+    readonly bytes: string;
+}
+
+/** The fields of a protobuf message held in a binary string, all of them
+ *  length-delimited; null for a malformed message or another wire type. */
+function readProtobufFields(bytes: string): ProtobufField[] | null {
+    let offset = 0;
+    const readVarint = (): number | null => {
+        let value = 0;
+        for (let shift = 0; shift < 32 && offset < bytes.length; shift += 7) {
+            const byte = bytes.charCodeAt(offset++);
+            value += (byte & 0x7f) * 2 ** shift;
+            if (byte < 0x80) {
+                return value;
+            }
+        }
+        return null;
+    };
+    const fields: ProtobufField[] = [];
+    while (offset < bytes.length) {
+        const key = readVarint();
+        if (key === null || key % 8 !== PROTOBUF_LENGTH_DELIMITED) {
+            return null;
+        }
+        const length = readVarint();
+        if (length === null || offset + length > bytes.length) {
+            return null;
+        }
+        fields.push({
+            number: Math.floor(key / 8),
+            bytes: bytes.slice(offset, offset + length),
+        });
+        offset += length;
+    }
+    return fields;
+}
+
+/** The language an audio track's id names. A video with several audio
+ *  tracks names each `<itag>;<tags>`: the stream's format number, then
+ *  URL-safe base64 of a protobuf whose field 1 repeats {1: key, 2: value},
+ *  where `lang` is the language spoken and `acont` says whether it is the
+ *  original or dubbed. A video with one audio track names it `und`. */
+function audioTrackLanguage(id: unknown): string | null {
+    const encodedTags = typeof id === 'string' ? id.split(';')[1] : undefined;
+    if (encodedTags === undefined) {
+        return null;
+    }
+    let bytes: string;
+    try {
+        bytes = atob(encodedTags.replaceAll('-', '+').replaceAll('_', '/'));
+    } catch {
+        return null;
+    }
+    for (const tag of readProtobufFields(bytes) ?? []) {
+        const entry = tag.number === 1 ? readProtobufFields(tag.bytes) : null;
+        const key = entry?.find((field) => field.number === 1)?.bytes;
+        const value = entry?.find((field) => field.number === 2)?.bytes;
+        if (
+            key === 'lang' &&
+            value !== undefined &&
+            AUDIO_LANGUAGE_PATTERN.test(value)
+        ) {
+            return value;
+        }
+    }
+    return null;
+}
+
+/** The language spoken in `videoId`: the one its audio track names, else
+ *  that of the one speech-recognition track, else that of the caption
+ *  track the video names its default. Once the player has loaded the
+ *  video's captions, or found it has none, null says nothing names it;
+ *  undefined is a player still loading. */
 function readSpokenLanguage(videoId: string): string | null | undefined {
     const player = findActivePlayer(videoId);
     if (!player) {
         return undefined;
     }
-    const audioId = readProperty(callMethod(player, 'getAudioTrack'), 'id');
-    if (
-        typeof audioId === 'string' &&
-        audioId !== UNDETERMINED_AUDIO_ID &&
-        AUDIO_LANGUAGE_PATTERN.test(audioId)
-    ) {
-        return audioId;
+    const audioLanguage = audioTrackLanguage(
+        readProperty(callMethod(player, 'getAudioTrack'), 'id')
+    );
+    if (audioLanguage !== null) {
+        return audioLanguage;
     }
     const tracks = readCaptionTracks(player, videoId);
     if (tracks.length === 0 && listsCaptions(player)) {
