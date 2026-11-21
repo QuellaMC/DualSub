@@ -30,6 +30,7 @@ Each check is an action followed by what should happen.
 9. YouTube only, with YouTube's own captions off:
     - Play a watch page with captions a person wrote, such as a TED talk. Dual subtitles appear without YouTube's captions being switched on. Switch them on: they stay hidden while DualSub shows its lines.
     - Play a video that has only automatic captions in another language, such as a Japanese interview. With the original line on Automatic, the popup names Japanese, and the lines roll up two at a time as YouTube draws them, with no flashing between them.
+    - Play a video with dubbed audio, such as a recent MrBeast video. With the original line on Automatic, the popup names the original audio's language. Pick a dubbed language under Settings → Audio track: the popup names it, and the original line reloads in it where the video has captions in that language.
     - Open a Short. The lines sit on the portrait video. Swipe to the next Short: no line from the previous one shows, and the next one's lines arrive.
     - Go to the next video with Shift+N and by autoplay. No line from the previous video shows.
     - Seek, and switch to theater mode and full screen. The overlay follows the picture.

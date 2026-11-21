@@ -4,6 +4,10 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Fixed
+
+- On YouTube videos with more than one audio language, the top line follows the audio you hear, including a dubbed one you pick in the player. Before, DualSub couldn't read which language the player was playing and guessed from the captions, so a dubbed video could keep its top line in the original language.
+
 ## [3.5.0] - 2026-11-13
 
 ### Changed
