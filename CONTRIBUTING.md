@@ -33,6 +33,9 @@ npm run test:coverage   # tests with the coverage floors CI enforces
 npm run build           # production build in dist/chrome-mv3
 npm run zip             # release archive in dist/
 npm run verify:release  # audit the release archive
+npm run site:dev        # landing page dev server
+npm run site:build      # landing page build in LandingPage/dist
+npm run site:preview    # serve that build
 ```
 
 CI runs `compile`, `lint`, `format:check`, `test:coverage`, `build`, `zip`, and `verify:release` on every pull request.
@@ -51,6 +54,7 @@ DualSub is a Manifest V3 extension written in strict TypeScript with [WXT](https
 | `src/ui/`          | The React popup, settings page, side panel, and welcome page                        |
 | `src/shared/`      | Code every context uses: logging, fetch hardening, provider and site lists          |
 | `public/_locales/` | The UI text, one catalog per language; a test keeps them in step                    |
+| `LandingPage/`     | The landing page website (Vite + React), and a full-page image of it                |
 
 A few rules hold the design together:
 

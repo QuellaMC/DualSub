@@ -1,0 +1,136 @@
+.style-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px 18px 20px;
+    border: 1px solid var(--ext-line);
+    border-radius: 14px;
+    background: var(--ext-surface);
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.style-pane-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ext-line);
+}
+
+.style-pane-head strong {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.style-pane-head span {
+    color: var(--ext-ink-soft);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.style-pane-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.style-pane-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.style-pane strong {
+    font-weight: 700;
+}
+
+.style-pane-stepper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.style-pane-stepper > span:not(.ext-step) {
+    min-width: 96px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.style-pane .ext-step {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    border-radius: 9px;
+    font-size: 14px;
+}
+
+.style-pane .ext-step .extension-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.style-pane .ext-segmented > span {
+    padding: 5px 8px;
+    font-size: 15px;
+}
+
+.style-pane-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.style-pane-chips > span {
+    padding: 4px 11px;
+    border: 1px solid var(--ext-line-control);
+    border-radius: 999px;
+    color: var(--ext-ink-lead);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.style-pane-chips > .is-on {
+    border-color: var(--ext-accent-tint);
+    background: var(--ext-accent-tint);
+    color: var(--ext-accent-text);
+}
+
+.style-pane-swatches {
+    display: flex;
+    gap: 8px;
+}
+
+.style-pane-swatches > span {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px rgba(20, 24, 33, 0.3);
+}
+
+.style-pane-swatches > .is-on {
+    box-shadow:
+        0 0 0 2px #ffffff,
+        0 0 0 4px var(--ext-accent);
+}
+
+.style-pane-choice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--ext-ink-soft);
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.style-pane-choice .ext-segmented {
+    width: 214px;
+}
+
+.style-pane-choice .ext-segmented > span {
+    padding: 4px 6px;
+    font-size: 14px;
+}

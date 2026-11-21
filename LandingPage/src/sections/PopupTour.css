@@ -1,0 +1,75 @@
+.tour {
+    display: grid;
+    grid-template-columns: minmax(0, 580px) minmax(320px, 1fr);
+    align-items: start;
+    gap: 34px;
+}
+
+.tour-figure {
+    max-width: 580px;
+}
+
+.tour-board {
+    width: 580px;
+    height: 640px;
+}
+
+.tour-popup {
+    position: absolute;
+    top: 10px;
+    left: 116px;
+}
+
+.tour-list {
+    display: grid;
+    gap: 31px;
+    padding-top: 5px;
+}
+
+.tour-list li {
+    display: flex;
+    gap: 22px;
+}
+
+.tour-list h3 {
+    margin: 2px 0 6px;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.tour-list p {
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1.625;
+}
+
+.tour-settings {
+    margin-top: 96px;
+}
+
+.tour-settings-board {
+    width: 1200px;
+}
+
+.tour-settings-favicon {
+    width: 16px;
+    height: 16px;
+}
+
+@media (max-width: 860px) {
+    .tour {
+        grid-template-columns: 1fr;
+        gap: 48px;
+    }
+
+    .tour-figure {
+        width: 100%;
+        margin-inline: auto;
+    }
+
+    .tour-list {
+        max-width: 640px;
+        margin-inline: auto;
+    }
+}
