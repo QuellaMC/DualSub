@@ -8,7 +8,7 @@
 
 ![Version](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg)
 ![Last Commit](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
-![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
+![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Manifest](https://img.shields.io/badge/Manifest-v3-blue.svg)
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue.svg)](https://deepwiki.com/QuellaMC/DualSub)
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome插件商店)](https://chrome.google.com/webstore/detail/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
@@ -41,6 +41,6 @@ DualSub 是一个 Chrome 扩展，在 Netflix、Disney+ 和 YouTube 上同时显
 
 ## 许可证
 
-DualSub 采用 [CC BY-NC-SA 4.0](LICENSE) 许可：你可以在署名并采用相同许可的前提下分享和改编，但不得用于商业目的。
+DualSub 采用 [GNU GPL v3.0](LICENSE) 许可：你可以自由使用、分享和修改，分发的衍生作品须同样采用 GPL-3.0 协议开源。
 
 DualSub 与 Netflix、Disney+、YouTube 没有关联。

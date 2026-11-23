@@ -8,7 +8,7 @@
 
 ![Version](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg)
 ![Last Commit](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
-![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
+![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Manifest](https://img.shields.io/badge/Manifest-v3-blue.svg)
 [![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-blue.svg)](https://deepwiki.com/QuellaMC/DualSub)
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome%20Web%20Store)](https://chrome.google.com/webstore/detail/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
@@ -41,6 +41,6 @@ Report bugs and request features in [GitHub Issues](https://github.com/QuellaMC/
 
 ## License
 
-DualSub is licensed under [CC BY-NC-SA 4.0](LICENSE): you can share and adapt it with attribution and under the same license, but not for commercial use.
+DualSub is licensed under the [GNU General Public License v3.0](LICENSE): you can use, share, and modify it, and distributed derivative works must be licensed under GPL-3.0.
 
 DualSub is not affiliated with Netflix, Disney+, or YouTube.
