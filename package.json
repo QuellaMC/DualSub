@@ -35,7 +35,7 @@
         "disneyplus"
     ],
     "author": "QuellaMC",
-    "license": "CC-BY-NC-SA-4.0",
+    "license": "GPL-3.0-only",
     "bugs": {
         "url": "https://github.com/QuellaMC/DualSub/issues"
     },
