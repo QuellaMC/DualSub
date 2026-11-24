@@ -4,6 +4,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-11-23
+
 ### Fixed
 
 - On YouTube, the subtitles stay on the video when you scroll the page, and slide under the top bar with it, the way YouTube's own captions do. Before, they trailed behind the video while it played, and while it was paused they stayed where they were on screen, over the description and comments.
@@ -231,7 +233,8 @@ All notable changes to DualSub are recorded here. The format follows [Keep a Cha
 
 Versions not listed here, including those before 1.4.0, are on [GitHub Releases](https://github.com/QuellaMC/DualSub/releases).
 
-[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.5.0...HEAD
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.5.1...HEAD
+[3.5.1]: https://github.com/QuellaMC/DualSub/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/QuellaMC/DualSub/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/QuellaMC/DualSub/compare/v3.3.1...v3.4.0
 [3.3.1]: https://github.com/QuellaMC/DualSub/compare/v3.3.0...v3.3.1
