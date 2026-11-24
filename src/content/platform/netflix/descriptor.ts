@@ -32,6 +32,7 @@ export const netflixDescriptor: PlatformDescriptor = {
         return videoId ? { kind: 'subtitle', videoId } : null;
     },
     look: NETFLIX_LOOK,
+    subtitleHost: 'page',
     parsePlatformLook: parseNetflixLook,
     createAdapter(context, handoff) {
         return new NetflixAdapter(context, handoff);

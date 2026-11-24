@@ -29,6 +29,7 @@ export const youtubeDescriptor: PlatformDescriptor = {
         return videoId ? { kind: 'subtitle', videoId } : null;
     },
     look: YOUTUBE_LOOK,
+    subtitleHost: 'player',
     // YouTube reports no appearance settings.
     parsePlatformLook: () => null,
     createAdapter(context) {

@@ -34,6 +34,8 @@ Each check is an action followed by what should happen.
     - Open a Short. The lines sit on the portrait video. Swipe to the next Short: no line from the previous one shows, and the next one's lines arrive.
     - Go to the next video with Shift+N and by autoplay. No line from the previous video shows.
     - Seek, and switch to theater mode and full screen. The overlay follows the picture.
+    - On a watch page, scroll down to the comments and back up, once while playing and once while paused. The lines move with the video the whole way, with no lag, slide under the top bar with it, and never stay behind over the description or comments.
+    - Click a word in a line. The side panel opens as it does on the other sites, and the click doesn't reach the player: playback pauses only when auto-pause is on.
     - Signed out, play a video that opens with an ad. No subtitle shows during the ad, and the lines return with the video.
     - With "Use the show's own translation" on, play a TED talk that has captions in your language: the translation line is the talk's own. Turn the setting off: the translation service translates.
     - With an ad blocker that keeps YouTube from signing its caption addresses (they lack `pot`): where the addresses carry no `exp=xpe` or `exp=xpv`, subtitles arrive as soon as the video loads; where they do, YouTube serves no captions unsigned, its own included, and DualSub shows none.

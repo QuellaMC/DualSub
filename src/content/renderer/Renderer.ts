@@ -39,35 +39,34 @@ interface PictureRect {
     readonly height: number;
 }
 
-/** The picture inside the video element's box, in viewport coordinates.
- *  Both platforms let the video keep its aspect inside its box, so the
- *  letterbox bars are excluded as they are from the platforms' own
- *  subtitles; the viewport stands in while the element has no box. */
-function pictureRect(video: HTMLVideoElement): PictureRect {
+/** The picture inside the video element's box, relative to the host the
+ *  stage is positioned in. Every platform lets the video keep its aspect
+ *  inside its box, so the letterbox bars are excluded as they are from the
+ *  platforms' own subtitles; the host stands in while the video has no
+ *  box. */
+function pictureRect(video: HTMLVideoElement, host: HTMLElement): PictureRect {
     const box = video.getBoundingClientRect();
     if (!(box.width > 0 && box.height > 0)) {
         return {
             left: 0,
             top: 0,
-            width: window.innerWidth,
-            height: window.innerHeight,
+            width: host.clientWidth,
+            height: host.clientHeight,
         };
     }
+    const origin = host.getBoundingClientRect();
+    const left = box.left - origin.left - host.clientLeft;
+    const top = box.top - origin.top - host.clientTop;
     const { videoWidth, videoHeight } = video;
     if (!(videoWidth > 0 && videoHeight > 0)) {
-        return {
-            left: box.left,
-            top: box.top,
-            width: box.width,
-            height: box.height,
-        };
+        return { left, top, width: box.width, height: box.height };
     }
     const scale = Math.min(box.width / videoWidth, box.height / videoHeight);
     const width = videoWidth * scale;
     const height = videoHeight * scale;
     return {
-        left: box.left + (box.width - width) / 2,
-        top: box.top + (box.height - height) / 2,
+        left: left + (box.width - width) / 2,
+        top: top + (box.height - height) / 2,
         width,
         height,
     };
@@ -137,7 +136,7 @@ export class Renderer {
             adapter: PlatformAdapter;
             descriptor: Pick<
                 PlatformDescriptor,
-                'look' | 'parseVideoIdFromUrl'
+                'look' | 'parseVideoIdFromUrl' | 'subtitleHost'
             >;
             /** The viewer's platform appearance, when the page reported it. */
             platformLook: SubtitleLook | null;
@@ -153,7 +152,7 @@ export class Renderer {
             onWordIntent?: (intent: WordIntent) => void;
         }
     ) {
-        this.container = new SessionContainer(deps.uiRoot);
+        this.container = new SessionContainer();
         this.platformLook = deps.platformLook;
         this.words = new WordLayer({
             language: () => lineLanguage(deps.state.language) ?? 'und',
@@ -187,9 +186,11 @@ export class Renderer {
             signal
         );
         // Every frame follows the picture while the video plays; the
-        // observer covers a resize while it is paused.
+        // observer covers a resize of the video or its host while it is
+        // paused.
         const resize = new ResizeObserver(() => this.placeStage());
         resize.observe(media.video);
+        resize.observe(this.stageHost());
         signal.addEventListener('abort', () => resize.disconnect(), {
             once: true,
         });
@@ -281,11 +282,20 @@ export class Renderer {
         state.invalidateMemo();
     }
 
+    /** Where the stage lives: in the player on a site whose subtitles
+     *  belong there, otherwise in DualSub's page layer. */
+    private stageHost(): HTMLElement {
+        const player = this.media?.root;
+        return this.deps.descriptor.subtitleHost === 'player' && player
+            ? player
+            : this.deps.uiRoot.ensure();
+    }
+
     /** The live stage; a rebuild forgets every block so the next render
      *  paints afresh. */
     private ensureStage(): HTMLDivElement {
         const epochBefore = this.container.containerEpoch;
-        const stage = this.container.ensure();
+        const stage = this.container.ensure(this.stageHost());
         if (this.container.containerEpoch !== epochBefore) {
             this.blocks.clear();
             this.picture = null;
@@ -299,11 +309,12 @@ export class Renderer {
      *  block, so a new height restyles them. */
     private placeStage(): void {
         const stage = this.container.current;
+        const host = stage?.parentElement;
         const media = this.media;
-        if (!stage || !media) {
+        if (!stage || !host || !media) {
             return;
         }
-        const rect = pictureRect(media.video);
+        const rect = pictureRect(media.video, host);
         if (sameRect(this.picture, rect)) {
             return;
         }

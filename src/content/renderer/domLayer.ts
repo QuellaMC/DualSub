@@ -79,31 +79,28 @@ function createStage(): HTMLDivElement {
     return stage;
 }
 
-/** Session-scoped stage inside the UiRoot: a box laid over the picture
- *  that holds the subtitle blocks. */
+/** Session-scoped stage: a box laid over the picture that holds the
+ *  subtitle blocks, inside the positioned host it is placed against. */
 export class SessionContainer {
     private stage: HTMLDivElement | null = null;
     private epoch = 0;
-
-    constructor(private readonly uiRoot: UiRoot) {}
 
     /** Bumps whenever the stage is (re)built, for frame-memo invalidation. */
     get containerEpoch(): number {
         return this.epoch;
     }
 
-    /** The live stage, rebuilt empty if the site tore it out. */
-    ensure(): HTMLDivElement {
-        const root = this.uiRoot.ensure();
+    /** The live stage in `host`, rebuilt empty if the site tore it out. */
+    ensure(host: HTMLElement): HTMLDivElement {
         if (this.stage?.isConnected) {
-            if (this.stage.parentElement !== root) {
-                root.appendChild(this.stage);
+            if (this.stage.parentElement !== host) {
+                host.appendChild(this.stage);
             }
             return this.stage;
         }
         this.stage?.remove();
         this.stage = createStage();
-        root.appendChild(this.stage);
+        host.appendChild(this.stage);
         this.epoch += 1;
         return this.stage;
     }
