@@ -68,7 +68,7 @@ function cue(
     };
 }
 
-function setup(videoId = '1') {
+function setup(videoId = '1', subtitleHost: 'player' | 'page' = 'page') {
     const controller = new AbortController();
     const video = makeVideo();
     const state = new RendererState(display);
@@ -83,6 +83,7 @@ function setup(videoId = '1') {
         adapter,
         descriptor: {
             look: PLATFORM_PRESET,
+            subtitleHost,
             parseVideoIdFromUrl: (url) =>
                 /\/watch\/(\d+)/.exec(url)?.[1] ?? null,
         },
@@ -486,21 +487,39 @@ describe('Renderer styling', () => {
         tick(2);
     }
 
-    it('sizes text from the picture height, the scale, and every resize', () => {
-        let notify: (() => void) | null = null;
+    /** Stands in for the browser's ResizeObserver: `notify` reports a
+     *  resize, and `observed` lists what it watches. */
+    function stubResizeObserver(): {
+        notify: () => void;
+        observed: Element[];
+        disconnected: () => boolean;
+    } {
+        let callback: (() => void) | null = null;
         let disconnected = false;
+        const observed: Element[] = [];
         vi.stubGlobal(
             'ResizeObserver',
             class {
-                constructor(callback: () => void) {
-                    notify = callback;
+                constructor(notify: () => void) {
+                    callback = notify;
                 }
-                observe(): void {}
+                observe(target: Element): void {
+                    observed.push(target);
+                }
                 disconnect(): void {
                     disconnected = true;
                 }
             }
         );
+        return {
+            notify: () => callback!(),
+            observed,
+            disconnected: () => disconnected,
+        };
+    }
+
+    it('sizes text from the picture height, the scale, and every resize', () => {
+        const resizes = stubResizeObserver();
         const { renderer, video, tick, loadCues, controller } = setup();
         let height = 500;
         video.getBoundingClientRect = () =>
@@ -513,11 +532,11 @@ describe('Renderer styling', () => {
         expect(original().style.fontSize).toBe('20px');
 
         height = 1000;
-        notify!();
+        resizes.notify();
         expect(original().style.fontSize).toBe('40px');
 
         renderer.detachMedia();
-        expect(disconnected).toBe(true);
+        expect(resizes.disconnected()).toBe(true);
         controller.abort();
     });
 
@@ -577,6 +596,53 @@ describe('Renderer styling', () => {
         left = 120;
         tick(1);
         expect(stage()?.style.left).toBe('120px');
+        controller.abort();
+    });
+
+    it('lays the stage in the player on a site that draws subtitles there, so scrolling carries it with the picture', () => {
+        const resizes = stubResizeObserver();
+        const { renderer, video, tick, stage, controller } = setup(
+            '1',
+            'player'
+        );
+        const player = video.parentElement!;
+        let scrolled = 0;
+        player.getBoundingClientRect = () =>
+            ({
+                left: 10,
+                top: 100 - scrolled,
+                width: 820,
+                height: 500,
+            }) as DOMRect;
+        video.getBoundingClientRect = () =>
+            ({
+                left: 20,
+                top: 125 - scrolled,
+                width: 800,
+                height: 450,
+            }) as DOMRect;
+        renderer.attachMedia({ root: player, video });
+        expect(stage()?.parentElement).toBe(player);
+        expect(document.getElementById('dualsub-ui-root')).toBeNull();
+        expect(resizes.observed).toEqual([video, player]);
+        expect([stage()?.style.left, stage()?.style.top]).toEqual([
+            '10px',
+            '25px',
+        ]);
+
+        scrolled = 600;
+        tick(1);
+        expect([stage()?.style.left, stage()?.style.top]).toEqual([
+            '10px',
+            '25px',
+        ]);
+        controller.abort();
+    });
+
+    it('lays the stage in the page layer while the player is unknown', () => {
+        const { renderer, video, stage, controller } = setup('1', 'player');
+        renderer.attachMedia({ root: null, video });
+        expect(stage()?.parentElement?.id).toBe('dualsub-ui-root');
         controller.abort();
     });
 

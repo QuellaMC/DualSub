@@ -104,6 +104,12 @@ export interface PlatformDescriptor {
     classifyBridgeEvent(event: CapturedEvent): BridgeEventClassification | null;
     /** How the platform draws its own subtitles by default. */
     readonly look: SubtitleLook;
+    /** Where DualSub's subtitles live. In the 'player', they move, clip
+     *  and stack with it as the platform's own subtitles do, which a player
+     *  in a scrolling page needs. In the 'page' layer, they sit above
+     *  everything the site draws, for full-window players whose own layers
+     *  would cover them. */
+    readonly subtitleHost: 'player' | 'page';
     /** The look the platform would draw from the viewer's reported
      *  appearance settings; null when the payload is not that shape. */
     parsePlatformLook(appearance: Record<string, unknown>): SubtitleLook | null;

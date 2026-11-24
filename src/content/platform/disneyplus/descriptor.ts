@@ -36,6 +36,7 @@ export const disneyPlusDescriptor: PlatformDescriptor = {
         return null;
     },
     look: DISNEY_LOOK,
+    subtitleHost: 'page',
     parsePlatformLook: parseDisneyLook,
     createAdapter(context, handoff) {
         return new DisneyPlusAdapter(context, handoff);
